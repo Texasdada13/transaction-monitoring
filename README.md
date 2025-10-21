@@ -54,3 +54,19 @@ python run.py
 This will start:
 - FastAPI server on port 8000 (default)
 - Streamlit dashboard on port 8501 (default)
+## Development Workflow
+
+This project follows a simplified Git Flow workflow:
+
+1. master - Production-ready code
+2. develop - Main development branch
+3. eature/* - Individual feature branches
+
+### Contributing
+
+1. Create a feature branch from develop: git checkout -b feature/your-feature-name
+2. Make your changes and commit them
+3. Push your feature branch to GitHub: git push -u origin feature/your-feature-name
+4. Create a pull request to merge into the develop branch
+5. After review, the feature will be merged into develop
+6. Periodically, develop will be merged into master for releases
