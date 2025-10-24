@@ -109,6 +109,73 @@ class AccountChangeHistory(Base):
     employee = relationship("Employee", back_populates="account_changes")
     account = relationship("Account", back_populates="account_changes")
 
+class Beneficiary(Base):
+    __tablename__ = "beneficiaries"
+
+    beneficiary_id = Column(String, primary_key=True, index=True)
+    account_id = Column(String, ForeignKey("accounts.account_id"))
+    name = Column(String)
+    beneficiary_type = Column(String)  # "supplier", "vendor", "contractor", "partner"
+    email = Column(String, index=True, nullable=True)
+    phone = Column(String, nullable=True)
+
+    # Bank account information
+    bank_account_number = Column(String)
+    bank_routing_number = Column(String)
+    bank_name = Column(String, nullable=True)
+    bank_account_type = Column(String, default="checking")  # "checking", "savings"
+
+    # Metadata
+    registration_date = Column(String, default=lambda: datetime.datetime.utcnow().isoformat())
+    last_payment_date = Column(String, nullable=True)
+    total_payments_received = Column(Integer, default=0)
+    total_amount_received = Column(Float, default=0.0)
+    status = Column(String, default="active")  # "active", "suspended", "inactive"
+
+    # Risk indicators
+    verified = Column(Boolean, default=False)
+    verification_date = Column(String, nullable=True)
+    risk_level = Column(String, default="medium")  # "low", "medium", "high"
+
+    # Relationships
+    account = relationship("Account")
+    change_history = relationship("BeneficiaryChangeHistory", back_populates="beneficiary")
+
+class BeneficiaryChangeHistory(Base):
+    __tablename__ = "beneficiary_change_history"
+
+    change_id = Column(String, primary_key=True, index=True)
+    beneficiary_id = Column(String, ForeignKey("beneficiaries.beneficiary_id"), index=True)
+    account_id = Column(String, ForeignKey("accounts.account_id"))
+    timestamp = Column(String, default=lambda: datetime.datetime.utcnow().isoformat())
+
+    # Change details
+    change_type = Column(String)  # "account_number", "routing_number", "bank_name", "email", "phone", "address"
+    old_value = Column(String, nullable=True)
+    new_value = Column(String)
+
+    # Change metadata
+    change_source = Column(String)  # "ap_portal", "erp_system", "phone_request", "email_request", "fax", "manual_entry"
+    requestor_name = Column(String, nullable=True)  # Person who requested the change
+    requestor_email = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+
+    # Verification details
+    verification_method = Column(String, nullable=True)  # "callback", "email_confirmation", "portal_verification", "in_person", "none"
+    verified = Column(Boolean, default=False)
+    verified_by = Column(String, nullable=True)  # AP staff ID
+    verification_timestamp = Column(String, nullable=True)
+    verification_notes = Column(Text, nullable=True)
+
+    # Risk indicators
+    flagged_as_suspicious = Column(Boolean, default=False)
+    suspicious_reason = Column(Text, nullable=True)
+
+    # Relationships
+    beneficiary = relationship("Beneficiary", back_populates="change_history")
+    account = relationship("Account")
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
