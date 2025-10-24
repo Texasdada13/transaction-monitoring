@@ -1,19 +1,23 @@
 # app/services/context_provider.py
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
 from app.models.database import Transaction, Account
+from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, enable_chain_analysis: bool = True):
         """
         Initialize context provider with database session.
-        
+
         Args:
             db: SQLAlchemy database session
+            enable_chain_analysis: Whether to enable chain analysis (default True)
         """
         self.db = db
+        self.enable_chain_analysis = enable_chain_analysis
+        self.chain_analyzer = ChainAnalyzer(db) if enable_chain_analysis else None
     
     def get_transaction_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -45,10 +49,17 @@ class ContextProvider:
         
         # Check if counterparty is new
         context["is_new_counterparty"] = self._is_new_counterparty(
-            account_id, 
+            account_id,
             transaction.get("counterparty_id")
         )
-        
+
+        # Add chain analysis if enabled
+        if self.enable_chain_analysis and self.chain_analyzer:
+            chain_analysis = self.chain_analyzer.analyze_transaction_chains(
+                account_id, transaction
+            )
+            context["chain_analysis"] = chain_analysis
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any], 
