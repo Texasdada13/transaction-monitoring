@@ -158,6 +158,95 @@ def create_amount_deviation_rule(std_dev_threshold: float, rule_name: str = None
         weight=weight
     )
 
+def create_small_deposit_rule(threshold: float = 2.0, rule_name: str = None, weight: float = 1.5):
+    """
+    Create a rule that detects small test deposits used to validate accounts.
+
+    Fraudsters often send very small amounts (pennies to a few dollars) to check
+    if an account is active before initiating larger fraudulent transactions.
+
+    Args:
+        threshold: Maximum amount to consider a "small" deposit (default $2.00)
+        rule_name: Optional custom rule name
+        weight: Rule importance weight (default 1.5 - elevated due to fraud risk)
+
+    Returns:
+        Rule object
+    """
+    name = rule_name or f"small_deposit_below_{threshold}"
+
+    def condition(tx: Dict[str, Any], ctx: Dict[str, Any]) -> bool:
+        amount = tx.get("amount", 0)
+        tx_type = tx.get("transaction_type", "").upper()
+
+        # Only flag inbound deposits (ACH, WIRE, etc.)
+        # Exclude withdrawals, transfers out, or debits
+        is_inbound = tx_type in ["ACH", "WIRE", "DEPOSIT", "CREDIT"]
+
+        # Check if amount is suspiciously small
+        is_small = 0 < amount <= threshold
+
+        return is_inbound and is_small
+
+    return Rule(
+        name=name,
+        description=f"Small deposit (${threshold} or less) - potential account validation test",
+        condition_func=condition,
+        weight=weight
+    )
+
+def create_small_deposit_velocity_rule(
+    small_amount_threshold: float = 2.0,
+    min_count: int = 2,
+    timeframe_hours: int = 24,
+    rule_name: str = None,
+    weight: float = 2.0
+):
+    """
+    Create a rule that detects multiple small deposits in a short timeframe.
+
+    This pattern is highly indicative of account validation fraud, where fraudsters
+    send multiple tiny deposits to confirm an account is active before attempting
+    larger theft. Multiple small deposits in a short period is a stronger signal
+    than a single small deposit.
+
+    Args:
+        small_amount_threshold: Maximum amount to consider "small" (default $2.00)
+        min_count: Minimum number of small deposits to trigger (default 2)
+        timeframe_hours: Time window in hours (default 24)
+        rule_name: Optional custom rule name
+        weight: Rule importance weight (default 2.0 - high risk pattern)
+
+    Returns:
+        Rule object
+    """
+    name = rule_name or f"small_deposit_velocity_{min_count}_in_{timeframe_hours}h"
+
+    def condition(tx: Dict[str, Any], ctx: Dict[str, Any]) -> bool:
+        amount = tx.get("amount", 0)
+        tx_type = tx.get("transaction_type", "").upper()
+
+        # Check if current transaction is a small deposit
+        is_inbound = tx_type in ["ACH", "WIRE", "DEPOSIT", "CREDIT"]
+        is_small = 0 < amount <= small_amount_threshold
+
+        if not (is_inbound and is_small):
+            return False
+
+        # Check context for pattern of multiple small deposits
+        # Context should include small_deposit_count for the timeframe
+        small_deposit_count = ctx.get("small_deposit_count", {}).get(timeframe_hours, 0)
+
+        # Trigger if we've seen multiple small deposits including this one
+        return small_deposit_count >= min_count
+
+    return Rule(
+        name=name,
+        description=f"Multiple small deposits ({min_count}+ deposits ≤${small_amount_threshold}) in {timeframe_hours}h - likely account validation fraud",
+        condition_func=condition,
+        weight=weight
+    )
+
 def create_money_mule_rule(
     min_incoming_count: int = 5,
     max_avg_incoming: float = 500.0,
