@@ -27,3 +27,11 @@ PAYROLL_SUSPICIOUS_CHANGE_WINDOW_DAYS = 30  # Days before payroll to flag accoun
 PAYROLL_RAPID_CHANGE_THRESHOLD = 2  # Number of changes that trigger suspicion
 PAYROLL_RAPID_CHANGE_WINDOW_DAYS = 90  # Window to count rapid changes
 PAYROLL_VERIFICATION_REQUIRED_THRESHOLD = 5000.00  # Payroll amount requiring verification
+
+# Beneficiary fraud detection settings
+BENEFICIARY_RAPID_ADDITION_THRESHOLD = 5  # Number of beneficiaries added to trigger alert
+BENEFICIARY_RAPID_ADDITION_WINDOW_HOURS = 24  # Time window for rapid additions
+BENEFICIARY_BULK_ADDITION_THRESHOLD = 10  # Threshold for bulk/scripted additions
+BENEFICIARY_BULK_ADDITION_WINDOW_HOURS = 72  # Extended window for bulk detection
+BENEFICIARY_RECENT_ADDITION_HOURS = 48  # Hours to consider beneficiary as "newly added"
+BENEFICIARY_NEW_BENEFICIARY_PAYMENT_RATIO = 0.7  # Ratio of payments to new beneficiaries (70%+)

@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -55,6 +55,9 @@ class ContextProvider:
 
         # Add money mule detection context
         self._add_money_mule_context(context, account_id, transaction)
+
+        # Add beneficiary fraud detection context
+        self._add_beneficiary_context(context, account_id, transaction)
 
         # Add chain analysis if enabled
         if self.enable_chain_analysis and self.chain_analyzer:
@@ -242,6 +245,109 @@ class ContextProvider:
                 context["avg_hours_to_transfer"] = None
         else:
             context["avg_hours_to_transfer"] = None
+
+    def _add_beneficiary_context(self, context: Dict[str, Any],
+                                  account_id: str,
+                                  current_tx: Dict[str, Any]) -> None:
+        """
+        Add beneficiary fraud detection context.
+
+        Detects rapid addition of many beneficiaries followed by payments.
+        """
+        now = datetime.datetime.utcnow()
+        counterparty_id = current_tx.get("counterparty_id")
+
+        # Analyze beneficiary additions over time windows
+        time_windows = [24, 72, 168]  # 1 day, 3 days, 1 week (hours)
+
+        for hours in time_windows:
+            time_threshold = (now - datetime.timedelta(hours=hours)).isoformat()
+
+            # Count beneficiaries added in this window
+            beneficiaries_added = self.db.query(Beneficiary).filter(
+                Beneficiary.account_id == account_id,
+                Beneficiary.added_timestamp > time_threshold,
+                Beneficiary.status == "active"
+            ).all()
+
+            context[f"beneficiaries_added_{hours}h"] = len(beneficiaries_added)
+
+            # Track beneficiaries from same IP address
+            if beneficiaries_added:
+                ip_counts = {}
+                user_counts = {}
+
+                for beneficiary in beneficiaries_added:
+                    if beneficiary.ip_address:
+                        ip_counts[beneficiary.ip_address] = ip_counts.get(beneficiary.ip_address, 0) + 1
+                    if beneficiary.added_by:
+                        user_counts[beneficiary.added_by] = user_counts.get(beneficiary.added_by, 0) + 1
+
+                # Find most common IP and user
+                if ip_counts:
+                    most_common_ip = max(ip_counts.items(), key=lambda x: x[1])
+                    context[f"beneficiaries_same_ip_{hours}h"] = most_common_ip[1]
+                    context["same_source_ip"] = most_common_ip[0]
+                else:
+                    context[f"beneficiaries_same_ip_{hours}h"] = 0
+
+                if user_counts:
+                    most_common_user = max(user_counts.items(), key=lambda x: x[1])
+                    context[f"beneficiaries_same_user_{hours}h"] = most_common_user[1]
+                    context["same_source_user"] = most_common_user[0]
+                else:
+                    context[f"beneficiaries_same_user_{hours}h"] = 0
+
+            # Count payments to newly added beneficiaries in this window
+            new_beneficiary_ids = [b.counterparty_id for b in beneficiaries_added]
+
+            if new_beneficiary_ids:
+                payments_to_new = self.db.query(Transaction).filter(
+                    Transaction.account_id == account_id,
+                    Transaction.direction == "debit",
+                    Transaction.counterparty_id.in_(new_beneficiary_ids),
+                    Transaction.timestamp > time_threshold
+                ).count()
+
+                total_payments = self.db.query(Transaction).filter(
+                    Transaction.account_id == account_id,
+                    Transaction.direction == "debit",
+                    Transaction.timestamp > time_threshold
+                ).count()
+
+                context[f"new_beneficiary_payment_count_{hours}h"] = payments_to_new
+
+                if total_payments > 0:
+                    context[f"new_beneficiary_payment_ratio_{hours}h"] = payments_to_new / total_payments
+                else:
+                    context[f"new_beneficiary_payment_ratio_{hours}h"] = 0.0
+            else:
+                context[f"new_beneficiary_payment_count_{hours}h"] = 0
+                context[f"new_beneficiary_payment_ratio_{hours}h"] = 0.0
+
+        # Check if current transaction is to a recently added beneficiary
+        if counterparty_id:
+            beneficiary = self.db.query(Beneficiary).filter(
+                Beneficiary.account_id == account_id,
+                Beneficiary.counterparty_id == counterparty_id,
+                Beneficiary.status == "active"
+            ).first()
+
+            if beneficiary:
+                # Calculate beneficiary age
+                added_time = datetime.datetime.fromisoformat(beneficiary.added_timestamp)
+                beneficiary_age_hours = (now - added_time).total_seconds() / 3600
+
+                context["is_new_beneficiary"] = beneficiary_age_hours <= 48  # Less than 48 hours
+                context["beneficiary_age_hours"] = beneficiary_age_hours
+                context["is_beneficiary_verified"] = beneficiary.verified
+                context["beneficiary_addition_source"] = beneficiary.addition_source
+                context["beneficiary_flagged"] = beneficiary.flagged_as_suspicious
+            else:
+                # No beneficiary record - might be first transaction
+                context["is_new_beneficiary"] = False
+                context["is_beneficiary_verified"] = True  # Assume verified if no record
+                context["beneficiary_age_hours"] = None
 
     def get_payroll_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """

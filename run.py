@@ -23,6 +23,7 @@ from app.services.context_provider import ContextProvider
 
 # Import fraud scenario rules
 from app.services.payroll_fraud_rules import initialize_payroll_fraud_rules
+from app.services.beneficiary_fraud_rules import initialize_beneficiary_fraud_rules
 # TODO: Import other fraud scenarios as they're added
 # from app.services.credit_fraud_rules import initialize_credit_fraud_rules
 # from app.services.wire_fraud_rules import initialize_wire_fraud_rules
@@ -55,7 +56,13 @@ class TransactionMonitor:
         payroll_rules = initialize_payroll_fraud_rules(self.db)
         for rule in payroll_rules:
             self.rules_engine.add_rule(rule)
-        print(f"   Loaded {len(payroll_rules)} payroll fraud rules")
+        print(f"   Loaded {len(payroll_rules)} payroll fraud rules")
+
+        # Beneficiary fraud rules
+        beneficiary_rules = initialize_beneficiary_fraud_rules(self.db)
+        for rule in beneficiary_rules:
+            self.rules_engine.add_rule(rule)
+        print(f"   Loaded {len(beneficiary_rules)} beneficiary fraud rules")
 
         # TODO: Add other fraud scenarios
         # credit_rules = initialize_credit_fraud_rules(self.db)
@@ -91,7 +98,7 @@ class TransactionMonitor:
         """Get monitoring statistics."""
         return {
             "total_rules": len(self.rules_engine.rules),
-            "scenarios_loaded": ["payroll_fraud"],  # TODO: Add others
+            "scenarios_loaded": ["payroll_fraud", "beneficiary_fraud"],  # TODO: Add others
             "status": "active"
         }
 
