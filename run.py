@@ -23,6 +23,7 @@ from app.services.context_provider import ContextProvider
 
 # Import fraud scenario rules
 from app.services.payroll_fraud_rules import initialize_payroll_fraud_rules
+from app.services.check_fraud_rules import initialize_check_fraud_rules
 # TODO: Import other fraud scenarios as they're added
 # from app.services.credit_fraud_rules import initialize_credit_fraud_rules
 # from app.services.wire_fraud_rules import initialize_wire_fraud_rules
@@ -57,6 +58,12 @@ class TransactionMonitor:
             self.rules_engine.add_rule(rule)
         print(f"   Loaded {len(payroll_rules)} payroll fraud rules")
 
+        # Check fraud rules
+        check_rules = initialize_check_fraud_rules(self.db)
+        for rule in check_rules:
+            self.rules_engine.add_rule(rule)
+        print(f"   Loaded {len(check_rules)} check fraud rules")
+
         # TODO: Add other fraud scenarios
         # credit_rules = initialize_credit_fraud_rules(self.db)
         # for rule in credit_rules:
@@ -82,6 +89,10 @@ class TransactionMonitor:
         payroll_context = self.context_provider.get_payroll_context(transaction)
         context.update(payroll_context)
 
+        # Get check fraud context
+        check_context = self.context_provider.get_check_context(transaction)
+        context.update(check_context)
+
         # Evaluate against ALL rules from ALL scenarios
         result = self.decision_engine.evaluate(transaction, context)
 
@@ -91,7 +102,7 @@ class TransactionMonitor:
         """Get monitoring statistics."""
         return {
             "total_rules": len(self.rules_engine.rules),
-            "scenarios_loaded": ["payroll_fraud"],  # TODO: Add others
+            "scenarios_loaded": ["payroll_fraud", "check_fraud"],  # TODO: Add others
             "status": "active"
         }
 
