@@ -32,6 +32,7 @@ class Transaction(Base):
     account_id = Column(String, ForeignKey("accounts.account_id"))
     counterparty_id = Column(String, index=True)
     amount = Column(Float)
+    direction = Column(String, default="credit")  # "credit" (incoming) or "debit" (outgoing)
     transaction_type = Column(String)  # "ACH", "WIRE", etc.
     description = Column(Text, nullable=True)
     tx_metadata = Column(Text, nullable=True)  # JSON string (renamed from 'metadata' to avoid SQLAlchemy conflict)

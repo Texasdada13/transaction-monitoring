@@ -1,19 +1,23 @@
 # app/services/context_provider.py
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
 from app.models.database import Transaction, Account, Employee, AccountChangeHistory
+from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, enable_chain_analysis: bool = True):
         """
         Initialize context provider with database session.
-        
+
         Args:
             db: SQLAlchemy database session
+            enable_chain_analysis: Whether to enable chain analysis (default True)
         """
         self.db = db
+        self.enable_chain_analysis = enable_chain_analysis
+        self.chain_analyzer = ChainAnalyzer(db) if enable_chain_analysis else None
     
     def get_transaction_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -45,30 +49,59 @@ class ContextProvider:
         
         # Check if counterparty is new
         context["is_new_counterparty"] = self._is_new_counterparty(
-            account_id, 
+            account_id,
             transaction.get("counterparty_id")
         )
-        
+
+        # Add money mule detection context
+        self._add_money_mule_context(context, account_id, transaction)
+
+        # Add chain analysis if enabled
+        if self.enable_chain_analysis and self.chain_analyzer:
+            chain_analysis = self.chain_analyzer.analyze_transaction_chains(
+                account_id, transaction
+            )
+            context["chain_analysis"] = chain_analysis
+
         return context
     
-    def _add_transaction_history(self, context: Dict[str, Any], 
-                                account_id: str, 
+    def _add_transaction_history(self, context: Dict[str, Any],
+                                account_id: str,
                                 current_tx: Dict[str, Any]) -> None:
         """Add transaction history data to context."""
         # Transaction velocity for different time windows
         timeframes = [1, 6, 24, 168]  # hours (1h, 6h, 24h, 1 week)
         context["tx_count_last_hours"] = {}
-        
+        context["small_deposit_count"] = {}
+
         now = datetime.datetime.utcnow()
         for hours in timeframes:
             time_threshold = (now - datetime.timedelta(hours=hours)).isoformat()
-            
+
             count = self.db.query(Transaction).filter(
                 Transaction.account_id == account_id,
                 Transaction.timestamp > time_threshold
             ).count()
-            
+
             context["tx_count_last_hours"][hours] = count
+
+            # Count small deposits (≤ $2.00) for fraud detection
+            small_deposit_count = self.db.query(Transaction).filter(
+                Transaction.account_id == account_id,
+                Transaction.timestamp > time_threshold,
+                Transaction.amount > 0,
+                Transaction.amount <= 2.0,
+                Transaction.transaction_type.in_(["ACH", "WIRE", "DEPOSIT", "CREDIT"])
+            ).count()
+
+            # Include current transaction if it's a small deposit
+            current_amount = current_tx.get("amount", 0)
+            current_type = current_tx.get("transaction_type", "").upper()
+            if (0 < current_amount <= 2.0 and
+                current_type in ["ACH", "WIRE", "DEPOSIT", "CREDIT"]):
+                small_deposit_count += 1
+
+            context["small_deposit_count"][hours] = small_deposit_count
         
         # Calculate average transaction amount for this type
         tx_type = current_tx.get("transaction_type")
@@ -116,6 +149,99 @@ class ContextProvider:
         ).first()
 
         return previous_tx is None
+
+    def _add_money_mule_context(self, context: Dict[str, Any],
+                                account_id: str,
+                                current_tx: Dict[str, Any]) -> None:
+        """
+        Add money mule detection context.
+
+        Money mule pattern: Multiple small incoming payments quickly followed by outgoing transfers.
+        """
+        now = datetime.datetime.utcnow()
+
+        # Analyze patterns over different time windows
+        time_windows = [24, 72, 168]  # 1 day, 3 days, 1 week (hours)
+
+        for hours in time_windows:
+            time_threshold = (now - datetime.timedelta(hours=hours)).isoformat()
+
+            # Get incoming transactions (credits)
+            incoming_txs = self.db.query(Transaction).filter(
+                Transaction.account_id == account_id,
+                Transaction.direction == "credit",
+                Transaction.timestamp > time_threshold
+            ).all()
+
+            # Get outgoing transactions (debits)
+            outgoing_txs = self.db.query(Transaction).filter(
+                Transaction.account_id == account_id,
+                Transaction.direction == "debit",
+                Transaction.timestamp > time_threshold
+            ).all()
+
+            # Calculate metrics
+            incoming_count = len(incoming_txs)
+            outgoing_count = len(outgoing_txs)
+            incoming_total = sum(tx.amount for tx in incoming_txs)
+            outgoing_total = sum(tx.amount for tx in outgoing_txs)
+
+            # Store in context
+            context[f"incoming_count_{hours}h"] = incoming_count
+            context[f"outgoing_count_{hours}h"] = outgoing_count
+            context[f"incoming_total_{hours}h"] = incoming_total
+            context[f"outgoing_total_{hours}h"] = outgoing_total
+
+            # Calculate average incoming transaction amount (for "many small" detection)
+            if incoming_count > 0:
+                avg_incoming = incoming_total / incoming_count
+                context[f"avg_incoming_amount_{hours}h"] = avg_incoming
+            else:
+                context[f"avg_incoming_amount_{hours}h"] = 0
+
+            # Calculate flow-through ratio (how much incoming is sent out)
+            if incoming_total > 0:
+                flow_through_ratio = outgoing_total / incoming_total
+                context[f"flow_through_ratio_{hours}h"] = flow_through_ratio
+            else:
+                context[f"flow_through_ratio_{hours}h"] = 0
+
+        # Calculate average time between incoming and outgoing (velocity of moving money)
+        # For recent 7-day window
+        week_ago = (now - datetime.timedelta(days=7)).isoformat()
+
+        recent_incoming = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.direction == "credit",
+            Transaction.timestamp > week_ago
+        ).order_by(Transaction.timestamp).all()
+
+        recent_outgoing = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.direction == "debit",
+            Transaction.timestamp > week_ago
+        ).order_by(Transaction.timestamp).all()
+
+        # Calculate average time from incoming to next outgoing
+        if recent_incoming and recent_outgoing:
+            time_gaps = []
+            for incoming in recent_incoming:
+                incoming_time = datetime.datetime.fromisoformat(incoming.timestamp)
+                # Find next outgoing after this incoming
+                for outgoing in recent_outgoing:
+                    outgoing_time = datetime.datetime.fromisoformat(outgoing.timestamp)
+                    if outgoing_time > incoming_time:
+                        gap_hours = (outgoing_time - incoming_time).total_seconds() / 3600
+                        time_gaps.append(gap_hours)
+                        break
+
+            if time_gaps:
+                avg_time_to_transfer = sum(time_gaps) / len(time_gaps)
+                context["avg_hours_to_transfer"] = avg_time_to_transfer
+            else:
+                context["avg_hours_to_transfer"] = None
+        else:
+            context["avg_hours_to_transfer"] = None
 
     def get_payroll_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """
