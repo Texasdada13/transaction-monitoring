@@ -63,6 +63,10 @@ class ContextProvider:
             )
             context["chain_analysis"] = chain_analysis
 
+        # Add geographic context
+        geographic_context = self.get_geographic_context(transaction)
+        context.update(geographic_context)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -333,3 +337,65 @@ class ContextProvider:
             ).first()
 
         return None
+
+    def get_geographic_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get geographic context for international payment fraud detection.
+
+        Args:
+            transaction: Transaction data
+
+        Returns:
+            Context dictionary with geographic information
+        """
+        context = {}
+
+        # Only process outgoing payments
+        if transaction.get("direction") != "debit":
+            return context
+
+        account_id = transaction.get("account_id")
+        if not account_id:
+            return context
+
+        # Check if this is the first international payment
+        # Get all previous outgoing transactions
+        all_outgoing = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.direction == "debit"
+        ).all()
+
+        # Check if any previous transactions were international
+        has_previous_international = False
+        for tx in all_outgoing:
+            if tx.tx_metadata:
+                try:
+                    metadata = json.loads(tx.tx_metadata) if isinstance(tx.tx_metadata, str) else tx.tx_metadata
+                    country = metadata.get("country") or metadata.get("country_code") or \
+                              metadata.get("bank_country") or metadata.get("destination_country")
+                    if country and str(country).upper()[:2] != "US":
+                        has_previous_international = True
+                        break
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+
+        # Check current transaction country
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        current_country = None
+        if tx_metadata:
+            if isinstance(tx_metadata, str):
+                try:
+                    tx_metadata = json.loads(tx_metadata)
+                except json.JSONDecodeError:
+                    tx_metadata = {}
+
+            current_country = tx_metadata.get("country") or \
+                             tx_metadata.get("country_code") or \
+                             tx_metadata.get("bank_country") or \
+                             tx_metadata.get("destination_country")
+
+        # Flag if this is first international payment
+        if current_country and str(current_country).upper()[:2] != "US":
+            context["is_first_international_payment"] = not has_previous_international
+
+        return context

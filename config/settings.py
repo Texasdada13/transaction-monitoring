@@ -27,3 +27,8 @@ PAYROLL_SUSPICIOUS_CHANGE_WINDOW_DAYS = 30  # Days before payroll to flag accoun
 PAYROLL_RAPID_CHANGE_THRESHOLD = 2  # Number of changes that trigger suspicion
 PAYROLL_RAPID_CHANGE_WINDOW_DAYS = 90  # Window to count rapid changes
 PAYROLL_VERIFICATION_REQUIRED_THRESHOLD = 5000.00  # Payroll amount requiring verification
+
+# Geographic fraud detection settings
+GEOGRAPHIC_LOOKBACK_DAYS = 365  # Days to look back for vendor payment history
+MIN_HISTORICAL_TRANSACTIONS = 3  # Minimum transactions needed to establish pattern
+DOMESTIC_COUNTRY_CODE = "US"  # Default domestic country code
