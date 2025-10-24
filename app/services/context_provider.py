@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -242,3 +242,94 @@ class ContextProvider:
                 context["avg_hours_to_transfer"] = None
         else:
             context["avg_hours_to_transfer"] = None
+
+    def get_payroll_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get payroll-specific context for fraud detection.
+
+        Args:
+            transaction: Transaction data
+
+        Returns:
+            Context dictionary with payroll-related information
+        """
+        context = {}
+
+        # Try to get employee information
+        employee = self._get_employee_from_transaction(transaction)
+        if not employee:
+            return context
+
+        context["employee_id"] = employee.employee_id
+        context["employee_name"] = employee.name
+        context["employment_status"] = employee.employment_status
+
+        # Get account change history
+        account_changes = self.db.query(AccountChangeHistory).filter(
+            AccountChangeHistory.employee_id == employee.employee_id
+        ).order_by(AccountChangeHistory.timestamp.desc()).all()
+
+        if account_changes:
+            context["total_account_changes"] = len(account_changes)
+
+            # Most recent change
+            most_recent = account_changes[0]
+            context["most_recent_change"] = {
+                "timestamp": most_recent.timestamp,
+                "change_type": most_recent.change_type,
+                "change_source": most_recent.change_source,
+                "verified": most_recent.verified,
+                "flagged_as_suspicious": most_recent.flagged_as_suspicious
+            }
+
+            # Count unverified changes
+            unverified_count = sum(1 for c in account_changes if not c.verified)
+            context["unverified_changes_count"] = unverified_count
+
+            # Count suspicious-source changes
+            suspicious_sources = ["email_request", "phone_request"]
+            suspicious_count = sum(
+                1 for c in account_changes
+                if c.change_source in suspicious_sources
+            )
+            context["suspicious_source_changes_count"] = suspicious_count
+
+        # Get time since last payroll
+        if employee.last_payroll_date:
+            last_payroll = datetime.datetime.fromisoformat(employee.last_payroll_date)
+            days_since = (datetime.datetime.utcnow() - last_payroll).days
+            context["days_since_last_payroll"] = days_since
+            context["last_payroll_date"] = employee.last_payroll_date
+
+        # Payroll frequency info
+        context["payroll_frequency"] = employee.payroll_frequency
+
+        return context
+
+    def _get_employee_from_transaction(self, transaction: Dict[str, Any]) -> Employee:
+        """Get employee record from transaction data."""
+        # Try tx_metadata first (also check 'metadata' for backward compatibility)
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata:
+            if isinstance(tx_metadata, str):
+                try:
+                    tx_metadata = json.loads(tx_metadata)
+                except:
+                    tx_metadata = {}
+
+            employee_id = tx_metadata.get("employee_id")
+            if employee_id:
+                employee = self.db.query(Employee).filter(
+                    Employee.employee_id == employee_id
+                ).first()
+                if employee:
+                    return employee
+
+        # Fallback: try by account
+        account_id = transaction.get("account_id")
+        if account_id:
+            return self.db.query(Employee).filter(
+                Employee.account_id == account_id
+            ).first()
+
+        return None
