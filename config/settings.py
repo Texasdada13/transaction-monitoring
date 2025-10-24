@@ -33,7 +33,15 @@ GEOGRAPHIC_LOOKBACK_DAYS = 365  # Days to look back for vendor payment history
 MIN_HISTORICAL_TRANSACTIONS = 3  # Minimum transactions needed to establish pattern
 DOMESTIC_COUNTRY_CODE = "US"  # Default domestic country code
 
-# Beneficiary/Vendor fraud detection settings (BEC/Vendor Impersonation)
+# Beneficiary fraud detection settings - Rapid Addition (compromised admin scenario)
+BENEFICIARY_RAPID_ADDITION_THRESHOLD = 5  # Number of beneficiaries added to trigger alert
+BENEFICIARY_RAPID_ADDITION_WINDOW_HOURS = 24  # Time window for rapid additions
+BENEFICIARY_BULK_ADDITION_THRESHOLD = 10  # Threshold for bulk/scripted additions
+BENEFICIARY_BULK_ADDITION_WINDOW_HOURS = 72  # Extended window for bulk detection
+BENEFICIARY_RECENT_ADDITION_HOURS = 48  # Hours to consider beneficiary as "newly added"
+BENEFICIARY_NEW_BENEFICIARY_PAYMENT_RATIO = 0.7  # Ratio of payments to new beneficiaries (70%+)
+
+# Beneficiary fraud detection settings - Vendor Impersonation/BEC
 BENEFICIARY_SAME_DAY_PAYMENT_HOURS = 24  # Hours since change to flag as same-day
 BENEFICIARY_CRITICAL_CHANGE_WINDOW_DAYS = 7  # Days since change - critical risk window
 BENEFICIARY_SUSPICIOUS_CHANGE_WINDOW_DAYS = 30  # Days since change - elevated risk window

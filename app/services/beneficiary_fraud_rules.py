@@ -1,25 +1,34 @@
 # app/services/beneficiary_fraud_rules.py
 """
-Beneficiary/Vendor fraud detection rules for identifying suspicious payments to modified accounts.
+Comprehensive beneficiary fraud detection rules.
 
-This module implements detection rules for the following scenario:
-A supplier's bank details are changed (often via vendor impersonation/BEC attack) and a
-payment is sent to the new account immediately - typically the same day.
+This module combines detection for two major fraud scenarios:
 
-Attack Pattern:
-1. Attacker impersonates a vendor via email/phone
-2. Requests bank account change for "updated banking information"
-3. Payment is processed to the fraudulent account shortly after
-4. Real vendor never receives payment
+1. RAPID BENEFICIARY ADDITION FRAUD
+   - Compromised administrator accounts rapidly adding many new beneficiaries
+   - Followed by fraudulent payments to those beneficiaries
+   - Common pattern in scripted/automated fraud attacks
 
-This is one of the most common Business Email Compromise (BEC) attack patterns.
+2. VENDOR IMPERSONATION / BEC ATTACKS
+   - Supplier's bank details are changed via impersonation
+   - Payment is sent to fraudulent account shortly after change
+   - One of the most common Business Email Compromise attack patterns
 """
+
 from typing import Dict, Any, List
-from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+from app.models.database import Beneficiary, BeneficiaryChangeHistory, Transaction
 from app.services.rules_engine import Rule
-from app.models.database import Beneficiary, BeneficiaryChangeHistory
 from config.settings import (
+    # Rapid addition settings
+    BENEFICIARY_RAPID_ADDITION_THRESHOLD,
+    BENEFICIARY_RAPID_ADDITION_WINDOW_HOURS,
+    BENEFICIARY_BULK_ADDITION_THRESHOLD,
+    BENEFICIARY_BULK_ADDITION_WINDOW_HOURS,
+    BENEFICIARY_RECENT_ADDITION_HOURS,
+    BENEFICIARY_NEW_BENEFICIARY_PAYMENT_RATIO,
+    # Vendor impersonation settings
     BENEFICIARY_SAME_DAY_PAYMENT_HOURS,
     BENEFICIARY_CRITICAL_CHANGE_WINDOW_DAYS,
     BENEFICIARY_SUSPICIOUS_CHANGE_WINDOW_DAYS,
@@ -30,6 +39,10 @@ from config.settings import (
 )
 import json
 
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
 
 def is_beneficiary_payment(transaction: Dict[str, Any]) -> bool:
     """Check if transaction is a payment to a beneficiary/vendor."""
@@ -65,10 +78,284 @@ def get_beneficiary_from_transaction(db: Session, transaction: Dict[str, Any]) -
     # Fallback: try to match by counterparty_id
     counterparty_id = transaction.get("counterparty_id")
     if counterparty_id:
-        return db.query(Beneficiary).filter(Beneficiary.beneficiary_id == counterparty_id).first()
+        # Try exact match first
+        beneficiary = db.query(Beneficiary).filter(Beneficiary.beneficiary_id == counterparty_id).first()
+        if beneficiary:
+            return beneficiary
+        # Try counterparty_id field
+        beneficiary = db.query(Beneficiary).filter(Beneficiary.counterparty_id == counterparty_id).first()
+        if beneficiary:
+            return beneficiary
 
     return None
 
+
+# =============================================================================
+# RAPID ADDITION FRAUD DETECTION RULES
+# =============================================================================
+
+def create_rapid_beneficiary_addition_rule(
+    db: Session,
+    threshold: int = BENEFICIARY_RAPID_ADDITION_THRESHOLD,
+    window_hours: int = BENEFICIARY_RAPID_ADDITION_WINDOW_HOURS,
+    weight: float = 2.5
+) -> Rule:
+    """
+    Detect when many beneficiaries are added rapidly to an account.
+
+    This pattern suggests:
+    - Compromised administrator account
+    - Scripted/automated fraud onboarding
+    - Preparation for fraudulent payments
+
+    Args:
+        db: Database session
+        threshold: Minimum number of beneficiaries to trigger alert
+        window_hours: Time window to check for rapid additions
+        weight: Rule weight for risk scoring
+
+    Returns:
+        Rule object for rapid beneficiary addition detection
+    """
+    def condition(transaction: Dict[str, Any], context: Dict[str, Any]) -> bool:
+        # Check context for rapid beneficiary additions
+        recent_beneficiaries_count = context.get(f"beneficiaries_added_{window_hours}h", 0)
+
+        if recent_beneficiaries_count >= threshold:
+            # Add detailed information to context
+            context["rapid_beneficiary_addition_detected"] = True
+            context["rapid_beneficiary_count"] = recent_beneficiaries_count
+            context["rapid_beneficiary_window_hours"] = window_hours
+            return True
+
+        return False
+
+    return Rule(
+        name=f"rapid_beneficiary_addition_{window_hours}h",
+        description=f"{threshold}+ beneficiaries added within {window_hours} hours",
+        condition_func=condition,
+        weight=weight
+    )
+
+
+def create_bulk_beneficiary_addition_rule(
+    db: Session,
+    threshold: int = BENEFICIARY_BULK_ADDITION_THRESHOLD,
+    window_hours: int = BENEFICIARY_BULK_ADDITION_WINDOW_HOURS,
+    weight: float = 3.0
+) -> Rule:
+    """
+    Detect bulk/scripted beneficiary additions (higher threshold, longer window).
+
+    This pattern indicates large-scale scripted fraud preparation.
+
+    Args:
+        db: Database session
+        threshold: Minimum number of beneficiaries for bulk detection
+        window_hours: Time window to check for bulk additions
+        weight: Rule weight for risk scoring
+
+    Returns:
+        Rule object for bulk beneficiary addition detection
+    """
+    def condition(transaction: Dict[str, Any], context: Dict[str, Any]) -> bool:
+        # Check context for bulk beneficiary additions
+        recent_beneficiaries_count = context.get(f"beneficiaries_added_{window_hours}h", 0)
+
+        if recent_beneficiaries_count >= threshold:
+            context["bulk_beneficiary_addition_detected"] = True
+            context["bulk_beneficiary_count"] = recent_beneficiaries_count
+            context["bulk_beneficiary_window_hours"] = window_hours
+            return True
+
+        return False
+
+    return Rule(
+        name=f"bulk_beneficiary_addition_{window_hours}h",
+        description=f"{threshold}+ beneficiaries added (bulk/scripted) within {window_hours} hours",
+        condition_func=condition,
+        weight=weight
+    )
+
+
+def create_payment_to_new_beneficiary_rule(
+    db: Session,
+    recent_hours: int = BENEFICIARY_RECENT_ADDITION_HOURS,
+    weight: float = 2.0
+) -> Rule:
+    """
+    Detect payments to recently added beneficiaries.
+
+    When combined with rapid addition patterns, this confirms the fraud scenario.
+
+    Args:
+        db: Database session
+        recent_hours: Hours to consider beneficiary as "newly added"
+        weight: Rule weight for risk scoring
+
+    Returns:
+        Rule object for detecting payments to new beneficiaries
+    """
+    def condition(transaction: Dict[str, Any], context: Dict[str, Any]) -> bool:
+        # Only check outgoing transactions (payments)
+        if transaction.get("direction") != "debit":
+            return False
+
+        # Check if paying to a recently added beneficiary
+        is_new_beneficiary = context.get("is_new_beneficiary", False)
+        beneficiary_age_hours = context.get("beneficiary_age_hours")
+
+        if is_new_beneficiary and beneficiary_age_hours is not None and beneficiary_age_hours <= recent_hours:
+            context["payment_to_new_beneficiary_detected"] = True
+            context["beneficiary_age_hours"] = beneficiary_age_hours
+            return True
+
+        return False
+
+    return Rule(
+        name=f"payment_to_new_beneficiary_{recent_hours}h",
+        description=f"Payment to beneficiary added within {recent_hours} hours",
+        condition_func=condition,
+        weight=weight
+    )
+
+
+def create_high_new_beneficiary_payment_ratio_rule(
+    db: Session,
+    min_ratio: float = BENEFICIARY_NEW_BENEFICIARY_PAYMENT_RATIO,
+    window_hours: int = 24,
+    weight: float = 2.5
+) -> Rule:
+    """
+    Detect when most recent payments go to newly added beneficiaries.
+
+    High ratio of payments to new beneficiaries suggests coordinated fraud.
+
+    Args:
+        db: Database session
+        min_ratio: Minimum ratio of payments to new beneficiaries (0.0-1.0)
+        window_hours: Time window to analyze payment patterns
+        weight: Rule weight for risk scoring
+
+    Returns:
+        Rule object for detecting high new beneficiary payment ratio
+    """
+    def condition(transaction: Dict[str, Any], context: Dict[str, Any]) -> bool:
+        # Only check outgoing transactions
+        if transaction.get("direction") != "debit":
+            return False
+
+        # Check the ratio of payments to new beneficiaries
+        new_beneficiary_payment_ratio = context.get(f"new_beneficiary_payment_ratio_{window_hours}h", 0.0)
+        new_beneficiary_payment_count = context.get(f"new_beneficiary_payment_count_{window_hours}h", 0)
+
+        if new_beneficiary_payment_ratio >= min_ratio and new_beneficiary_payment_count >= 3:
+            context["high_new_beneficiary_ratio_detected"] = True
+            context["new_beneficiary_payment_ratio"] = new_beneficiary_payment_ratio
+            context["new_beneficiary_payment_count"] = new_beneficiary_payment_count
+            return True
+
+        return False
+
+    return Rule(
+        name=f"high_new_beneficiary_payment_ratio_{window_hours}h",
+        description=f"{int(min_ratio*100)}%+ of payments to newly added beneficiaries",
+        condition_func=condition,
+        weight=weight
+    )
+
+
+def create_same_source_bulk_addition_rule(
+    db: Session,
+    min_count: int = 5,
+    window_hours: int = 24,
+    weight: float = 3.5
+) -> Rule:
+    """
+    Detect multiple beneficiaries added from the same source/IP in short time.
+
+    Strong indicator of scripted/automated fraud when many beneficiaries
+    are added from the same IP address or user.
+
+    Args:
+        db: Database session
+        min_count: Minimum number of beneficiaries from same source
+        window_hours: Time window to check
+        weight: Rule weight for risk scoring
+
+    Returns:
+        Rule object for detecting same-source bulk additions
+    """
+    def condition(transaction: Dict[str, Any], context: Dict[str, Any]) -> bool:
+        # Check for beneficiaries added from same IP
+        same_ip_count = context.get(f"beneficiaries_same_ip_{window_hours}h", 0)
+        same_user_count = context.get(f"beneficiaries_same_user_{window_hours}h", 0)
+        same_source_ip = context.get("same_source_ip")
+        same_source_user = context.get("same_source_user")
+
+        if same_ip_count >= min_count or same_user_count >= min_count:
+            context["same_source_bulk_addition_detected"] = True
+            context["same_source_beneficiary_count"] = max(same_ip_count, same_user_count)
+            if same_ip_count >= min_count:
+                context["same_source_type"] = "ip_address"
+                context["same_source_value"] = same_source_ip
+            else:
+                context["same_source_type"] = "user"
+                context["same_source_value"] = same_source_user
+            return True
+
+        return False
+
+    return Rule(
+        name=f"same_source_bulk_addition_{window_hours}h",
+        description=f"{min_count}+ beneficiaries from same IP/user within {window_hours} hours",
+        condition_func=condition,
+        weight=weight
+    )
+
+
+def create_unverified_beneficiary_payment_rule(
+    db: Session,
+    weight: float = 1.5
+) -> Rule:
+    """
+    Detect payments to unverified beneficiaries.
+
+    Legitimate systems typically require beneficiary verification before payments.
+    Skipping verification suggests fraudulent intent.
+
+    Args:
+        db: Database session
+        weight: Rule weight for risk scoring
+
+    Returns:
+        Rule object for detecting payments to unverified beneficiaries
+    """
+    def condition(transaction: Dict[str, Any], context: Dict[str, Any]) -> bool:
+        # Only check outgoing transactions
+        if transaction.get("direction") != "debit":
+            return False
+
+        # Check if beneficiary is unverified
+        is_beneficiary_verified = context.get("is_beneficiary_verified", True)
+
+        if not is_beneficiary_verified:
+            context["unverified_beneficiary_payment_detected"] = True
+            return True
+
+        return False
+
+    return Rule(
+        name="payment_to_unverified_beneficiary",
+        description="Payment to unverified beneficiary",
+        condition_func=condition,
+        weight=weight
+    )
+
+
+# =============================================================================
+# VENDOR IMPERSONATION / BEC DETECTION RULES
+# =============================================================================
 
 def create_same_day_payment_after_change_rule(db: Session, weight: float = 5.0) -> Rule:
     """
@@ -480,17 +767,31 @@ def create_off_hours_change_rule(db: Session, weight: float = 1.5) -> Rule:
     )
 
 
+# =============================================================================
+# INITIALIZATION
+# =============================================================================
+
 def initialize_beneficiary_fraud_rules(db: Session) -> List[Rule]:
     """
-    Initialize all beneficiary/vendor fraud detection rules.
+    Initialize all beneficiary fraud detection rules.
 
-    These rules detect vendor impersonation and BEC attacks where supplier
-    bank details are changed fraudulently and payments are redirected.
+    Combines rules for both fraud scenarios:
+    1. Rapid beneficiary addition fraud (compromised admin)
+    2. Vendor impersonation/BEC attacks (changed bank details)
 
     Returns:
-        List of configured Rule objects for beneficiary fraud detection
+        List of configured Rule objects for comprehensive beneficiary fraud detection
     """
     return [
+        # Rapid Addition Fraud Detection
+        create_rapid_beneficiary_addition_rule(db),
+        create_bulk_beneficiary_addition_rule(db),
+        create_payment_to_new_beneficiary_rule(db),
+        create_high_new_beneficiary_payment_ratio_rule(db),
+        create_same_source_bulk_addition_rule(db),
+        create_unverified_beneficiary_payment_rule(db),
+
+        # Vendor Impersonation / BEC Detection
         create_same_day_payment_after_change_rule(db),
         create_recent_account_change_payment_rule(db),
         create_unverified_beneficiary_change_rule(db),

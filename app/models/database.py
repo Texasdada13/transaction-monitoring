@@ -110,12 +110,21 @@ class AccountChangeHistory(Base):
     account = relationship("Account", back_populates="account_changes")
 
 class Beneficiary(Base):
+    """
+    Tracks beneficiaries/payees that can receive payments from an account.
+    Used to detect:
+    1. Rapid beneficiary addition fraud patterns (compromised admin)
+    2. Vendor impersonation/BEC attacks (changed banking details)
+    """
     __tablename__ = "beneficiaries"
 
     beneficiary_id = Column(String, primary_key=True, index=True)
-    account_id = Column(String, ForeignKey("accounts.account_id"))
+    account_id = Column(String, ForeignKey("accounts.account_id"), index=True)
+    counterparty_id = Column(String, index=True, nullable=True)  # External identifier for the beneficiary
+
+    # Beneficiary details
     name = Column(String)
-    beneficiary_type = Column(String)  # "supplier", "vendor", "contractor", "partner"
+    beneficiary_type = Column(String)  # "supplier", "vendor", "contractor", "partner", "individual", "business", "payroll"
     email = Column(String, index=True, nullable=True)
     phone = Column(String, nullable=True)
 
@@ -125,17 +134,30 @@ class Beneficiary(Base):
     bank_name = Column(String, nullable=True)
     bank_account_type = Column(String, default="checking")  # "checking", "savings"
 
-    # Metadata
-    registration_date = Column(String, default=lambda: datetime.datetime.utcnow().isoformat())
+    # Registration/Addition metadata
+    registration_date = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
+    added_by = Column(String, nullable=True)  # User/admin ID who added the beneficiary
+    addition_source = Column(String, nullable=True)  # "admin_portal", "api", "bulk_upload", "mobile_app", "ap_portal", "erp_system"
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+
+    # Payment history
     last_payment_date = Column(String, nullable=True)
     total_payments_received = Column(Integer, default=0)
     total_amount_received = Column(Float, default=0.0)
-    status = Column(String, default="active")  # "active", "suspended", "inactive"
 
-    # Risk indicators
+    # Status
+    status = Column(String, default="active")  # "active", "suspended", "inactive", "removed"
+
+    # Verification status
     verified = Column(Boolean, default=False)
+    verification_method = Column(String, nullable=True)  # "micro_deposit", "manual_review", "instant_verification", "callback", "email_confirmation"
     verification_date = Column(String, nullable=True)
     risk_level = Column(String, default="medium")  # "low", "medium", "high"
+
+    # Risk indicators
+    flagged_as_suspicious = Column(Boolean, default=False)
+    suspicious_reason = Column(Text, nullable=True)
 
     # Relationships
     account = relationship("Account")
@@ -175,7 +197,6 @@ class BeneficiaryChangeHistory(Base):
     # Relationships
     beneficiary = relationship("Beneficiary", back_populates="change_history")
     account = relationship("Account")
-
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
