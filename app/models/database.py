@@ -112,40 +112,91 @@ class AccountChangeHistory(Base):
 class Beneficiary(Base):
     """
     Tracks beneficiaries/payees that can receive payments from an account.
-    Used to detect rapid beneficiary addition fraud patterns.
+    Used to detect:
+    1. Rapid beneficiary addition fraud patterns (compromised admin)
+    2. Vendor impersonation/BEC attacks (changed banking details)
     """
     __tablename__ = "beneficiaries"
 
     beneficiary_id = Column(String, primary_key=True, index=True)
     account_id = Column(String, ForeignKey("accounts.account_id"), index=True)
-    counterparty_id = Column(String, index=True)  # External identifier for the beneficiary
+    counterparty_id = Column(String, index=True, nullable=True)  # External identifier for the beneficiary
 
     # Beneficiary details
-    beneficiary_name = Column(String)
-    beneficiary_account_number = Column(String, nullable=True)
-    beneficiary_routing_number = Column(String, nullable=True)
-    beneficiary_bank_name = Column(String, nullable=True)
-    beneficiary_type = Column(String, default="individual")  # "individual", "business", "payroll"
+    name = Column(String)
+    beneficiary_type = Column(String)  # "supplier", "vendor", "contractor", "partner", "individual", "business", "payroll"
+    email = Column(String, index=True, nullable=True)
+    phone = Column(String, nullable=True)
 
-    # Addition metadata
-    added_timestamp = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
-    added_by = Column(String)  # User/admin ID who added the beneficiary
-    addition_source = Column(String)  # "admin_portal", "api", "bulk_upload", "mobile_app"
+    # Bank account information
+    bank_account_number = Column(String)
+    bank_routing_number = Column(String)
+    bank_name = Column(String, nullable=True)
+    bank_account_type = Column(String, default="checking")  # "checking", "savings"
+
+    # Registration/Addition metadata
+    registration_date = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
+    added_by = Column(String, nullable=True)  # User/admin ID who added the beneficiary
+    addition_source = Column(String, nullable=True)  # "admin_portal", "api", "bulk_upload", "mobile_app", "ap_portal", "erp_system"
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
 
-    # Verification status
-    verified = Column(Boolean, default=False)
-    verification_method = Column(String, nullable=True)  # "micro_deposit", "manual_review", "instant_verification"
-    verification_timestamp = Column(String, nullable=True)
+    # Payment history
+    last_payment_date = Column(String, nullable=True)
+    total_payments_received = Column(Integer, default=0)
+    total_amount_received = Column(Float, default=0.0)
 
     # Status
-    status = Column(String, default="active")  # "active", "suspended", "removed"
+    status = Column(String, default="active")  # "active", "suspended", "inactive", "removed"
+
+    # Verification status
+    verified = Column(Boolean, default=False)
+    verification_method = Column(String, nullable=True)  # "micro_deposit", "manual_review", "instant_verification", "callback", "email_confirmation"
+    verification_date = Column(String, nullable=True)
+    risk_level = Column(String, default="medium")  # "low", "medium", "high"
 
     # Risk indicators
     flagged_as_suspicious = Column(Boolean, default=False)
     suspicious_reason = Column(Text, nullable=True)
 
+    # Relationships
+    account = relationship("Account")
+    change_history = relationship("BeneficiaryChangeHistory", back_populates="beneficiary")
+
+class BeneficiaryChangeHistory(Base):
+    __tablename__ = "beneficiary_change_history"
+
+    change_id = Column(String, primary_key=True, index=True)
+    beneficiary_id = Column(String, ForeignKey("beneficiaries.beneficiary_id"), index=True)
+    account_id = Column(String, ForeignKey("accounts.account_id"))
+    timestamp = Column(String, default=lambda: datetime.datetime.utcnow().isoformat())
+
+    # Change details
+    change_type = Column(String)  # "account_number", "routing_number", "bank_name", "email", "phone", "address"
+    old_value = Column(String, nullable=True)
+    new_value = Column(String)
+
+    # Change metadata
+    change_source = Column(String)  # "ap_portal", "erp_system", "phone_request", "email_request", "fax", "manual_entry"
+    requestor_name = Column(String, nullable=True)  # Person who requested the change
+    requestor_email = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+
+    # Verification details
+    verification_method = Column(String, nullable=True)  # "callback", "email_confirmation", "portal_verification", "in_person", "none"
+    verified = Column(Boolean, default=False)
+    verified_by = Column(String, nullable=True)  # AP staff ID
+    verification_timestamp = Column(String, nullable=True)
+    verification_notes = Column(Text, nullable=True)
+
+    # Risk indicators
+    flagged_as_suspicious = Column(Boolean, default=False)
+    suspicious_reason = Column(Text, nullable=True)
+
+    # Relationships
+    beneficiary = relationship("Beneficiary", back_populates="change_history")
+    account = relationship("Account")
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
