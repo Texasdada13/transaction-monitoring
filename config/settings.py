@@ -27,3 +27,12 @@ PAYROLL_SUSPICIOUS_CHANGE_WINDOW_DAYS = 30  # Days before payroll to flag accoun
 PAYROLL_RAPID_CHANGE_THRESHOLD = 2  # Number of changes that trigger suspicion
 PAYROLL_RAPID_CHANGE_WINDOW_DAYS = 90  # Window to count rapid changes
 PAYROLL_VERIFICATION_REQUIRED_THRESHOLD = 5000.00  # Payroll amount requiring verification
+
+# Beneficiary/Vendor fraud detection settings (BEC/Vendor Impersonation)
+BENEFICIARY_SAME_DAY_PAYMENT_HOURS = 24  # Hours since change to flag as same-day
+BENEFICIARY_CRITICAL_CHANGE_WINDOW_DAYS = 7  # Days since change - critical risk window
+BENEFICIARY_SUSPICIOUS_CHANGE_WINDOW_DAYS = 30  # Days since change - elevated risk window
+BENEFICIARY_RAPID_CHANGE_THRESHOLD = 2  # Number of changes that trigger suspicion
+BENEFICIARY_RAPID_CHANGE_WINDOW_DAYS = 60  # Window to count rapid changes
+BENEFICIARY_HIGH_VALUE_THRESHOLD = 10000.00  # Payment amount requiring extra verification
+BENEFICIARY_NEW_VENDOR_DAYS = 90  # Days since registration to consider "new"
