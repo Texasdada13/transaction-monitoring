@@ -51,24 +51,43 @@ class ContextProvider:
         
         return context
     
-    def _add_transaction_history(self, context: Dict[str, Any], 
-                                account_id: str, 
+    def _add_transaction_history(self, context: Dict[str, Any],
+                                account_id: str,
                                 current_tx: Dict[str, Any]) -> None:
         """Add transaction history data to context."""
         # Transaction velocity for different time windows
         timeframes = [1, 6, 24, 168]  # hours (1h, 6h, 24h, 1 week)
         context["tx_count_last_hours"] = {}
-        
+        context["small_deposit_count"] = {}
+
         now = datetime.datetime.utcnow()
         for hours in timeframes:
             time_threshold = (now - datetime.timedelta(hours=hours)).isoformat()
-            
+
             count = self.db.query(Transaction).filter(
                 Transaction.account_id == account_id,
                 Transaction.timestamp > time_threshold
             ).count()
-            
+
             context["tx_count_last_hours"][hours] = count
+
+            # Count small deposits (≤ $2.00) for fraud detection
+            small_deposit_count = self.db.query(Transaction).filter(
+                Transaction.account_id == account_id,
+                Transaction.timestamp > time_threshold,
+                Transaction.amount > 0,
+                Transaction.amount <= 2.0,
+                Transaction.transaction_type.in_(["ACH", "WIRE", "DEPOSIT", "CREDIT"])
+            ).count()
+
+            # Include current transaction if it's a small deposit
+            current_amount = current_tx.get("amount", 0)
+            current_type = current_tx.get("transaction_type", "").upper()
+            if (0 < current_amount <= 2.0 and
+                current_type in ["ACH", "WIRE", "DEPOSIT", "CREDIT"]):
+                small_deposit_count += 1
+
+            context["small_deposit_count"][hours] = small_deposit_count
         
         # Calculate average transaction amount for this type
         tx_type = current_tx.get("transaction_type")
