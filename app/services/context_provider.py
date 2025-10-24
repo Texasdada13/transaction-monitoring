@@ -51,24 +51,32 @@ class ContextProvider:
         
         return context
     
-    def _add_transaction_history(self, context: Dict[str, Any], 
-                                account_id: str, 
+    def _add_transaction_history(self, context: Dict[str, Any],
+                                account_id: str,
                                 current_tx: Dict[str, Any]) -> None:
         """Add transaction history data to context."""
         # Transaction velocity for different time windows
         timeframes = [1, 6, 24, 168]  # hours (1h, 6h, 24h, 1 week)
         context["tx_count_last_hours"] = {}
-        
+
         now = datetime.datetime.utcnow()
         for hours in timeframes:
             time_threshold = (now - datetime.timedelta(hours=hours)).isoformat()
-            
+
             count = self.db.query(Transaction).filter(
                 Transaction.account_id == account_id,
                 Transaction.timestamp > time_threshold
             ).count()
-            
+
             context["tx_count_last_hours"][hours] = count
+
+        # Get total transaction count for activity assessment (90 day period)
+        ninety_days_ago = (now - datetime.timedelta(days=90)).isoformat()
+        total_count = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > ninety_days_ago
+        ).count()
+        context["total_tx_count_period"] = total_count
         
         # Calculate average transaction amount for this type
         tx_type = current_tx.get("transaction_type")
