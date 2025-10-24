@@ -66,6 +66,9 @@ class ContextProvider:
             )
             context["chain_analysis"] = chain_analysis
 
+        # Add account takeover detection context
+        self._add_account_takeover_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -266,7 +269,7 @@ class ContextProvider:
             # Count beneficiaries added in this window
             beneficiaries_added = self.db.query(Beneficiary).filter(
                 Beneficiary.account_id == account_id,
-                Beneficiary.added_timestamp > time_threshold,
+                Beneficiary.registration_date > time_threshold,
                 Beneficiary.status == "active"
             ).all()
 
@@ -299,7 +302,7 @@ class ContextProvider:
                     context[f"beneficiaries_same_user_{hours}h"] = 0
 
             # Count payments to newly added beneficiaries in this window
-            new_beneficiary_ids = [b.counterparty_id for b in beneficiaries_added]
+            new_beneficiary_ids = [b.counterparty_id for b in beneficiaries_added if b.counterparty_id]
 
             if new_beneficiary_ids:
                 payments_to_new = self.db.query(Transaction).filter(
@@ -335,7 +338,7 @@ class ContextProvider:
 
             if beneficiary:
                 # Calculate beneficiary age
-                added_time = datetime.datetime.fromisoformat(beneficiary.added_timestamp)
+                added_time = datetime.datetime.fromisoformat(beneficiary.registration_date)
                 beneficiary_age_hours = (now - added_time).total_seconds() / 3600
 
                 context["is_new_beneficiary"] = beneficiary_age_hours <= 48  # Less than 48 hours
@@ -348,6 +351,84 @@ class ContextProvider:
                 context["is_new_beneficiary"] = False
                 context["is_beneficiary_verified"] = True  # Assume verified if no record
                 context["beneficiary_age_hours"] = None
+
+    def _add_account_takeover_context(self, context: Dict[str, Any],
+                                       account_id: str,
+                                       current_tx: Dict[str, Any]) -> None:
+        """
+        Add account takeover detection context.
+
+        Account takeover pattern:
+        - Phone number or device changes occur
+        - Followed by suspicious outgoing transfers shortly after
+        - This prevents legitimate user from getting security alerts
+        """
+        now = datetime.datetime.utcnow()
+
+        # Check for recent phone/SIM/device changes (within last 48 hours)
+        time_windows = [1, 6, 24, 48]  # hours
+
+        for hours in time_windows:
+            time_threshold = (now - datetime.timedelta(hours=hours)).isoformat()
+
+            # Query for phone/device changes
+            phone_changes = self.db.query(AccountChangeHistory).filter(
+                AccountChangeHistory.account_id == account_id,
+                AccountChangeHistory.change_type.in_(["phone", "device", "sim", "phone_number"]),
+                AccountChangeHistory.timestamp > time_threshold
+            ).all()
+
+            context[f"phone_changes_count_{hours}h"] = len(phone_changes)
+
+            if phone_changes:
+                # Store details of most recent change in this window
+                most_recent = max(phone_changes, key=lambda c: c.timestamp)
+                context[f"most_recent_phone_change_{hours}h"] = {
+                    "timestamp": most_recent.timestamp,
+                    "change_type": most_recent.change_type,
+                    "change_source": most_recent.change_source,
+                    "verified": most_recent.verified,
+                    "old_value": most_recent.old_value,
+                    "new_value": most_recent.new_value
+                }
+
+                # Check if change was flagged as suspicious
+                suspicious_changes = [c for c in phone_changes if c.flagged_as_suspicious]
+                context[f"suspicious_phone_changes_{hours}h"] = len(suspicious_changes)
+
+                # Check if changes were unverified
+                unverified_changes = [c for c in phone_changes if not c.verified]
+                context[f"unverified_phone_changes_{hours}h"] = len(unverified_changes)
+
+        # For outgoing transfers analysis - check if current transaction is outgoing
+        is_outgoing = current_tx.get("direction") == "debit"
+        context["is_outgoing_transfer"] = is_outgoing
+
+        # If this is an outgoing transfer, calculate time since most recent phone change
+        if is_outgoing and context.get("phone_changes_count_48h", 0) > 0:
+            # Find the most recent phone change across all windows
+            all_changes = self.db.query(AccountChangeHistory).filter(
+                AccountChangeHistory.account_id == account_id,
+                AccountChangeHistory.change_type.in_(["phone", "device", "sim", "phone_number"])
+            ).order_by(AccountChangeHistory.timestamp.desc()).first()
+
+            if all_changes:
+                change_time = datetime.datetime.fromisoformat(all_changes.timestamp)
+                current_time = datetime.datetime.fromisoformat(
+                    current_tx.get("timestamp", now.isoformat())
+                )
+                hours_since_change = (current_time - change_time).total_seconds() / 3600
+                context["hours_since_phone_change"] = hours_since_change
+
+                # Store if this is first outgoing transfer after phone change
+                is_first_outgoing = self.db.query(Transaction).filter(
+                    Transaction.account_id == account_id,
+                    Transaction.direction == "debit",
+                    Transaction.timestamp > all_changes.timestamp,
+                    Transaction.timestamp < current_tx.get("timestamp", now.isoformat())
+                ).count() == 0
+
+                context["is_first_transfer_after_phone_change"] = is_first_outgoing
 
     def get_payroll_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """
