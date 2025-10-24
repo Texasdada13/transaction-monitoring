@@ -333,3 +333,311 @@ class ContextProvider:
             ).first()
 
         return None
+
+    def get_check_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get check-specific context for fraud detection.
+
+        This method analyzes check deposit patterns and identifies:
+        - Duplicate check deposits (same check deposited multiple times)
+        - Rapid check deposit sequences
+        - Check amount mismatches (possible alteration)
+
+        Args:
+            transaction: Transaction data
+
+        Returns:
+            Context dictionary with check-related fraud indicators
+        """
+        context = {}
+
+        # Extract check information from transaction metadata
+        check_info = self._extract_check_info(transaction)
+        if not check_info:
+            return context  # Not a check transaction or no check data available
+
+        account_id = transaction.get("account_id")
+        check_number = check_info.get("check_number")
+        check_amount = check_info.get("amount")
+
+        # 1. Check for duplicate check deposits
+        if check_number:
+            duplicates = self._find_duplicate_checks(
+                check_number=check_number,
+                check_amount=check_amount,
+                routing_number=check_info.get("routing_number"),
+                account_number=check_info.get("account_number"),
+                exclude_transaction_id=transaction.get("transaction_id")
+            )
+
+            if duplicates:
+                context["duplicate_checks"] = [
+                    {
+                        "transaction_id": dup.transaction_id,
+                        "account_id": dup.account_id,
+                        "timestamp": dup.timestamp,
+                        "amount": dup.amount,
+                        "check_number": check_number
+                    }
+                    for dup in duplicates
+                ]
+
+        # 2. Count check deposits in the last hour (rapid sequence detection)
+        if account_id:
+            now = datetime.datetime.utcnow()
+            one_hour_ago = (now - datetime.timedelta(hours=1)).isoformat()
+
+            recent_checks = self.db.query(Transaction).filter(
+                Transaction.account_id == account_id,
+                Transaction.timestamp > one_hour_ago,
+                Transaction.direction == "credit",
+                Transaction.transaction_type.in_([
+                    "CHECK", "CHECK_DEPOSIT", "DEPOSIT",
+                    "REMOTE_DEPOSIT", "MOBILE_DEPOSIT"
+                ])
+            ).all()
+
+            context["check_count_1h"] = len(recent_checks)
+            context["check_amount_1h"] = sum(tx.amount for tx in recent_checks)
+
+            # Include current transaction if it's a check deposit
+            if self._is_check_deposit(transaction):
+                context["check_count_1h"] += 1
+                context["check_amount_1h"] += transaction.get("amount", 0)
+
+        # 3. Check for amount mismatches (possible check alteration)
+        if check_number and check_amount:
+            mismatch = self._check_amount_mismatch(
+                check_number=check_number,
+                current_amount=check_amount,
+                routing_number=check_info.get("routing_number")
+            )
+
+            if mismatch:
+                context["check_amount_mismatch"] = mismatch
+
+        return context
+
+    def _extract_check_info(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract check-specific information from transaction metadata.
+
+        Args:
+            transaction: Transaction dictionary
+
+        Returns:
+            Dictionary with check information, or empty dict if not available
+        """
+        metadata_str = transaction.get("tx_metadata", "{}")
+
+        try:
+            metadata = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
+        except json.JSONDecodeError:
+            return {}
+
+        check_info = {}
+
+        # Extract check-specific fields
+        if "check_number" in metadata:
+            check_info["check_number"] = metadata["check_number"]
+        if "check_amount" in metadata:
+            check_info["amount"] = float(metadata["check_amount"])
+        if "routing_number" in metadata:
+            check_info["routing_number"] = metadata["routing_number"]
+        if "account_number" in metadata:
+            check_info["account_number"] = metadata["account_number"]
+        if "payee" in metadata:
+            check_info["payee"] = metadata["payee"]
+        if "drawer" in metadata:
+            check_info["drawer"] = metadata["drawer"]
+        if "check_date" in metadata:
+            check_info["check_date"] = metadata["check_date"]
+
+        return check_info
+
+    def _is_check_deposit(self, transaction: Dict[str, Any]) -> bool:
+        """
+        Determine if a transaction is a check deposit.
+
+        Args:
+            transaction: Transaction dictionary
+
+        Returns:
+            True if transaction is a check deposit, False otherwise
+        """
+        tx_type = transaction.get("transaction_type", "").upper()
+        direction = transaction.get("direction", "").lower()
+
+        return (
+            direction == "credit" and
+            tx_type in ["CHECK", "CHECK_DEPOSIT", "DEPOSIT", "REMOTE_DEPOSIT", "MOBILE_DEPOSIT"]
+        )
+
+    def _find_duplicate_checks(
+        self,
+        check_number: str,
+        check_amount: float = None,
+        routing_number: str = None,
+        account_number: str = None,
+        exclude_transaction_id: str = None,
+        lookback_days: int = 90
+    ):
+        """
+        Find previous deposits of the same check.
+
+        A duplicate check is identified by matching:
+        - Check number (required)
+        - Check amount (if available)
+        - Source routing/account numbers (if available)
+
+        Args:
+            check_number: The check number to search for
+            check_amount: Amount on the check (optional)
+            routing_number: Routing number from check (optional)
+            account_number: Account number from check (optional)
+            exclude_transaction_id: Transaction ID to exclude from results
+            lookback_days: How many days to look back (default: 90)
+
+        Returns:
+            List of Transaction objects that match (duplicates)
+        """
+        now = datetime.datetime.utcnow()
+        lookback_date = (now - datetime.timedelta(days=lookback_days)).isoformat()
+
+        # Query for check deposits in the lookback period
+        query = self.db.query(Transaction).filter(
+            Transaction.timestamp > lookback_date,
+            Transaction.direction == "credit",
+            Transaction.transaction_type.in_([
+                "CHECK", "CHECK_DEPOSIT", "DEPOSIT",
+                "REMOTE_DEPOSIT", "MOBILE_DEPOSIT"
+            ])
+        )
+
+        # Exclude the current transaction
+        if exclude_transaction_id:
+            query = query.filter(Transaction.transaction_id != exclude_transaction_id)
+
+        all_check_txs = query.all()
+
+        # Filter by check number and other attributes in metadata
+        duplicates = []
+        for tx in all_check_txs:
+            try:
+                metadata_str = tx.tx_metadata or "{}"
+                metadata = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
+
+                # Check if check number matches
+                if metadata.get("check_number") == check_number:
+                    # Check for amount match (if provided)
+                    if check_amount is not None:
+                        tx_check_amount = metadata.get("check_amount")
+                        if tx_check_amount is not None:
+                            # Amount should match closely (within $0.01 for floating point)
+                            if abs(float(tx_check_amount) - check_amount) > 0.01:
+                                continue  # Amount doesn't match, not a duplicate
+
+                    # Check for routing number match (if provided)
+                    if routing_number is not None:
+                        tx_routing = metadata.get("routing_number")
+                        if tx_routing is not None and tx_routing != routing_number:
+                            continue  # Different bank, might not be duplicate
+
+                    # Check for account number match (if provided)
+                    if account_number is not None:
+                        tx_account = metadata.get("account_number")
+                        if tx_account is not None and tx_account != account_number:
+                            continue  # Different account, might not be duplicate
+
+                    # All criteria match - this is a duplicate
+                    duplicates.append(tx)
+
+            except (json.JSONDecodeError, ValueError, TypeError):
+                # Skip transactions with invalid metadata
+                continue
+
+        return duplicates
+
+    def _check_amount_mismatch(
+        self,
+        check_number: str,
+        current_amount: float,
+        routing_number: str = None,
+        max_deviation_percent: float = 5.0,
+        lookback_days: int = 180
+    ) -> Dict[str, Any]:
+        """
+        Check if the check amount differs from previous deposits of the same check.
+
+        This can indicate check alteration fraud.
+
+        Args:
+            check_number: The check number
+            current_amount: Current transaction amount
+            routing_number: Routing number from check (optional)
+            max_deviation_percent: Maximum allowed deviation percentage
+            lookback_days: How many days to look back
+
+        Returns:
+            Dictionary with mismatch details if found, None otherwise
+        """
+        now = datetime.datetime.utcnow()
+        lookback_date = (now - datetime.timedelta(days=lookback_days)).isoformat()
+
+        # Find previous deposits of this check number
+        query = self.db.query(Transaction).filter(
+            Transaction.timestamp > lookback_date,
+            Transaction.direction == "credit",
+            Transaction.transaction_type.in_([
+                "CHECK", "CHECK_DEPOSIT", "DEPOSIT",
+                "REMOTE_DEPOSIT", "MOBILE_DEPOSIT"
+            ])
+        )
+
+        all_check_txs = query.all()
+
+        # Find matching check numbers
+        previous_amounts = []
+        for tx in all_check_txs:
+            try:
+                metadata_str = tx.tx_metadata or "{}"
+                metadata = json.loads(metadata_str) if isinstance(metadata_str, str) else metadata_str
+
+                # Check if check number matches
+                if metadata.get("check_number") == check_number:
+                    # Check routing number if provided
+                    if routing_number:
+                        tx_routing = metadata.get("routing_number")
+                        if tx_routing and tx_routing != routing_number:
+                            continue  # Different bank
+
+                    # Get the amount
+                    tx_check_amount = metadata.get("check_amount")
+                    if tx_check_amount is not None:
+                        previous_amounts.append(float(tx_check_amount))
+
+            except (json.JSONDecodeError, ValueError, TypeError):
+                continue
+
+        # Check for amount deviation
+        if previous_amounts:
+            # Use the most common previous amount as reference
+            from collections import Counter
+            amount_counts = Counter(previous_amounts)
+            most_common_amount = amount_counts.most_common(1)[0][0]
+
+            # Calculate deviation percentage
+            if most_common_amount > 0:
+                deviation_percent = abs(
+                    (current_amount - most_common_amount) / most_common_amount * 100
+                )
+
+                if deviation_percent > max_deviation_percent:
+                    return {
+                        "previous_amount": most_common_amount,
+                        "current_amount": current_amount,
+                        "deviation_percent": deviation_percent,
+                        "occurrences": amount_counts[most_common_amount]
+                    }
+
+        return None
