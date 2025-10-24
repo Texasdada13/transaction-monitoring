@@ -30,9 +30,10 @@ class Transaction(Base):
     account_id = Column(String, ForeignKey("accounts.account_id"))
     counterparty_id = Column(String, index=True)
     amount = Column(Float)
+    direction = Column(String, default="credit")  # "credit" (incoming) or "debit" (outgoing)
     transaction_type = Column(String)  # "ACH", "WIRE", etc.
     description = Column(Text, nullable=True)
-    metadata = Column(Text, nullable=True)  # JSON string
+    tx_metadata = Column(Text, nullable=True)  # JSON string
     
     # Relationships
     account = relationship("Account", back_populates="transactions")
