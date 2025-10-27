@@ -49,3 +49,12 @@ BENEFICIARY_RAPID_CHANGE_THRESHOLD = 2  # Number of changes that trigger suspici
 BENEFICIARY_RAPID_CHANGE_WINDOW_DAYS = 60  # Window to count rapid changes
 BENEFICIARY_HIGH_VALUE_THRESHOLD = 10000.00  # Payment amount requiring extra verification
 BENEFICIARY_NEW_VENDOR_DAYS = 90  # Days since registration to consider "new"
+
+# Odd hours transaction fraud detection settings
+ODD_HOURS_START = 22  # 10 PM - start of odd hours window (24-hour format)
+ODD_HOURS_END = 6  # 6 AM - end of odd hours window (24-hour format)
+ODD_HOURS_LARGE_TRANSACTION_THRESHOLD = 5000.00  # Amount to flag as "large" transaction
+ODD_HOURS_VERY_LARGE_THRESHOLD = 25000.00  # Amount to flag as "very large" transaction
+ODD_HOURS_DEVIATION_FROM_PATTERN = 0.8  # Ratio threshold for unusual timing (80% of historical transactions during day)
+ODD_HOURS_MIN_HISTORICAL_TRANSACTIONS = 5  # Minimum transactions needed to establish timing pattern
+ODD_HOURS_LOOKBACK_DAYS = 90  # Days to analyze historical transaction patterns
