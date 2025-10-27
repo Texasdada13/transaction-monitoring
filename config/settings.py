@@ -32,7 +32,6 @@ PAYROLL_VERIFICATION_REQUIRED_THRESHOLD = 5000.00  # Payroll amount requiring ve
 GEOGRAPHIC_LOOKBACK_DAYS = 365  # Days to look back for vendor payment history
 MIN_HISTORICAL_TRANSACTIONS = 3  # Minimum transactions needed to establish pattern
 DOMESTIC_COUNTRY_CODE = "US"  # Default domestic country code
-<<<<<<< HEAD
 
 # Beneficiary fraud detection settings - Rapid Addition (compromised admin scenario)
 BENEFICIARY_RAPID_ADDITION_THRESHOLD = 5  # Number of beneficiaries added to trigger alert
@@ -59,5 +58,3 @@ ODD_HOURS_VERY_LARGE_THRESHOLD = 25000.00  # Amount to flag as "very large" tran
 ODD_HOURS_DEVIATION_FROM_PATTERN = 0.8  # Ratio threshold for unusual timing (80% of historical transactions during day)
 ODD_HOURS_MIN_HISTORICAL_TRANSACTIONS = 5  # Minimum transactions needed to establish timing pattern
 ODD_HOURS_LOOKBACK_DAYS = 90  # Days to analyze historical transaction patterns
-=======
->>>>>>> claude/fraud-payment-routing-011CUSgTJ7TvSdfZ29wBishL

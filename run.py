@@ -23,12 +23,10 @@ from app.services.context_provider import ContextProvider
 
 # Import fraud scenario rules
 from app.services.payroll_fraud_rules import initialize_payroll_fraud_rules
-<<<<<<< HEAD
 from app.services.beneficiary_fraud_rules import initialize_beneficiary_fraud_rules
 from app.services.check_fraud_rules import initialize_check_fraud_rules
-=======
 from app.services.geographic_fraud_rules import initialize_geographic_fraud_rules
->>>>>>> claude/fraud-payment-routing-011CUSgTJ7TvSdfZ29wBishL
+from app.services.odd_hours_rules import initialize_odd_hours_rules
 # TODO: Import other fraud scenarios as they're added
 # from app.services.credit_fraud_rules import initialize_credit_fraud_rules
 # from app.services.wire_fraud_rules import initialize_wire_fraud_rules
@@ -80,7 +78,12 @@ class TransactionMonitor:
         for rule in geographic_rules:
             self.rules_engine.add_rule(rule)
         print(f"   Loaded {len(geographic_rules)} geographic fraud rules")
-
+        
+        # Odd hours fraud rules
+        odd_hours_rules = initialize_odd_hours_rules()
+        for rule in odd_hours_rules:
+            self.rules_engine.add_rule(rule)
+        print(f"   Loaded {len(odd_hours_rules)} odd hours fraud rules")
         # TODO: Add other fraud scenarios
         # credit_rules = initialize_credit_fraud_rules(self.db)
         # for rule in credit_rules:
@@ -119,14 +122,9 @@ class TransactionMonitor:
         """Get monitoring statistics."""
         return {
             "total_rules": len(self.rules_engine.rules),
-<<<<<<< HEAD
-            "scenarios_loaded": ["payroll_fraud", "beneficiary_fraud", "check_fraud"],  # TODO: Add others
-=======
-            "scenarios_loaded": ["payroll_fraud", "geographic_fraud"],  # TODO: Add others
->>>>>>> claude/fraud-payment-routing-011CUSgTJ7TvSdfZ29wBishL
+            "scenarios_loaded": ["payroll_fraud", "beneficiary_fraud", "check_fraud", "geographic_fraud", "odd_hours_fraud"],
             "status": "active"
         }
-
 
 def run_demo_mode():
     """Run demonstration scenarios."""
