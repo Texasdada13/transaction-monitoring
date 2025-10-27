@@ -66,17 +66,15 @@ class ContextProvider:
             )
             context["chain_analysis"] = chain_analysis
 
-<<<<<<< HEAD
         # Add account takeover detection context
         self._add_account_takeover_context(context, account_id, transaction)
 
         # Add odd hours transaction detection context
         self._add_odd_hours_context(context, account_id, transaction)
-=======
+
         # Add geographic context
         geographic_context = self.get_geographic_context(transaction)
         context.update(geographic_context)
->>>>>>> claude/fraud-payment-routing-011CUSgTJ7TvSdfZ29wBishL
 
         return context
     
@@ -669,7 +667,6 @@ class ContextProvider:
 
         return None
 
-<<<<<<< HEAD
     def get_check_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """
         Get check-specific context for fraud detection.
@@ -678,17 +675,11 @@ class ContextProvider:
         - Duplicate check deposits (same check deposited multiple times)
         - Rapid check deposit sequences
         - Check amount mismatches (possible alteration)
-=======
-    def get_geographic_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Get geographic context for international payment fraud detection.
->>>>>>> claude/fraud-payment-routing-011CUSgTJ7TvSdfZ29wBishL
 
         Args:
             transaction: Transaction data
 
         Returns:
-<<<<<<< HEAD
             Context dictionary with check-related fraud indicators
         """
         context = {}
@@ -983,7 +974,15 @@ class ContextProvider:
                     }
 
         return None
-=======
+
+    def get_geographic_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get geographic context for international payment fraud detection.
+
+        Args:
+            transaction: Transaction data
+
+        Returns:
             Context dictionary with geographic information
         """
         context = {}
@@ -1037,4 +1036,3 @@ class ContextProvider:
             context["is_first_international_payment"] = not has_previous_international
 
         return context
->>>>>>> claude/fraud-payment-routing-011CUSgTJ7TvSdfZ29wBishL
