@@ -69,6 +69,9 @@ class ContextProvider:
         # Add account takeover detection context
         self._add_account_takeover_context(context, account_id, transaction)
 
+        # Add odd hours transaction detection context
+        self._add_odd_hours_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -429,6 +432,145 @@ class ContextProvider:
                 ).count() == 0
 
                 context["is_first_transfer_after_phone_change"] = is_first_outgoing
+
+    def _add_odd_hours_context(self, context: Dict[str, Any],
+                                account_id: str,
+                                current_tx: Dict[str, Any]) -> None:
+        """
+        Add odd hours transaction detection context.
+
+        Detects large transactions occurring at unusual times:
+        - Outside normal business hours (late night/early morning)
+        - Outside the customer's typical transaction timing patterns
+        """
+        from config.settings import (
+            ODD_HOURS_START,
+            ODD_HOURS_END,
+            ODD_HOURS_LOOKBACK_DAYS,
+            ODD_HOURS_MIN_HISTORICAL_TRANSACTIONS
+        )
+
+        now = datetime.datetime.utcnow()
+
+        # Get transaction timestamp
+        tx_timestamp_str = current_tx.get("timestamp", now.isoformat())
+        tx_timestamp = datetime.datetime.fromisoformat(tx_timestamp_str)
+
+        # Extract hour of day (0-23)
+        tx_hour = tx_timestamp.hour
+        context["transaction_hour"] = tx_hour
+
+        # Check if transaction is during odd hours (10 PM - 6 AM by default)
+        is_odd_hours = False
+        if ODD_HOURS_START > ODD_HOURS_END:
+            # Wraps around midnight (e.g., 22:00 to 06:00)
+            is_odd_hours = tx_hour >= ODD_HOURS_START or tx_hour < ODD_HOURS_END
+        else:
+            # Does not wrap (e.g., 01:00 to 05:00)
+            is_odd_hours = ODD_HOURS_START <= tx_hour < ODD_HOURS_END
+
+        context["is_odd_hours"] = is_odd_hours
+        context["odd_hours_window"] = f"{ODD_HOURS_START:02d}:00 - {ODD_HOURS_END:02d}:00"
+
+        # Check if it's a weekend
+        # Monday=0, Sunday=6
+        is_weekend = tx_timestamp.weekday() >= 5
+        context["is_weekend"] = is_weekend
+
+        # Analyze historical transaction timing patterns
+        lookback_date = (now - datetime.timedelta(days=ODD_HOURS_LOOKBACK_DAYS)).isoformat()
+
+        # Get historical transactions for this account
+        historical_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > lookback_date
+        ).all()
+
+        if len(historical_txs) >= ODD_HOURS_MIN_HISTORICAL_TRANSACTIONS:
+            # Analyze timing patterns
+            odd_hours_count = 0
+            business_hours_count = 0
+            weekend_count = 0
+            hour_distribution = [0] * 24  # Count per hour
+
+            for tx in historical_txs:
+                tx_time = datetime.datetime.fromisoformat(tx.timestamp)
+                tx_h = tx_time.hour
+
+                hour_distribution[tx_h] += 1
+
+                # Check if odd hours
+                if ODD_HOURS_START > ODD_HOURS_END:
+                    if tx_h >= ODD_HOURS_START or tx_h < ODD_HOURS_END:
+                        odd_hours_count += 1
+                    else:
+                        business_hours_count += 1
+                else:
+                    if ODD_HOURS_START <= tx_h < ODD_HOURS_END:
+                        odd_hours_count += 1
+                    else:
+                        business_hours_count += 1
+
+                # Check if weekend
+                if tx_time.weekday() >= 5:
+                    weekend_count += 1
+
+            total_count = len(historical_txs)
+
+            # Calculate ratios
+            context["historical_odd_hours_ratio"] = odd_hours_count / total_count if total_count > 0 else 0
+            context["historical_business_hours_ratio"] = business_hours_count / total_count if total_count > 0 else 0
+            context["historical_weekend_ratio"] = weekend_count / total_count if total_count > 0 else 0
+            context["historical_transaction_count"] = total_count
+            context["hour_distribution"] = hour_distribution
+
+            # Determine if current transaction is unusual based on historical pattern
+            # If customer typically transacts during business hours, odd hours transaction is unusual
+            context["deviates_from_pattern"] = (
+                is_odd_hours and
+                context["historical_business_hours_ratio"] > 0.8  # 80%+ of transactions during business hours
+            )
+
+            # Check if this specific hour is unusual for the customer
+            current_hour_historical_count = hour_distribution[tx_hour]
+            avg_hourly_count = total_count / 24
+
+            # If this hour has significantly fewer historical transactions
+            context["hour_is_unusual"] = (
+                current_hour_historical_count < (avg_hourly_count * 0.5) and
+                total_count >= 10  # Need enough data
+            )
+
+        else:
+            # Not enough historical data
+            context["historical_transaction_count"] = len(historical_txs)
+            context["insufficient_history"] = True
+
+        # Check for other odd hours transactions in recent period (last 7 days)
+        recent_lookback = (now - datetime.timedelta(days=7)).isoformat()
+        recent_odd_hours_txs = []
+
+        for tx in self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > recent_lookback
+        ).all():
+            tx_time = datetime.datetime.fromisoformat(tx.timestamp)
+            tx_h = tx_time.hour
+
+            # Check if odd hours
+            if ODD_HOURS_START > ODD_HOURS_END:
+                if tx_h >= ODD_HOURS_START or tx_h < ODD_HOURS_END:
+                    recent_odd_hours_txs.append(tx)
+            else:
+                if ODD_HOURS_START <= tx_h < ODD_HOURS_END:
+                    recent_odd_hours_txs.append(tx)
+
+        context["recent_odd_hours_transaction_count"] = len(recent_odd_hours_txs)
+
+        # If this is an odd hours transaction, calculate total amount in recent odd hours
+        if is_odd_hours and recent_odd_hours_txs:
+            recent_odd_hours_total = sum(abs(tx.amount) for tx in recent_odd_hours_txs)
+            context["recent_odd_hours_total_amount"] = recent_odd_hours_total
 
     def get_payroll_context(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
         """
