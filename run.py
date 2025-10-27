@@ -195,13 +195,23 @@ def run_dashboard_mode():
     print("="*80)
 
     print("\nLaunching web dashboard...")
-    print("TODO: Implement dashboard web interface")
-    print("\nDashboard would display:")
-    print("  - Real-time transaction feed")
-    print("  - Risk score distribution")
+    print("\nDashboard features:")
+    print("  - Real-time transaction feed with risk color coding")
+    print("  - Risk score distribution charts")
     print("  - Triggered rules by scenario")
-    print("  - Manual review queue")
-    print("  - Statistics and metrics")
+    print("  - Manual review queue with action buttons")
+    print("  - Executive summary with KPIs and trends")
+    print("  - Multi-persona views (Risk Officer & Leadership)")
+    print("\n" + "="*80)
+    print("Starting server at http://localhost:8000")
+    print("Press Ctrl+C to stop the server")
+    print("="*80 + "\n")
+
+    # Launch FastAPI server
+    import uvicorn
+    from dashboard.api import app
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 def main():
