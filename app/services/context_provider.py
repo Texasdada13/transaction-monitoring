@@ -124,6 +124,9 @@ class ContextProvider:
         # Add user daily limit exceeded detection context
         self._add_user_daily_limit_exceeded_context(context, account_id, transaction)
 
+        # Add recent high-value transaction flags detection context
+        self._add_recent_high_value_transaction_flags_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -6351,3 +6354,354 @@ class ContextProvider:
             limit_risk_level = "minimal"
 
         context["daily_limit_risk_level"] = limit_risk_level
+
+    def _add_recent_high_value_transaction_flags_context(self, context: Dict[str, Any],
+                                                          account_id: str,
+                                                          transaction: Dict[str, Any]) -> None:
+        """
+        Add recent high-value transaction flags detection context.
+
+        Detects:
+        - Recent high-value transactions that increase fraud risk
+        - Rapid transactions following high-value transactions
+        - Multiple high-value transactions in succession
+        - Velocity of high-value transactions
+        - Abnormal patterns after high-value transactions
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        # Extract current transaction details
+        tx_amount = transaction.get("amount", 0)
+        tx_timestamp = transaction.get("timestamp")
+        tx_direction = transaction.get("direction", "debit")
+
+        # Parse timestamp
+        if isinstance(tx_timestamp, str):
+            try:
+                tx_datetime = datetime.datetime.fromisoformat(tx_timestamp)
+            except:
+                tx_datetime = datetime.datetime.utcnow()
+        else:
+            tx_datetime = datetime.datetime.utcnow()
+
+        # Define time windows for "recent" analysis
+        windows = {
+            "1h": datetime.timedelta(hours=1),
+            "6h": datetime.timedelta(hours=6),
+            "24h": datetime.timedelta(hours=24),
+            "48h": datetime.timedelta(hours=48),
+            "7d": datetime.timedelta(days=7),
+            "30d": datetime.timedelta(days=30)
+        }
+
+        # Get historical transactions to establish baseline
+        historical_cutoff = tx_datetime - datetime.timedelta(days=90)
+        historical_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp >= historical_cutoff.isoformat(),
+            Transaction.timestamp < tx_datetime.isoformat()
+        ).order_by(Transaction.timestamp.desc()).all()
+
+        if not historical_txs:
+            context["recent_high_value_check_possible"] = False
+            context["recent_high_value_check_reason"] = "insufficient_history"
+            return
+
+        context["recent_high_value_check_possible"] = True
+
+        # Calculate statistical baselines
+        amounts = [float(tx.amount) for tx in historical_txs if tx.amount]
+        if not amounts:
+            context["recent_high_value_check_possible"] = False
+            context["recent_high_value_check_reason"] = "no_amount_data"
+            return
+
+        avg_amount = sum(amounts) / len(amounts)
+        max_amount = max(amounts)
+        min_amount = min(amounts)
+
+        # Calculate percentiles
+        sorted_amounts = sorted(amounts)
+        p95_idx = int(len(sorted_amounts) * 0.95)
+        p90_idx = int(len(sorted_amounts) * 0.90)
+        p75_idx = int(len(sorted_amounts) * 0.75)
+
+        p95_amount = sorted_amounts[p95_idx] if p95_idx < len(sorted_amounts) else max_amount
+        p90_amount = sorted_amounts[p90_idx] if p90_idx < len(sorted_amounts) else max_amount
+        p75_amount = sorted_amounts[p75_idx] if p75_idx < len(sorted_amounts) else max_amount
+
+        # Calculate standard deviation
+        variance = sum([(amt - avg_amount) ** 2 for amt in amounts]) / len(amounts)
+        std_dev = variance ** 0.5
+
+        # Store baseline context
+        context["historical_avg_amount"] = round(avg_amount, 2)
+        context["historical_max_amount"] = round(max_amount, 2)
+        context["historical_p95_amount"] = round(p95_amount, 2)
+        context["historical_p90_amount"] = round(p90_amount, 2)
+        context["historical_p75_amount"] = round(p75_amount, 2)
+        context["historical_std_dev"] = round(std_dev, 2)
+
+        # Define high-value thresholds (multiple criteria)
+        high_value_thresholds = {
+            "absolute": 10000,  # Fixed threshold (e.g., $10,000)
+            "p95": p95_amount,  # 95th percentile of user's history
+            "p90": p90_amount,  # 90th percentile
+            "3x_avg": avg_amount * 3,  # 3x average
+            "2_std_dev": avg_amount + (2 * std_dev)  # 2 standard deviations above mean
+        }
+
+        context["high_value_thresholds"] = {k: round(v, 2) for k, v in high_value_thresholds.items()}
+
+        # Analyze recent high-value transactions for each time window
+        recent_high_value_analysis = {}
+
+        for window_name, window_delta in windows.items():
+            window_start = tx_datetime - window_delta
+
+            # Get transactions in this window
+            window_txs = [
+                tx for tx in historical_txs
+                if tx.timestamp and datetime.datetime.fromisoformat(tx.timestamp) >= window_start
+            ]
+
+            if not window_txs:
+                continue
+
+            # Identify high-value transactions in this window
+            high_value_txs = []
+            for tx in window_txs:
+                tx_amt = float(tx.amount) if tx.amount else 0
+
+                # Check against multiple thresholds
+                is_high_value = (
+                    tx_amt >= high_value_thresholds["absolute"] or
+                    tx_amt >= high_value_thresholds["p95"] or
+                    tx_amt >= high_value_thresholds["3x_avg"]
+                )
+
+                if is_high_value:
+                    high_value_txs.append({
+                        "transaction_id": tx.transaction_id,
+                        "amount": tx_amt,
+                        "timestamp": tx.timestamp,
+                        "direction": tx.direction,
+                        "type": tx.transaction_type,
+                        "counterparty": tx.counterparty_id
+                    })
+
+            window_analysis = {
+                "total_transactions": len(window_txs),
+                "high_value_count": len(high_value_txs),
+                "has_high_value_transactions": len(high_value_txs) > 0
+            }
+
+            if high_value_txs:
+                # Calculate metrics for high-value transactions
+                hv_amounts = [tx["amount"] for tx in high_value_txs]
+                window_analysis["high_value_total_amount"] = round(sum(hv_amounts), 2)
+                window_analysis["high_value_max_amount"] = round(max(hv_amounts), 2)
+                window_analysis["high_value_avg_amount"] = round(sum(hv_amounts) / len(hv_amounts), 2)
+
+                # Find most recent high-value transaction
+                most_recent_hv = high_value_txs[0]  # Already sorted by timestamp desc
+                most_recent_time = datetime.datetime.fromisoformat(most_recent_hv["timestamp"])
+                minutes_since_hv = (tx_datetime - most_recent_time).total_seconds() / 60
+
+                window_analysis["most_recent_hv_amount"] = round(most_recent_hv["amount"], 2)
+                window_analysis["minutes_since_most_recent_hv"] = round(minutes_since_hv, 2)
+                window_analysis["most_recent_hv_direction"] = most_recent_hv["direction"]
+
+                # Check for rapid follow-up transactions
+                if minutes_since_hv < 60:  # Within 1 hour
+                    window_analysis["rapid_followup_after_hv"] = True
+                    window_analysis["very_rapid_followup"] = minutes_since_hv < 15
+
+                # Check for multiple high-value transactions
+                if len(high_value_txs) >= 3:
+                    window_analysis["multiple_high_value_txs"] = True
+                    window_analysis["high_value_cluster"] = True
+
+            recent_high_value_analysis[window_name] = window_analysis
+
+        context["recent_high_value_analysis"] = recent_high_value_analysis
+
+        # Aggregate flags across all windows
+        context["has_recent_high_value_tx_1h"] = recent_high_value_analysis.get("1h", {}).get("has_high_value_transactions", False)
+        context["has_recent_high_value_tx_6h"] = recent_high_value_analysis.get("6h", {}).get("has_high_value_transactions", False)
+        context["has_recent_high_value_tx_24h"] = recent_high_value_analysis.get("24h", {}).get("has_high_value_transactions", False)
+        context["has_recent_high_value_tx_48h"] = recent_high_value_analysis.get("48h", {}).get("has_high_value_transactions", False)
+        context["has_recent_high_value_tx_7d"] = recent_high_value_analysis.get("7d", {}).get("has_high_value_transactions", False)
+
+        # Critical flags
+        context["rapid_followup_after_high_value"] = recent_high_value_analysis.get("1h", {}).get("rapid_followup_after_hv", False)
+        context["very_rapid_followup_after_high_value"] = recent_high_value_analysis.get("1h", {}).get("very_rapid_followup", False)
+
+        # Multiple high-value transaction clusters
+        context["high_value_cluster_24h"] = recent_high_value_analysis.get("24h", {}).get("high_value_cluster", False)
+        context["high_value_cluster_48h"] = recent_high_value_analysis.get("48h", {}).get("high_value_cluster", False)
+
+        # Current transaction is also high-value
+        current_is_high_value = (
+            tx_amount >= high_value_thresholds["absolute"] or
+            tx_amount >= high_value_thresholds["p95"] or
+            tx_amount >= high_value_thresholds["3x_avg"]
+        )
+        context["current_transaction_is_high_value"] = current_is_high_value
+
+        if current_is_high_value:
+            context["current_tx_vs_avg_ratio"] = round(tx_amount / avg_amount, 2) if avg_amount > 0 else 0
+            context["current_tx_exceeds_p95"] = tx_amount >= p95_amount
+            context["current_tx_exceeds_p90"] = tx_amount >= p90_amount
+
+        # Consecutive high-value transactions pattern
+        if current_is_high_value and context.get("has_recent_high_value_tx_24h"):
+            context["consecutive_high_value_transactions"] = True
+
+            # Calculate total high-value amount in 24h including current
+            hv_24h_total = recent_high_value_analysis.get("24h", {}).get("high_value_total_amount", 0)
+            context["high_value_total_24h_including_current"] = round(hv_24h_total + tx_amount, 2)
+
+            # Check if this exceeds normal daily volume
+            daily_avg = avg_amount * (len(amounts) / 90)  # Approximate daily average
+            if hv_24h_total + tx_amount > daily_avg * 3:
+                context["high_value_volume_anomaly"] = True
+
+        # Velocity analysis - transactions after most recent high-value
+        if context.get("has_recent_high_value_tx_24h"):
+            most_recent_hv_time_str = recent_high_value_analysis.get("24h", {}).get("most_recent_hv_amount")
+            if most_recent_hv_time_str:
+                # Count transactions between most recent high-value and now
+                minutes_since = recent_high_value_analysis.get("24h", {}).get("minutes_since_most_recent_hv", 0)
+
+                if minutes_since > 0:
+                    # Count recent transactions after the high-value transaction
+                    recent_tx_count = len([
+                        tx for tx in historical_txs
+                        if tx.timestamp and
+                        (tx_datetime - datetime.datetime.fromisoformat(tx.timestamp)).total_seconds() / 60 <= minutes_since
+                    ]) + 1  # Include current transaction
+
+                    context["transactions_since_high_value"] = recent_tx_count
+
+                    if minutes_since < 60 and recent_tx_count >= 5:
+                        context["high_velocity_after_high_value"] = True
+                    elif minutes_since < 360 and recent_tx_count >= 10:  # 6 hours
+                        context["elevated_velocity_after_high_value"] = True
+
+        # Pattern: High-value debit followed by multiple credits (refund fraud)
+        if context.get("has_recent_high_value_tx_24h"):
+            most_recent_hv_direction = recent_high_value_analysis.get("24h", {}).get("most_recent_hv_direction")
+
+            if most_recent_hv_direction == "debit" and tx_direction == "credit":
+                context["credit_after_high_value_debit"] = True
+
+                # Check for multiple credits after high-value debit
+                minutes_since = recent_high_value_analysis.get("24h", {}).get("minutes_since_most_recent_hv", 0)
+                if minutes_since > 0:
+                    recent_credits = len([
+                        tx for tx in historical_txs
+                        if tx.timestamp and tx.direction == "credit" and
+                        (tx_datetime - datetime.datetime.fromisoformat(tx.timestamp)).total_seconds() / 60 <= minutes_since
+                    ]) + 1
+
+                    if recent_credits >= 3:
+                        context["multiple_credits_after_high_value_debit"] = True
+                        context["potential_refund_fraud"] = True
+
+        # Pattern: High-value followed by unusual counterparties
+        if context.get("has_recent_high_value_tx_6h"):
+            current_counterparty = transaction.get("counterparty_id")
+
+            if current_counterparty:
+                # Check if current counterparty is new or unusual
+                historical_counterparties = set([tx.counterparty_id for tx in historical_txs if tx.counterparty_id])
+
+                if current_counterparty not in historical_counterparties:
+                    context["new_counterparty_after_high_value"] = True
+
+        # Calculate time since last high-value transaction
+        if context.get("has_recent_high_value_tx_7d"):
+            for window in ["1h", "6h", "24h", "48h", "7d"]:
+                if recent_high_value_analysis.get(window, {}).get("minutes_since_most_recent_hv") is not None:
+                    context["minutes_since_last_high_value_tx"] = recent_high_value_analysis[window]["minutes_since_most_recent_hv"]
+                    break
+
+        # Risk score calculation (0-100)
+        risk_score = 0
+
+        # Base score for having recent high-value transactions
+        if context.get("has_recent_high_value_tx_1h"):
+            risk_score += 20
+        elif context.get("has_recent_high_value_tx_6h"):
+            risk_score += 15
+        elif context.get("has_recent_high_value_tx_24h"):
+            risk_score += 10
+        elif context.get("has_recent_high_value_tx_48h"):
+            risk_score += 5
+
+        # Rapid follow-up
+        if context.get("very_rapid_followup_after_high_value"):
+            risk_score += 25
+        elif context.get("rapid_followup_after_high_value"):
+            risk_score += 15
+
+        # Current transaction is also high-value
+        if context.get("current_transaction_is_high_value"):
+            risk_score += 15
+
+        # Consecutive high-value transactions
+        if context.get("consecutive_high_value_transactions"):
+            risk_score += 20
+
+        # High-value clusters
+        if context.get("high_value_cluster_24h"):
+            risk_score += 20
+        elif context.get("high_value_cluster_48h"):
+            risk_score += 10
+
+        # Volume anomaly
+        if context.get("high_value_volume_anomaly"):
+            risk_score += 15
+
+        # High velocity after high-value
+        if context.get("high_velocity_after_high_value"):
+            risk_score += 20
+        elif context.get("elevated_velocity_after_high_value"):
+            risk_score += 10
+
+        # Refund fraud pattern
+        if context.get("potential_refund_fraud"):
+            risk_score += 25
+        elif context.get("credit_after_high_value_debit"):
+            risk_score += 10
+
+        # New counterparty after high-value
+        if context.get("new_counterparty_after_high_value"):
+            risk_score += 15
+
+        # Multiple credits after high-value debit
+        if context.get("multiple_credits_after_high_value_debit"):
+            risk_score += 15
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["recent_high_value_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            hv_risk_level = "critical"
+        elif risk_score >= 60:
+            hv_risk_level = "high"
+        elif risk_score >= 40:
+            hv_risk_level = "medium"
+        elif risk_score >= 20:
+            hv_risk_level = "low"
+        else:
+            hv_risk_level = "minimal"
+
+        context["recent_high_value_risk_level"] = hv_risk_level
