@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -78,6 +78,9 @@ class ContextProvider:
 
         # Add blacklist detection context
         self._add_blacklist_context(context, transaction)
+
+        # Add device fingerprinting context
+        self._add_device_fingerprint_context(context, account_id, transaction)
 
         return context
     
@@ -1135,3 +1138,168 @@ class ContextProvider:
             )
             context["blacklist_max_severity"] = max_severity
             context["blacklist_match_count"] = len(blacklist_entries)
+
+    def _add_device_fingerprint_context(self, context: Dict[str, Any],
+                                         account_id: str,
+                                         transaction: Dict[str, Any]) -> None:
+        """
+        Add device fingerprinting context for fraud detection.
+
+        Analyzes device mismatches (device ID, browser, OS, IP) compared to historical sessions.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        # Extract device information from transaction metadata
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            context["device_info_available"] = False
+            return
+
+        # Extract current device info
+        current_device_id = tx_metadata.get("device_id")
+        current_browser = tx_metadata.get("browser")
+        current_os = tx_metadata.get("os")
+        current_ip = tx_metadata.get("ip_address")
+        current_user_agent = tx_metadata.get("user_agent")
+
+        context["device_info_available"] = True
+        context["current_device_id"] = current_device_id
+        context["current_browser"] = current_browser
+        context["current_os"] = current_os
+        context["current_ip"] = current_ip
+
+        # Get historical device sessions for this account (last 90 days)
+        now = datetime.datetime.utcnow()
+        ninety_days_ago = (now - datetime.timedelta(days=90)).isoformat()
+
+        historical_sessions = self.db.query(DeviceSession).filter(
+            DeviceSession.account_id == account_id,
+            DeviceSession.timestamp > ninety_days_ago
+        ).order_by(DeviceSession.timestamp.desc()).all()
+
+        if not historical_sessions:
+            # No historical device data - first transaction or new tracking
+            context["is_new_device"] = True
+            context["device_history_count"] = 0
+            context["device_mismatch"] = False
+            return
+
+        context["device_history_count"] = len(historical_sessions)
+
+        # Check if current device has been seen before
+        device_seen_before = False
+        matching_device = None
+
+        if current_device_id:
+            for session in historical_sessions:
+                if session.device_id == current_device_id:
+                    device_seen_before = True
+                    matching_device = session
+                    break
+
+        context["device_seen_before"] = device_seen_before
+        context["is_new_device"] = not device_seen_before
+
+        # Analyze device mismatches
+        mismatches = []
+
+        # Get most common device attributes from history
+        device_ids = [s.device_id for s in historical_sessions if s.device_id]
+        browsers = [s.browser for s in historical_sessions if s.browser]
+        os_list = [s.os for s in historical_sessions if s.os]
+        ips = [s.ip_address for s in historical_sessions if s.ip_address]
+
+        # Check device ID mismatch
+        if current_device_id and device_ids:
+            if current_device_id not in device_ids:
+                mismatches.append({
+                    "attribute": "device_id",
+                    "current": current_device_id,
+                    "expected": device_ids[0] if device_ids else None,
+                    "severity": "high"
+                })
+
+        # Check browser mismatch
+        if current_browser and browsers:
+            # Get most common browser
+            from collections import Counter
+            browser_counts = Counter(browsers)
+            most_common_browser = browser_counts.most_common(1)[0][0]
+
+            if current_browser != most_common_browser:
+                # Check if this browser has been used before
+                if current_browser not in browsers:
+                    mismatches.append({
+                        "attribute": "browser",
+                        "current": current_browser,
+                        "expected": most_common_browser,
+                        "severity": "medium"
+                    })
+
+        # Check OS mismatch
+        if current_os and os_list:
+            from collections import Counter
+            os_counts = Counter(os_list)
+            most_common_os = os_counts.most_common(1)[0][0]
+
+            if current_os != most_common_os:
+                if current_os not in os_list:
+                    mismatches.append({
+                        "attribute": "os",
+                        "current": current_os,
+                        "expected": most_common_os,
+                        "severity": "high"
+                    })
+
+        # Check IP address mismatch (new IP)
+        if current_ip and ips:
+            if current_ip not in ips:
+                # New IP address - check how many unique IPs historically
+                unique_ips = len(set(ips))
+                context["unique_ips_historical"] = unique_ips
+
+                # If user typically uses 1-2 IPs, a new one is more suspicious
+                if unique_ips <= 2:
+                    mismatches.append({
+                        "attribute": "ip_address",
+                        "current": current_ip,
+                        "expected": ips[0] if ips else None,
+                        "severity": "medium"
+                    })
+
+        context["device_mismatches"] = mismatches
+        context["device_mismatch"] = len(mismatches) > 0
+        context["device_mismatch_count"] = len(mismatches)
+
+        # Calculate device mismatch severity score
+        if mismatches:
+            severity_scores = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+            max_mismatch_severity = max(
+                (m["severity"] for m in mismatches),
+                key=lambda s: severity_scores.get(s, 0)
+            )
+            context["device_mismatch_max_severity"] = max_mismatch_severity
+
+        # Check if device has been flagged as suspicious
+        if matching_device and matching_device.flagged_as_suspicious:
+            context["device_flagged_suspicious"] = True
+            context["device_suspicious_reason"] = matching_device.suspicious_reason
+        else:
+            context["device_flagged_suspicious"] = False
+
+        # Calculate time since last seen (for known devices)
+        if matching_device:
+            last_seen_time = datetime.datetime.fromisoformat(matching_device.last_seen)
+            hours_since_last_seen = (now - last_seen_time).total_seconds() / 3600
+            context["hours_since_device_last_seen"] = hours_since_last_seen
+            context["device_session_count"] = matching_device.session_count
+            context["device_is_trusted"] = matching_device.is_trusted_device

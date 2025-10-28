@@ -234,6 +234,55 @@ class Blacklist(Base):
     notes = Column(Text, nullable=True)
     external_reference = Column(String, nullable=True)  # Reference to external blacklist systems
 
+class DeviceSession(Base):
+    """
+    Tracks device fingerprints and session information for fraud detection.
+    Used to detect account takeover through device/location mismatches.
+    """
+    __tablename__ = "device_sessions"
+
+    session_id = Column(String, primary_key=True, index=True)
+    account_id = Column(String, ForeignKey("accounts.account_id"), index=True)
+    timestamp = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
+
+    # Device fingerprinting
+    device_id = Column(String, index=True, nullable=True)  # Unique device identifier/fingerprint
+    device_name = Column(String, nullable=True)  # User-friendly device name
+    device_type = Column(String, nullable=True)  # "mobile", "desktop", "tablet"
+
+    # Browser information
+    browser = Column(String, nullable=True)  # "Chrome", "Firefox", "Safari", etc.
+    browser_version = Column(String, nullable=True)
+    user_agent = Column(Text, nullable=True)  # Full user agent string
+
+    # Operating system
+    os = Column(String, nullable=True)  # "Windows", "macOS", "iOS", "Android", etc.
+    os_version = Column(String, nullable=True)
+
+    # Network information
+    ip_address = Column(String, index=True, nullable=True)
+    ip_country = Column(String, nullable=True)
+    ip_city = Column(String, nullable=True)
+    isp = Column(String, nullable=True)
+
+    # Session context
+    session_type = Column(String, default="transaction")  # "login", "transaction", "account_change"
+    transaction_id = Column(String, ForeignKey("transactions.transaction_id"), nullable=True, index=True)
+
+    # Trust indicators
+    is_trusted_device = Column(Boolean, default=False)
+    first_seen = Column(String, default=lambda: datetime.datetime.utcnow().isoformat())
+    last_seen = Column(String, default=lambda: datetime.datetime.utcnow().isoformat())
+    session_count = Column(Integer, default=1)  # How many times this device has been used
+
+    # Risk flags
+    flagged_as_suspicious = Column(Boolean, default=False)
+    suspicious_reason = Column(Text, nullable=True)
+
+    # Relationships
+    account = relationship("Account")
+    transaction = relationship("Transaction")
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
