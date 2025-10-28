@@ -353,6 +353,105 @@ class FraudAPIClient:
         response.raise_for_status()
         return response.json()
 
+    def get_geographic_fraud_data(self, time_range: str = "24h") -> Dict[str, Any]:
+        """
+        Get geographic fraud data for heatmap visualization.
+
+        Args:
+            time_range: Time range (1h, 24h, 7d, 30d)
+
+        Returns:
+            Geographic distribution of fraud activity
+        """
+        response = requests.get(
+            f"{self.base_url}/api/v1/analytics/geographic-fraud",
+            headers=self._get_headers(),
+            params={"time_range": time_range}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_high_value_transactions(
+        self,
+        threshold: float = 10000.0,
+        time_range: str = "24h",
+        limit: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Get high-value transactions for monitoring.
+
+        Args:
+            threshold: Minimum amount to consider high-value
+            time_range: Time range (1h, 24h, 7d, 30d)
+            limit: Maximum transactions to return
+
+        Returns:
+            High-value transactions with risk analysis
+        """
+        response = requests.get(
+            f"{self.base_url}/api/v1/analytics/high-value-transactions",
+            headers=self._get_headers(),
+            params={
+                "threshold": threshold,
+                "time_range": time_range,
+                "limit": limit
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_limit_violations(
+        self,
+        time_range: str = "24h",
+        severity: Optional[str] = None,
+        limit: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Get account limit violations.
+
+        Args:
+            time_range: Time range (1h, 24h, 7d, 30d)
+            severity: Filter by severity (low, medium, high, critical)
+            limit: Maximum violations to return
+
+        Returns:
+            List of limit violations with account details
+        """
+        params = {"time_range": time_range, "limit": limit}
+        if severity:
+            params["severity"] = severity
+
+        response = requests.get(
+            f"{self.base_url}/api/v1/analytics/limit-violations",
+            headers=self._get_headers(),
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_account_risk_timeline(
+        self,
+        account_id: str,
+        time_range: str = "7d"
+    ) -> Dict[str, Any]:
+        """
+        Get risk score timeline for a specific account.
+
+        Args:
+            account_id: Account ID to analyze
+            time_range: Time range (1h, 24h, 7d, 30d)
+
+        Returns:
+            Time-series risk score data for the account
+        """
+        response = requests.get(
+            f"{self.base_url}/api/v1/analytics/account-risk-timeline/{account_id}",
+            headers=self._get_headers(),
+            params={"time_range": time_range}
+        )
+        response.raise_for_status()
+        return response.json()
+
 # ==================== Streamlit Session State Management ====================
 
 def get_api_client() -> FraudAPIClient:

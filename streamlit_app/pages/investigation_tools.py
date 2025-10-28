@@ -227,6 +227,145 @@ def render_module_breakdown(transaction_id: str):
         st.error(f"Failed to load module breakdown: {str(e)}")
 
 
+def render_account_risk_timeline(account_id: str, time_range: str = "7d"):
+    """Render risk score timeline for an account"""
+    client = get_api_client()
+
+    try:
+        with st.spinner("Loading risk timeline..."):
+            timeline_data = client.get_account_risk_timeline(account_id, time_range)
+
+        timeline = timeline_data.get("timeline", [])
+        statistics = timeline_data.get("statistics", {})
+
+        if not timeline:
+            st.info("No transaction history available for this time period")
+            return
+
+        # Statistics overview
+        col1, col2, col3, col4, col5 = st.columns(5)
+
+        with col1:
+            st.metric("Total Transactions", timeline_data.get("total_transactions", 0))
+
+        with col2:
+            st.metric("Avg Risk", f"{statistics.get('average_risk', 0):.3f}")
+
+        with col3:
+            st.metric("Current Risk", f"{statistics.get('current_risk', 0):.3f}")
+
+        with col4:
+            trend = statistics.get('risk_trend', 'stable')
+            trend_emoji = "📈" if trend == "increasing" else "📉"
+            st.metric("Trend", f"{trend_emoji} {trend.title()}")
+
+        with col5:
+            st.metric("High Risk Count", statistics.get('high_risk_count', 0))
+
+        # Create timeline chart
+        df = pd.DataFrame(timeline)
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        # Dual-axis chart: Risk score and moving average
+        fig = go.Figure()
+
+        # Add risk score scatter
+        fig.add_trace(go.Scatter(
+            x=df['timestamp'],
+            y=df['risk_score'],
+            name='Risk Score',
+            mode='markers+lines',
+            marker=dict(
+                size=8,
+                color=df['risk_score'],
+                colorscale='Reds',
+                showscale=True,
+                colorbar=dict(title="Risk Score")
+            ),
+            line=dict(color='lightblue', width=1),
+            text=df['transaction_id'],
+            hovertemplate='<b>%{text}</b><br>Risk: %{y:.3f}<br>Time: %{x}<extra></extra>'
+        ))
+
+        # Add moving average line
+        fig.add_trace(go.Scatter(
+            x=df['timestamp'],
+            y=df['moving_average'],
+            name='Moving Average (5 tx)',
+            line=dict(color='darkblue', width=3),
+            hovertemplate='Moving Avg: %{y:.3f}<extra></extra>'
+        ))
+
+        # Add risk threshold lines
+        fig.add_hline(y=0.6, line_dash="dash", line_color="orange",
+                     annotation_text="High Risk Threshold (0.6)")
+        fig.add_hline(y=0.8, line_dash="dash", line_color="red",
+                     annotation_text="Critical Risk Threshold (0.8)")
+
+        fig.update_layout(
+            title=f"Risk Score Timeline - {account_id}",
+            xaxis=dict(title="Date/Time"),
+            yaxis=dict(title="Risk Score", range=[0, 1]),
+            hovermode='x unified',
+            height=400,
+            showlegend=True
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Transaction amount vs risk scatter
+        fig2 = go.Figure()
+
+        fig2.add_trace(go.Scatter(
+            x=df['amount'],
+            y=df['risk_score'],
+            mode='markers',
+            marker=dict(
+                size=10,
+                color=df['risk_score'],
+                colorscale='Reds',
+                showscale=True,
+                colorbar=dict(title="Risk")
+            ),
+            text=df['transaction_type'],
+            hovertemplate='<b>%{text}</b><br>Amount: $%{x:,.0f}<br>Risk: %{y:.3f}<extra></extra>'
+        ))
+
+        fig2.add_hline(y=0.6, line_dash="dash", line_color="orange")
+        fig2.add_hline(y=0.8, line_dash="dash", line_color="red")
+
+        fig2.update_layout(
+            title="Risk Score vs Transaction Amount",
+            xaxis=dict(title="Transaction Amount ($)"),
+            yaxis=dict(title="Risk Score", range=[0, 1]),
+            height=350
+        )
+
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # Detailed transaction table
+        with st.expander("📋 View Detailed Timeline Data"):
+            display_df = df[[
+                'timestamp', 'transaction_id', 'amount', 'risk_score',
+                'moving_average', 'decision', 'review_status', 'triggered_rules_count'
+            ]].copy()
+
+            display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            display_df['amount'] = display_df['amount'].apply(format_currency)
+            display_df['risk_score'] = display_df['risk_score'].apply(lambda x: f"{x:.3f}")
+            display_df['moving_average'] = display_df['moving_average'].apply(lambda x: f"{x:.3f}")
+
+            display_df.columns = [
+                'Timestamp', 'Transaction ID', 'Amount', 'Risk Score',
+                'Moving Avg', 'Decision', 'Status', 'Rules Triggered'
+            ]
+
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    except Exception as e:
+        st.error(f"Failed to load risk timeline: {str(e)}")
+
+
 def render_account_investigation(account_id: str):
     """Render comprehensive account investigation"""
     st.markdown(f"### 👤 Account Investigation - {account_id}")
@@ -259,6 +398,30 @@ def render_account_investigation(account_id: str):
             st.metric("High Risk Count", stats.get("high_risk_count", 0))
             high_risk_rate = stats.get("high_risk_rate", 0) * 100
             st.metric("High Risk Rate", f"{high_risk_rate:.1f}%")
+
+        st.divider()
+
+        # Risk Score Timeline
+        st.markdown("### 📉 Account Risk Score Timeline")
+
+        # Time range selector for timeline
+        timeline_col1, timeline_col2 = st.columns([2, 1])
+        with timeline_col1:
+            timeline_range = st.selectbox(
+                "Timeline Period",
+                ["24h", "7d", "30d"],
+                index=1,
+                format_func=lambda x: {
+                    "24h": "Last 24 Hours",
+                    "7d": "Last 7 Days",
+                    "30d": "Last 30 Days"
+                }[x],
+                key="timeline_range"
+            )
+        with timeline_col2:
+            st.markdown("")  # Spacing
+
+        render_account_risk_timeline(account_id, timeline_range)
 
         st.divider()
 

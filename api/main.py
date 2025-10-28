@@ -816,6 +816,401 @@ async def get_fraud_modules_catalog(
             "modules": modules
         }
 
+@app.get("/api/v1/analytics/geographic-fraud")
+async def get_geographic_fraud_data(
+    time_range: str = "24h",
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get geographic fraud data for heatmap visualization.
+
+    Returns:
+        Geographic distribution of fraud activity
+    """
+    from app.models.database import Transaction, RiskAssessment, HighRiskLocation
+    import json
+    import random
+
+    time_map = {"1h": 1, "24h": 24, "7d": 168, "30d": 720}
+    hours = time_map.get(time_range, 24)
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+
+    # Get transactions with risk assessments
+    assessments = db.query(RiskAssessment).filter(
+        RiskAssessment.review_timestamp > cutoff
+    ).all()
+
+    # Get high-risk locations from database
+    high_risk_locations = db.query(HighRiskLocation).all()
+
+    # Create geographic data
+    # In a real system, transactions would have location data
+    # For demo purposes, we'll generate sample geographic data
+    geographic_data = []
+
+    # Use high-risk locations from database
+    country_data = {}
+    for location in high_risk_locations:
+        country_data[location.country] = {
+            "country": location.country,
+            "country_code": location.country_code,
+            "risk_level": location.risk_level,
+            "transaction_count": 0,
+            "fraud_count": 0,
+            "total_amount": 0,
+            "avg_risk_score": 0,
+            "total_risk": 0
+        }
+
+    # Add some popular countries if not in high-risk list
+    common_countries = [
+        {"country": "United States", "code": "US", "risk": "low"},
+        {"country": "United Kingdom", "code": "GB", "risk": "low"},
+        {"country": "Canada", "code": "CA", "risk": "low"},
+        {"country": "Germany", "code": "DE", "risk": "low"},
+        {"country": "France", "code": "FR", "risk": "low"},
+        {"country": "Japan", "code": "JP", "risk": "low"},
+        {"country": "Australia", "code": "AU", "risk": "low"},
+    ]
+
+    for country in common_countries:
+        if country["country"] not in country_data:
+            country_data[country["country"]] = {
+                "country": country["country"],
+                "country_code": country["code"],
+                "risk_level": country["risk"],
+                "transaction_count": 0,
+                "fraud_count": 0,
+                "total_amount": 0,
+                "avg_risk_score": 0,
+                "total_risk": 0
+            }
+
+    # Simulate location data for transactions (in real app, this would come from transaction data)
+    for assessment in assessments:
+        # Assign random country (in real system, this would be from transaction data)
+        country_name = random.choice(list(country_data.keys()))
+        country_info = country_data[country_name]
+
+        # Get transaction amount
+        tx = db.query(Transaction).filter(
+            Transaction.transaction_id == assessment.transaction_id
+        ).first()
+
+        if tx:
+            country_info["transaction_count"] += 1
+            country_info["total_amount"] += tx.amount
+            country_info["total_risk"] += assessment.risk_score
+
+            if assessment.risk_score >= 0.6:
+                country_info["fraud_count"] += 1
+
+    # Calculate averages
+    for data in country_data.values():
+        if data["transaction_count"] > 0:
+            data["avg_risk_score"] = data["total_risk"] / data["transaction_count"]
+            data["fraud_rate"] = data["fraud_count"] / data["transaction_count"]
+
+        geographic_data.append(data)
+
+    # Filter out countries with no transactions
+    geographic_data = [g for g in geographic_data if g["transaction_count"] > 0]
+
+    return {
+        "time_range": time_range,
+        "total_countries": len(geographic_data),
+        "data": geographic_data
+    }
+
+@app.get("/api/v1/analytics/high-value-transactions")
+async def get_high_value_transactions(
+    threshold: float = 10000.0,
+    time_range: str = "24h",
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get high-value transactions for monitoring.
+
+    Args:
+        threshold: Minimum amount to consider high-value (default 10000)
+        time_range: Time range to analyze
+        limit: Maximum transactions to return
+
+    Returns:
+        High-value transactions with risk analysis
+    """
+    from app.models.database import Transaction, RiskAssessment
+    import json
+
+    time_map = {"1h": 1, "24h": 24, "7d": 168, "30d": 720}
+    hours = time_map.get(time_range, 24)
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+
+    # Get high-value transactions
+    transactions = db.query(Transaction).filter(
+        Transaction.amount >= threshold,
+        Transaction.timestamp > cutoff
+    ).order_by(Transaction.amount.desc()).limit(limit).all()
+
+    results = []
+    total_amount = 0
+    high_risk_count = 0
+    flagged_amount = 0
+
+    for tx in transactions:
+        # Get risk assessment
+        assessment = db.query(RiskAssessment).filter(
+            RiskAssessment.transaction_id == tx.transaction_id
+        ).first()
+
+        risk_score = assessment.risk_score if assessment else 0
+        decision = assessment.decision if assessment else "unknown"
+        review_status = assessment.review_status if assessment else "pending"
+
+        triggered_rules = []
+        if assessment and assessment.triggered_rules:
+            triggered_data = json.loads(assessment.triggered_rules)
+            triggered_rules = list(triggered_data.keys())
+
+        total_amount += tx.amount
+
+        is_high_risk = risk_score >= 0.6
+        if is_high_risk:
+            high_risk_count += 1
+            flagged_amount += tx.amount
+
+        results.append({
+            "transaction_id": tx.transaction_id,
+            "account_id": tx.account_id,
+            "amount": tx.amount,
+            "direction": tx.direction,
+            "transaction_type": tx.transaction_type,
+            "description": tx.description,
+            "timestamp": tx.timestamp,
+            "counterparty_id": tx.counterparty_id,
+            "risk_score": risk_score,
+            "decision": decision,
+            "review_status": review_status,
+            "triggered_rules": triggered_rules,
+            "is_high_risk": is_high_risk
+        })
+
+    return {
+        "time_range": time_range,
+        "threshold": threshold,
+        "total_transactions": len(results),
+        "total_amount": total_amount,
+        "high_risk_count": high_risk_count,
+        "high_risk_rate": high_risk_count / len(results) if results else 0,
+        "flagged_amount": flagged_amount,
+        "transactions": results
+    }
+
+@app.get("/api/v1/analytics/limit-violations")
+async def get_limit_violations(
+    time_range: str = "24h",
+    severity: Optional[str] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get account limit violations.
+
+    Args:
+        time_range: Time range to analyze
+        severity: Filter by severity (low, medium, high, critical)
+        limit: Maximum violations to return
+
+    Returns:
+        List of limit violations with account details
+    """
+    from app.models.database import Transaction, RiskAssessment, Account, AccountLimit
+    import json
+
+    time_map = {"1h": 1, "24h": 24, "7d": 168, "30d": 720}
+    hours = time_map.get(time_range, 24)
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+
+    # Get all accounts with limits
+    accounts_with_limits = db.query(Account).join(
+        AccountLimit,
+        Account.account_id == AccountLimit.account_id
+    ).all()
+
+    violations = []
+    total_violation_amount = 0
+
+    for account in accounts_with_limits:
+        # Get account limits
+        limits = db.query(AccountLimit).filter(
+            AccountLimit.account_id == account.account_id
+        ).all()
+
+        for limit_obj in limits:
+            # Get transactions in the period
+            transactions = db.query(Transaction).filter(
+                Transaction.account_id == account.account_id,
+                Transaction.timestamp > cutoff
+            ).all()
+
+            # Check for violations based on limit type
+            for tx in transactions:
+                violation = None
+                severity_level = "low"
+
+                # Check single transaction limit
+                if limit_obj.single_transaction_limit and tx.amount > limit_obj.single_transaction_limit:
+                    violation = {
+                        "type": "single_transaction",
+                        "limit": limit_obj.single_transaction_limit,
+                        "actual": tx.amount,
+                        "excess": tx.amount - limit_obj.single_transaction_limit
+                    }
+                    severity_level = "high" if violation["excess"] > limit_obj.single_transaction_limit * 0.5 else "medium"
+
+                # Check daily limit
+                if limit_obj.daily_limit:
+                    # Calculate daily total
+                    day_start = tx.timestamp[:10]  # YYYY-MM-DD
+                    daily_txs = [t for t in transactions if t.timestamp.startswith(day_start)]
+                    daily_total = sum(t.amount for t in daily_txs)
+
+                    if daily_total > limit_obj.daily_limit:
+                        violation = {
+                            "type": "daily_limit",
+                            "limit": limit_obj.daily_limit,
+                            "actual": daily_total,
+                            "excess": daily_total - limit_obj.daily_limit
+                        }
+                        severity_level = "critical" if violation["excess"] > limit_obj.daily_limit * 0.5 else "high"
+
+                if violation:
+                    # Get risk assessment
+                    assessment = db.query(RiskAssessment).filter(
+                        RiskAssessment.transaction_id == tx.transaction_id
+                    ).first()
+
+                    total_violation_amount += violation["excess"]
+
+                    violations.append({
+                        "violation_id": f"VIO-{tx.transaction_id[:8]}",
+                        "transaction_id": tx.transaction_id,
+                        "account_id": account.account_id,
+                        "timestamp": tx.timestamp,
+                        "violation": violation,
+                        "severity": severity_level,
+                        "risk_score": assessment.risk_score if assessment else 0,
+                        "review_status": assessment.review_status if assessment else "pending"
+                    })
+
+    # Filter by severity if specified
+    if severity:
+        violations = [v for v in violations if v["severity"] == severity]
+
+    # Sort by severity and excess amount
+    severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    violations.sort(key=lambda x: (severity_order.get(x["severity"], 4), -x["violation"]["excess"]))
+
+    return {
+        "time_range": time_range,
+        "total_violations": len(violations),
+        "total_violation_amount": total_violation_amount,
+        "severity_breakdown": {
+            "critical": len([v for v in violations if v["severity"] == "critical"]),
+            "high": len([v for v in violations if v["severity"] == "high"]),
+            "medium": len([v for v in violations if v["severity"] == "medium"]),
+            "low": len([v for v in violations if v["severity"] == "low"])
+        },
+        "violations": violations[:limit]
+    }
+
+@app.get("/api/v1/analytics/account-risk-timeline/{account_id}")
+async def get_account_risk_timeline(
+    account_id: str,
+    time_range: str = "7d",
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get risk score timeline for a specific account.
+
+    Shows how an account's risk has evolved over time.
+
+    Args:
+        account_id: Account ID to analyze
+        time_range: Time range for timeline
+
+    Returns:
+        Time-series risk score data for the account
+    """
+    from app.models.database import Transaction, RiskAssessment
+    import json
+
+    time_map = {"1h": 1, "24h": 24, "7d": 168, "30d": 720}
+    hours = time_map.get(time_range, 24)
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+
+    # Get all transactions for the account
+    transactions = db.query(Transaction).filter(
+        Transaction.account_id == account_id,
+        Transaction.timestamp > cutoff
+    ).order_by(Transaction.timestamp).all()
+
+    timeline_data = []
+    cumulative_risk = []
+
+    for tx in transactions:
+        # Get risk assessment
+        assessment = db.query(RiskAssessment).filter(
+            RiskAssessment.transaction_id == tx.transaction_id
+        ).first()
+
+        if assessment:
+            risk_score = assessment.risk_score
+            cumulative_risk.append(risk_score)
+
+            # Calculate moving average (last 5 transactions)
+            moving_avg = sum(cumulative_risk[-5:]) / min(len(cumulative_risk), 5)
+
+            triggered_rules = []
+            if assessment.triggered_rules:
+                triggered_data = json.loads(assessment.triggered_rules)
+                triggered_rules = list(triggered_data.keys())
+
+            timeline_data.append({
+                "timestamp": tx.timestamp,
+                "transaction_id": tx.transaction_id,
+                "amount": tx.amount,
+                "risk_score": risk_score,
+                "moving_average": moving_avg,
+                "decision": assessment.decision,
+                "review_status": assessment.review_status,
+                "triggered_rules_count": len(triggered_rules),
+                "transaction_type": tx.transaction_type
+            })
+
+    # Calculate statistics
+    risk_scores = [d["risk_score"] for d in timeline_data]
+
+    return {
+        "account_id": account_id,
+        "time_range": time_range,
+        "total_transactions": len(timeline_data),
+        "statistics": {
+            "average_risk": sum(risk_scores) / len(risk_scores) if risk_scores else 0,
+            "max_risk": max(risk_scores) if risk_scores else 0,
+            "min_risk": min(risk_scores) if risk_scores else 0,
+            "current_risk": risk_scores[-1] if risk_scores else 0,
+            "risk_trend": "increasing" if len(risk_scores) >= 2 and risk_scores[-1] > risk_scores[0] else "decreasing",
+            "high_risk_count": len([r for r in risk_scores if r >= 0.6])
+        },
+        "timeline": timeline_data
+    }
+
 # ==================== Run Application ====================
 
 if __name__ == "__main__":
