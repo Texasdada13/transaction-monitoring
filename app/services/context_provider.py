@@ -94,6 +94,9 @@ class ContextProvider:
         # Add recipient relationship analysis context
         self._add_recipient_relationship_context(context, account_id, transaction)
 
+        # Add social trust score context
+        self._add_social_trust_score_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -2189,3 +2192,302 @@ class ContextProvider:
         context["recipient_relationship_risk_flags"] = risk_flags
         context["recipient_relationship_risk_count"] = len(risk_flags)
         context["recipient_relationship_high_risk"] = len(risk_flags) >= 2
+
+    def _add_social_trust_score_context(self, context: Dict[str, Any],
+                                         account_id: str,
+                                         transaction: Dict[str, Any]) -> None:
+        """
+        Add social trust score for recipient fraud detection.
+
+        Calculates a comprehensive trust score (0-100) based on multiple factors:
+        - Presence in beneficiary/contact list
+        - Verification status
+        - Transaction history length
+        - Transaction frequency
+        - Relationship age
+        - Social signals (mutual connections, endorsements)
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        counterparty_id = transaction.get("counterparty_id")
+
+        if not counterparty_id:
+            context["social_trust_score_available"] = False
+            return
+
+        context["social_trust_score_available"] = True
+
+        # Initialize trust score components
+        trust_factors = {}
+        total_score = 0
+        max_possible_score = 100
+
+        # Factor 1: Beneficiary Status (25 points)
+        beneficiary = self.db.query(Beneficiary).filter(
+            Beneficiary.account_id == account_id,
+            Beneficiary.counterparty_id == counterparty_id,
+            Beneficiary.status == "active"
+        ).first()
+
+        if beneficiary:
+            beneficiary_score = 0
+
+            # Base points for being in beneficiary list
+            beneficiary_score += 10
+            trust_factors["in_beneficiary_list"] = True
+
+            # Verification status
+            if beneficiary.verified:
+                beneficiary_score += 10
+                trust_factors["beneficiary_verified"] = True
+            else:
+                trust_factors["beneficiary_verified"] = False
+
+            # Not flagged as suspicious
+            if not beneficiary.flagged_as_suspicious:
+                beneficiary_score += 5
+                trust_factors["not_flagged_suspicious"] = True
+            else:
+                trust_factors["not_flagged_suspicious"] = False
+                beneficiary_score -= 5  # Penalty for suspicious flag
+
+            trust_factors["beneficiary_score"] = beneficiary_score
+            total_score += beneficiary_score
+        else:
+            trust_factors["in_beneficiary_list"] = False
+            trust_factors["beneficiary_verified"] = False
+            trust_factors["beneficiary_score"] = 0
+
+        # Factor 2: Transaction History (30 points)
+        now = datetime.datetime.utcnow()
+        all_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.counterparty_id == counterparty_id
+        ).order_by(Transaction.timestamp.desc()).all()
+
+        transaction_history_score = 0
+
+        if all_txs:
+            # Number of previous transactions (up to 15 points)
+            tx_count = len(all_txs)
+            if tx_count >= 10:
+                transaction_history_score += 15
+            elif tx_count >= 5:
+                transaction_history_score += 10
+            elif tx_count >= 2:
+                transaction_history_score += 5
+            else:  # 1 transaction
+                transaction_history_score += 2
+
+            trust_factors["transaction_count"] = tx_count
+
+            # Relationship age (up to 10 points)
+            first_tx = all_txs[-1]
+            first_tx_time = datetime.datetime.fromisoformat(first_tx.timestamp)
+            relationship_age_days = (now - first_tx_time).days
+
+            if relationship_age_days >= 365:  # 1+ years
+                transaction_history_score += 10
+            elif relationship_age_days >= 180:  # 6+ months
+                transaction_history_score += 7
+            elif relationship_age_days >= 90:  # 3+ months
+                transaction_history_score += 5
+            elif relationship_age_days >= 30:  # 1+ month
+                transaction_history_score += 3
+            else:
+                transaction_history_score += 1
+
+            trust_factors["relationship_age_days"] = relationship_age_days
+
+            # Transaction recency (up to 5 points)
+            # Penalize if last transaction was too long ago
+            last_tx = all_txs[0]
+            last_tx_time = datetime.datetime.fromisoformat(last_tx.timestamp)
+            days_since_last = (now - last_tx_time).days
+
+            if days_since_last <= 30:  # Recent
+                transaction_history_score += 5
+            elif days_since_last <= 90:
+                transaction_history_score += 3
+            elif days_since_last <= 180:
+                transaction_history_score += 1
+            else:  # Dormant - no bonus, potential risk
+                transaction_history_score += 0
+
+            trust_factors["days_since_last_transaction"] = days_since_last
+        else:
+            # New recipient - low trust
+            trust_factors["transaction_count"] = 0
+            trust_factors["relationship_age_days"] = 0
+            transaction_history_score = 0
+
+        trust_factors["transaction_history_score"] = transaction_history_score
+        total_score += transaction_history_score
+
+        # Factor 3: Contact List Presence (15 points)
+        # Check transaction metadata for contact list indicators
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        contact_score = 0
+
+        if tx_metadata:
+            # Check if recipient is in contact list
+            in_contact_list = tx_metadata.get("in_contact_list", False)
+            if in_contact_list:
+                contact_score += 10
+                trust_factors["in_contact_list"] = True
+            else:
+                trust_factors["in_contact_list"] = False
+
+            # Check if recipient's contact info is saved
+            has_saved_info = tx_metadata.get("has_saved_email") or tx_metadata.get("has_saved_phone")
+            if has_saved_info:
+                contact_score += 5
+                trust_factors["has_saved_contact_info"] = True
+            else:
+                trust_factors["has_saved_contact_info"] = False
+        else:
+            trust_factors["in_contact_list"] = False
+            trust_factors["has_saved_contact_info"] = False
+
+        trust_factors["contact_score"] = contact_score
+        total_score += contact_score
+
+        # Factor 4: Social Signals (15 points)
+        social_score = 0
+
+        if tx_metadata:
+            # Mutual connections
+            mutual_connections = tx_metadata.get("mutual_connections", 0)
+            if mutual_connections >= 5:
+                social_score += 8
+            elif mutual_connections >= 2:
+                social_score += 5
+            elif mutual_connections >= 1:
+                social_score += 3
+
+            trust_factors["mutual_connections"] = mutual_connections
+
+            # Endorsements or references
+            has_endorsements = tx_metadata.get("has_endorsements", False)
+            if has_endorsements:
+                social_score += 5
+                trust_factors["has_endorsements"] = True
+            else:
+                trust_factors["has_endorsements"] = False
+
+            # Known entity (business, verified organization)
+            is_known_entity = tx_metadata.get("is_verified_business", False) or tx_metadata.get("is_registered_business", False)
+            if is_known_entity:
+                social_score += 2
+                trust_factors["is_known_entity"] = True
+            else:
+                trust_factors["is_known_entity"] = False
+        else:
+            trust_factors["mutual_connections"] = 0
+            trust_factors["has_endorsements"] = False
+            trust_factors["is_known_entity"] = False
+
+        trust_factors["social_score"] = social_score
+        total_score += social_score
+
+        # Factor 5: Transaction Pattern Consistency (15 points)
+        pattern_score = 0
+
+        if all_txs and len(all_txs) >= 3:
+            # Analyze amount consistency
+            amounts = [tx.amount for tx in all_txs]
+            avg_amount = sum(amounts) / len(amounts)
+
+            # Calculate coefficient of variation (std dev / mean)
+            import math
+            if len(amounts) > 1:
+                variance = sum((x - avg_amount) ** 2 for x in amounts) / len(amounts)
+                std_dev = math.sqrt(variance)
+
+                if avg_amount > 0:
+                    coefficient_of_variation = std_dev / avg_amount
+
+                    # Lower variation = more consistent = higher trust
+                    if coefficient_of_variation <= 0.3:  # Very consistent
+                        pattern_score += 10
+                    elif coefficient_of_variation <= 0.6:  # Moderately consistent
+                        pattern_score += 6
+                    elif coefficient_of_variation <= 1.0:  # Somewhat consistent
+                        pattern_score += 3
+
+                    trust_factors["amount_consistency_score"] = 10 - min(coefficient_of_variation * 10, 10)
+
+            # Transaction frequency consistency (if we have enough data)
+            if len(all_txs) >= 5:
+                time_gaps = []
+                for i in range(len(all_txs) - 1):
+                    tx1_time = datetime.datetime.fromisoformat(all_txs[i].timestamp)
+                    tx2_time = datetime.datetime.fromisoformat(all_txs[i + 1].timestamp)
+                    gap_days = (tx1_time - tx2_time).days
+                    time_gaps.append(gap_days)
+
+                if time_gaps:
+                    avg_gap = sum(time_gaps) / len(time_gaps)
+                    gap_variance = sum((x - avg_gap) ** 2 for x in time_gaps) / len(time_gaps)
+                    gap_std = math.sqrt(gap_variance)
+
+                    if avg_gap > 0:
+                        gap_cv = gap_std / avg_gap
+
+                        # Consistent timing = higher trust
+                        if gap_cv <= 0.5:  # Very regular
+                            pattern_score += 5
+                        elif gap_cv <= 1.0:  # Moderately regular
+                            pattern_score += 3
+
+                        trust_factors["timing_consistency_score"] = 5 - min(gap_cv * 5, 5)
+        else:
+            trust_factors["amount_consistency_score"] = 0
+            trust_factors["timing_consistency_score"] = 0
+
+        trust_factors["pattern_score"] = pattern_score
+        total_score += pattern_score
+
+        # Calculate final trust score (0-100)
+        trust_score = min(total_score, max_possible_score)
+
+        # Normalize to 0.0-1.0 scale as well
+        trust_score_normalized = trust_score / 100.0
+
+        # Classify trust level
+        if trust_score >= 80:
+            trust_level = "high"
+        elif trust_score >= 60:
+            trust_level = "medium_high"
+        elif trust_score >= 40:
+            trust_level = "medium"
+        elif trust_score >= 20:
+            trust_level = "low"
+        else:
+            trust_level = "very_low"
+
+        # Store in context
+        context["social_trust_score"] = trust_score
+        context["social_trust_score_normalized"] = trust_score_normalized
+        context["social_trust_level"] = trust_level
+        context["social_trust_factors"] = trust_factors
+
+        # Flag low trust recipients
+        context["is_low_trust_recipient"] = trust_score < 40
+        context["is_very_low_trust_recipient"] = trust_score < 20
+        context["is_high_trust_recipient"] = trust_score >= 80
+
+        # Calculate trust deficit for low trust recipients
+        if trust_score < 60:
+            trust_deficit = 60 - trust_score
+            context["trust_deficit"] = trust_deficit
+            context["requires_additional_verification"] = trust_deficit >= 20
