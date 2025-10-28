@@ -197,6 +197,43 @@ class BeneficiaryChangeHistory(Base):
     # Relationships
     beneficiary = relationship("Beneficiary", back_populates="change_history")
     account = relationship("Account")
+
+class Blacklist(Base):
+    """
+    Tracks blacklisted entities (accounts, merchants, UPI IDs) to prevent fraudulent transactions.
+    Used to detect and block transactions to/from known fraudulent or high-risk entities.
+    """
+    __tablename__ = "blacklist"
+
+    blacklist_id = Column(String, primary_key=True, index=True)
+
+    # Entity identifiers (at least one must be provided)
+    entity_type = Column(String, index=True)  # "account", "merchant", "upi", "routing_number", "email", "phone"
+    entity_value = Column(String, index=True)  # The actual ID/value being blacklisted
+
+    # Entity details
+    entity_name = Column(String, nullable=True)  # Name of the blacklisted entity
+    counterparty_id = Column(String, index=True, nullable=True)  # If it's a counterparty
+
+    # Blacklist metadata
+    reason = Column(Text)  # Reason for blacklisting
+    severity = Column(String, default="high")  # "low", "medium", "high", "critical"
+    added_date = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
+    added_by = Column(String, nullable=True)  # Admin/system ID that added the entry
+    source = Column(String, nullable=True)  # "internal_investigation", "law_enforcement", "industry_report", "user_report"
+
+    # Status
+    status = Column(String, default="active", index=True)  # "active", "removed", "expired"
+    expiry_date = Column(String, nullable=True)  # Optional expiry for temporary blacklists
+    removed_date = Column(String, nullable=True)
+    removed_by = Column(String, nullable=True)
+    removal_reason = Column(Text, nullable=True)
+
+    # Additional context
+    related_case_id = Column(String, nullable=True)  # Link to investigation case
+    notes = Column(Text, nullable=True)
+    external_reference = Column(String, nullable=True)  # Reference to external blacklist systems
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)

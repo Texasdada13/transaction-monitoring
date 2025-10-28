@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -75,6 +75,9 @@ class ContextProvider:
         # Add geographic context
         geographic_context = self.get_geographic_context(transaction)
         context.update(geographic_context)
+
+        # Add blacklist detection context
+        self._add_blacklist_context(context, transaction)
 
         return context
     
@@ -1036,3 +1039,99 @@ class ContextProvider:
             context["is_first_international_payment"] = not has_previous_international
 
         return context
+
+    def _add_blacklist_context(self, context: Dict[str, Any],
+                                transaction: Dict[str, Any]) -> None:
+        """
+        Add blacklist detection context.
+
+        Checks if the counterparty, account, or other identifiers are on the blacklist.
+
+        Args:
+            context: Context dictionary to update
+            transaction: Transaction data
+        """
+        counterparty_id = transaction.get("counterparty_id")
+
+        # Initialize blacklist flags
+        context["is_blacklisted"] = False
+        context["blacklist_matches"] = []
+
+        if not counterparty_id:
+            return
+
+        # Check if counterparty is blacklisted
+        blacklist_entries = self.db.query(Blacklist).filter(
+            Blacklist.status == "active",
+            Blacklist.entity_value == counterparty_id
+        ).all()
+
+        # Also check by entity type if we have metadata
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        # Check for additional identifiers in metadata
+        additional_checks = []
+        if tx_metadata:
+            # Check UPI ID
+            upi_id = tx_metadata.get("upi_id")
+            if upi_id:
+                additional_checks.append(("upi", upi_id))
+
+            # Check merchant ID
+            merchant_id = tx_metadata.get("merchant_id")
+            if merchant_id:
+                additional_checks.append(("merchant", merchant_id))
+
+            # Check routing number
+            routing_number = tx_metadata.get("routing_number")
+            if routing_number:
+                additional_checks.append(("routing_number", routing_number))
+
+            # Check email
+            email = tx_metadata.get("email") or tx_metadata.get("recipient_email")
+            if email:
+                additional_checks.append(("email", email))
+
+            # Check phone
+            phone = tx_metadata.get("phone") or tx_metadata.get("recipient_phone")
+            if phone:
+                additional_checks.append(("phone", phone))
+
+        # Query for additional identifier matches
+        for entity_type, entity_value in additional_checks:
+            matches = self.db.query(Blacklist).filter(
+                Blacklist.status == "active",
+                Blacklist.entity_type == entity_type,
+                Blacklist.entity_value == entity_value
+            ).all()
+            blacklist_entries.extend(matches)
+
+        # Process blacklist matches
+        if blacklist_entries:
+            context["is_blacklisted"] = True
+            context["blacklist_matches"] = [
+                {
+                    "entity_type": entry.entity_type,
+                    "entity_value": entry.entity_value,
+                    "entity_name": entry.entity_name,
+                    "reason": entry.reason,
+                    "severity": entry.severity,
+                    "added_date": entry.added_date,
+                    "source": entry.source
+                }
+                for entry in blacklist_entries
+            ]
+
+            # Get highest severity level
+            severity_order = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+            max_severity = max(
+                (entry.severity for entry in blacklist_entries),
+                key=lambda s: severity_order.get(s, 0)
+            )
+            context["blacklist_max_severity"] = max_severity
+            context["blacklist_match_count"] = len(blacklist_entries)
