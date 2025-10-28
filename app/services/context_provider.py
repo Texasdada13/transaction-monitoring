@@ -109,6 +109,9 @@ class ContextProvider:
         # Add location-inconsistent transactions detection context
         self._add_location_inconsistent_transactions_context(context, account_id, transaction)
 
+        # Add normalized transaction amount detection context
+        self._add_normalized_transaction_amount_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -4099,3 +4102,449 @@ class ContextProvider:
             inconsistency_risk_level = "minimal"
 
         context["location_inconsistency_risk_level"] = inconsistency_risk_level
+
+    def _add_normalized_transaction_amount_context(self, context: Dict[str, Any],
+                                                     account_id: str,
+                                                     transaction: Dict[str, Any]) -> None:
+        """
+        Add normalized transaction amount analysis for fraud detection.
+
+        Compares transaction amount against normalized values for similar users
+        and demographic profiles. Detects anomalies when transactions deviate
+        significantly from peer group norms.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account identifier
+            transaction: Current transaction data
+        """
+        import statistics
+        from collections import defaultdict
+
+        now = datetime.datetime.utcnow()
+        tx_amount = abs(float(transaction.get("amount", 0)))
+
+        if tx_amount == 0:
+            context["normalized_amount_check_available"] = False
+            return
+
+        context["normalized_amount_check_available"] = True
+        context["current_transaction_amount"] = tx_amount
+
+        # Get account information for demographic segmentation
+        account = self.db.query(Account).filter(Account.account_id == account_id).first()
+
+        if not account:
+            context["account_not_found"] = True
+            return
+
+        # Extract demographic attributes
+        account_creation = datetime.datetime.fromisoformat(account.creation_date)
+        account_age_days = (now - account_creation).days
+        risk_tier = account.risk_tier if hasattr(account, 'risk_tier') else "medium"
+
+        # Parse account metadata for additional demographics
+        account_metadata = {}
+        if hasattr(account, 'metadata') and account.metadata:
+            try:
+                account_metadata = json.loads(account.metadata) if isinstance(account.metadata, str) else account.metadata
+            except (json.JSONDecodeError, TypeError):
+                account_metadata = {}
+
+        # Extract demographic factors
+        user_location = account_metadata.get("country") or account_metadata.get("location")
+        user_occupation = account_metadata.get("occupation") or account_metadata.get("industry")
+        account_balance = float(account_metadata.get("balance", 0))
+        income_level = account_metadata.get("income_level")
+
+        # Transaction metadata
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            tx_metadata = {}
+
+        tx_type = transaction.get("transaction_type") or tx_metadata.get("type", "transfer")
+        tx_category = tx_metadata.get("category", "general")
+
+        # Store demographic profile
+        context["user_demographic_profile"] = {
+            "account_age_days": account_age_days,
+            "risk_tier": risk_tier,
+            "location": user_location,
+            "occupation": user_occupation,
+            "income_level": income_level,
+            "account_balance": account_balance
+        }
+
+        # Define cohort segments for comparison
+        # Account Age Cohorts
+        if account_age_days < 7:
+            age_cohort = "brand_new"
+        elif account_age_days < 30:
+            age_cohort = "very_new"
+        elif account_age_days < 90:
+            age_cohort = "new"
+        elif account_age_days < 180:
+            age_cohort = "young"
+        elif account_age_days < 365:
+            age_cohort = "maturing"
+        else:
+            age_cohort = "established"
+
+        context["account_age_cohort"] = age_cohort
+
+        # Get historical transactions for normalization
+        # 1. Get user's own historical baseline
+        ninety_days_ago = (now - datetime.timedelta(days=90)).isoformat()
+        user_historical_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > ninety_days_ago
+        ).all()
+
+        user_amounts = [abs(float(tx.amount)) for tx in user_historical_txs if tx.amount]
+
+        if user_amounts:
+            context["user_historical_transaction_count"] = len(user_amounts)
+            context["user_avg_transaction_amount"] = statistics.mean(user_amounts)
+            context["user_median_transaction_amount"] = statistics.median(user_amounts)
+
+            if len(user_amounts) >= 2:
+                context["user_stddev_transaction_amount"] = statistics.stdev(user_amounts)
+
+                # Calculate percentiles
+                user_amounts_sorted = sorted(user_amounts)
+                context["user_p25_amount"] = user_amounts_sorted[len(user_amounts_sorted) // 4]
+                context["user_p50_amount"] = statistics.median(user_amounts)
+                context["user_p75_amount"] = user_amounts_sorted[3 * len(user_amounts_sorted) // 4]
+                context["user_p90_amount"] = user_amounts_sorted[int(len(user_amounts_sorted) * 0.9)]
+                context["user_p95_amount"] = user_amounts_sorted[int(len(user_amounts_sorted) * 0.95)]
+                context["user_max_amount"] = max(user_amounts)
+                context["user_min_amount"] = min(user_amounts)
+
+                # Calculate current transaction percentile in user's own history
+                rank = sum(1 for amt in user_amounts if amt <= tx_amount)
+                user_percentile = (rank / len(user_amounts)) * 100
+                context["current_tx_user_percentile"] = user_percentile
+
+                # Z-score for user's own distribution
+                if context["user_stddev_transaction_amount"] > 0:
+                    user_z_score = (tx_amount - context["user_avg_transaction_amount"]) / context["user_stddev_transaction_amount"]
+                    context["current_tx_user_z_score"] = user_z_score
+                else:
+                    context["current_tx_user_z_score"] = 0
+            else:
+                context["user_stddev_transaction_amount"] = 0
+                context["current_tx_user_percentile"] = 50
+                context["current_tx_user_z_score"] = 0
+        else:
+            context["user_historical_transaction_count"] = 0
+            context["insufficient_user_history"] = True
+
+        # 2. Get peer group statistics (same cohort)
+        # Query transactions from similar accounts
+        peer_accounts_query = self.db.query(Account).filter(
+            Account.account_id != account_id
+        )
+
+        # Filter by risk tier
+        peer_accounts_query = peer_accounts_query.filter(Account.risk_tier == risk_tier)
+
+        # Get peer accounts (limit to 1000 for performance)
+        peer_accounts = peer_accounts_query.limit(1000).all()
+
+        # Filter peer accounts by age cohort
+        peer_account_ids = []
+        for peer in peer_accounts:
+            try:
+                peer_creation = datetime.datetime.fromisoformat(peer.creation_date)
+                peer_age_days = (now - peer_creation).days
+
+                # Check if same cohort
+                if account_age_days < 7 and peer_age_days < 7:
+                    peer_account_ids.append(peer.account_id)
+                elif 7 <= account_age_days < 30 and 7 <= peer_age_days < 30:
+                    peer_account_ids.append(peer.account_id)
+                elif 30 <= account_age_days < 90 and 30 <= peer_age_days < 90:
+                    peer_account_ids.append(peer.account_id)
+                elif 90 <= account_age_days < 180 and 90 <= peer_age_days < 180:
+                    peer_account_ids.append(peer.account_id)
+                elif 180 <= account_age_days < 365 and 180 <= peer_age_days < 365:
+                    peer_account_ids.append(peer.account_id)
+                elif account_age_days >= 365 and peer_age_days >= 365:
+                    peer_account_ids.append(peer.account_id)
+            except (ValueError, AttributeError):
+                continue
+
+        context["peer_group_size"] = len(peer_account_ids)
+
+        if peer_account_ids:
+            # Get peer transactions
+            peer_txs = self.db.query(Transaction).filter(
+                Transaction.account_id.in_(peer_account_ids),
+                Transaction.timestamp > ninety_days_ago
+            ).limit(10000).all()  # Limit for performance
+
+            peer_amounts = [abs(float(tx.amount)) for tx in peer_txs if tx.amount]
+
+            if peer_amounts and len(peer_amounts) >= 10:
+                context["peer_transaction_count"] = len(peer_amounts)
+                context["peer_avg_transaction_amount"] = statistics.mean(peer_amounts)
+                context["peer_median_transaction_amount"] = statistics.median(peer_amounts)
+
+                if len(peer_amounts) >= 2:
+                    context["peer_stddev_transaction_amount"] = statistics.stdev(peer_amounts)
+
+                    # Peer percentiles
+                    peer_amounts_sorted = sorted(peer_amounts)
+                    context["peer_p25_amount"] = peer_amounts_sorted[len(peer_amounts_sorted) // 4]
+                    context["peer_p50_amount"] = statistics.median(peer_amounts)
+                    context["peer_p75_amount"] = peer_amounts_sorted[3 * len(peer_amounts_sorted) // 4]
+                    context["peer_p90_amount"] = peer_amounts_sorted[int(len(peer_amounts_sorted) * 0.9)]
+                    context["peer_p95_amount"] = peer_amounts_sorted[int(len(peer_amounts_sorted) * 0.95)]
+                    context["peer_p99_amount"] = peer_amounts_sorted[int(len(peer_amounts_sorted) * 0.99)]
+                    context["peer_max_amount"] = max(peer_amounts)
+
+                    # Calculate current transaction percentile in peer group
+                    peer_rank = sum(1 for amt in peer_amounts if amt <= tx_amount)
+                    peer_percentile = (peer_rank / len(peer_amounts)) * 100
+                    context["current_tx_peer_percentile"] = peer_percentile
+
+                    # Z-score for peer distribution
+                    if context["peer_stddev_transaction_amount"] > 0:
+                        peer_z_score = (tx_amount - context["peer_avg_transaction_amount"]) / context["peer_stddev_transaction_amount"]
+                        context["current_tx_peer_z_score"] = peer_z_score
+                    else:
+                        context["current_tx_peer_z_score"] = 0
+                else:
+                    context["peer_stddev_transaction_amount"] = 0
+                    context["current_tx_peer_percentile"] = 50
+                    context["current_tx_peer_z_score"] = 0
+            else:
+                context["insufficient_peer_data"] = True
+                context["peer_transaction_count"] = len(peer_amounts) if peer_amounts else 0
+        else:
+            context["no_peer_group_found"] = True
+
+        # 3. Calculate normalized scores and deviations
+        normalization_results = {}
+
+        # User baseline comparison
+        if context.get("user_avg_transaction_amount"):
+            user_avg = context["user_avg_transaction_amount"]
+            deviation_from_user_avg = ((tx_amount - user_avg) / user_avg) * 100 if user_avg > 0 else 0
+            normalization_results["deviation_from_user_avg_pct"] = deviation_from_user_avg
+
+            # Flag significant deviations
+            if abs(deviation_from_user_avg) > 200:
+                normalization_results["extreme_deviation_from_user_baseline"] = True
+            elif abs(deviation_from_user_avg) > 100:
+                normalization_results["high_deviation_from_user_baseline"] = True
+            else:
+                normalization_results["extreme_deviation_from_user_baseline"] = False
+                normalization_results["high_deviation_from_user_baseline"] = False
+
+        # Peer group comparison
+        if context.get("peer_avg_transaction_amount"):
+            peer_avg = context["peer_avg_transaction_amount"]
+            deviation_from_peer_avg = ((tx_amount - peer_avg) / peer_avg) * 100 if peer_avg > 0 else 0
+            normalization_results["deviation_from_peer_avg_pct"] = deviation_from_peer_avg
+
+            # Flag deviations
+            if abs(deviation_from_peer_avg) > 300:
+                normalization_results["extreme_deviation_from_peer_baseline"] = True
+            elif abs(deviation_from_peer_avg) > 150:
+                normalization_results["high_deviation_from_peer_baseline"] = True
+            else:
+                normalization_results["extreme_deviation_from_peer_baseline"] = False
+                normalization_results["high_deviation_from_peer_baseline"] = False
+
+        # Account balance ratio
+        if account_balance > 0:
+            balance_ratio = (tx_amount / account_balance) * 100
+            context["transaction_to_balance_ratio_pct"] = balance_ratio
+
+            if balance_ratio > 80:
+                normalization_results["high_balance_ratio"] = True
+            else:
+                normalization_results["high_balance_ratio"] = False
+        else:
+            context["transaction_to_balance_ratio_pct"] = 0
+            normalization_results["high_balance_ratio"] = False
+
+        context["normalization_results"] = normalization_results
+
+        # 4. Generate risk flags
+        risk_flags = []
+
+        # Exceeds user's historical maximum
+        if context.get("user_max_amount") and tx_amount > context["user_max_amount"]:
+            risk_flags.append("exceeds_user_historical_max")
+
+        # High percentile in user's distribution
+        if context.get("current_tx_user_percentile"):
+            if context["current_tx_user_percentile"] >= 99:
+                risk_flags.append("top_1_percent_user_history")
+            elif context["current_tx_user_percentile"] >= 95:
+                risk_flags.append("top_5_percent_user_history")
+            elif context["current_tx_user_percentile"] >= 90:
+                risk_flags.append("top_10_percent_user_history")
+
+        # High percentile in peer distribution
+        if context.get("current_tx_peer_percentile"):
+            if context["current_tx_peer_percentile"] >= 99:
+                risk_flags.append("top_1_percent_peer_group")
+            elif context["current_tx_peer_percentile"] >= 95:
+                risk_flags.append("top_5_percent_peer_group")
+            elif context["current_tx_peer_percentile"] >= 90:
+                risk_flags.append("top_10_percent_peer_group")
+
+        # High Z-scores
+        user_z = context.get("current_tx_user_z_score", 0)
+        peer_z = context.get("current_tx_peer_z_score", 0)
+
+        if abs(user_z) >= 3:
+            risk_flags.append("user_z_score_extreme")  # 3+ std deviations
+        elif abs(user_z) >= 2:
+            risk_flags.append("user_z_score_high")  # 2+ std deviations
+
+        if abs(peer_z) >= 3:
+            risk_flags.append("peer_z_score_extreme")
+        elif abs(peer_z) >= 2:
+            risk_flags.append("peer_z_score_high")
+
+        # Deviation flags
+        if normalization_results.get("extreme_deviation_from_user_baseline"):
+            risk_flags.append("extreme_deviation_from_user_baseline")
+        elif normalization_results.get("high_deviation_from_user_baseline"):
+            risk_flags.append("high_deviation_from_user_baseline")
+
+        if normalization_results.get("extreme_deviation_from_peer_baseline"):
+            risk_flags.append("extreme_deviation_from_peer_baseline")
+        elif normalization_results.get("high_deviation_from_peer_baseline"):
+            risk_flags.append("high_deviation_from_peer_baseline")
+
+        # High balance ratio
+        if normalization_results.get("high_balance_ratio"):
+            risk_flags.append("high_transaction_to_balance_ratio")
+
+        # New user with large transaction
+        if age_cohort in ["brand_new", "very_new"] and tx_amount > 5000:
+            risk_flags.append("new_user_large_transaction")
+
+        # Peer outlier (significantly higher than peer group)
+        if context.get("peer_avg_transaction_amount"):
+            if tx_amount > context.get("peer_p95_amount", float('inf')):
+                risk_flags.append("exceeds_peer_95th_percentile")
+
+        # Inconsistent with user's typical behavior
+        if context.get("user_avg_transaction_amount"):
+            if tx_amount > context.get("user_p90_amount", float('inf')):
+                risk_flags.append("exceeds_user_90th_percentile")
+
+        # First large transaction
+        if context.get("user_historical_transaction_count", 0) <= 3 and tx_amount > 2000:
+            risk_flags.append("first_few_transactions_large_amount")
+
+        context["normalized_amount_risk_flags"] = risk_flags
+        context["normalized_amount_risk_flag_count"] = len(risk_flags)
+
+        # 5. Calculate comprehensive normalized amount risk score (0-100)
+        risk_score = 0
+
+        # Base score for amount size
+        if tx_amount > 50000:
+            risk_score += 20
+        elif tx_amount > 25000:
+            risk_score += 15
+        elif tx_amount > 10000:
+            risk_score += 10
+        elif tx_amount > 5000:
+            risk_score += 5
+
+        # User percentile scoring
+        user_pct = context.get("current_tx_user_percentile", 50)
+        if user_pct >= 99:
+            risk_score += 30
+        elif user_pct >= 95:
+            risk_score += 20
+        elif user_pct >= 90:
+            risk_score += 12
+        elif user_pct >= 75:
+            risk_score += 5
+
+        # Peer percentile scoring
+        peer_pct = context.get("current_tx_peer_percentile", 50)
+        if peer_pct >= 99:
+            risk_score += 25
+        elif peer_pct >= 18:
+            risk_score += 18
+        elif peer_pct >= 90:
+            risk_score += 10
+
+        # Z-score scoring
+        if abs(user_z) >= 3:
+            risk_score += 25
+        elif abs(user_z) >= 2:
+            risk_score += 15
+
+        if abs(peer_z) >= 3:
+            risk_score += 20
+        elif abs(peer_z) >= 2:
+            risk_score += 12
+
+        # Deviation scoring
+        user_dev = abs(normalization_results.get("deviation_from_user_avg_pct", 0))
+        if user_dev > 300:
+            risk_score += 25
+        elif user_dev > 200:
+            risk_score += 18
+        elif user_dev > 100:
+            risk_score += 10
+
+        peer_dev = abs(normalization_results.get("deviation_from_peer_avg_pct", 0))
+        if peer_dev > 400:
+            risk_score += 20
+        elif peer_dev > 300:
+            risk_score += 15
+        elif peer_dev > 150:
+            risk_score += 8
+
+        # Balance ratio scoring
+        balance_ratio = context.get("transaction_to_balance_ratio_pct", 0)
+        if balance_ratio > 90:
+            risk_score += 30
+        elif balance_ratio > 80:
+            risk_score += 20
+        elif balance_ratio > 50:
+            risk_score += 10
+
+        # New account large transaction
+        if age_cohort in ["brand_new", "very_new"]:
+            if tx_amount > 10000:
+                risk_score += 30
+            elif tx_amount > 5000:
+                risk_score += 20
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["normalized_amount_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            amount_risk_level = "critical"
+        elif risk_score >= 60:
+            amount_risk_level = "high"
+        elif risk_score >= 40:
+            amount_risk_level = "medium"
+        elif risk_score >= 20:
+            amount_risk_level = "low"
+        else:
+            amount_risk_level = "minimal"
+
+        context["normalized_amount_risk_level"] = amount_risk_level
