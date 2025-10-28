@@ -2880,7 +2880,7 @@ class ContextProvider:
         context["holiday_name"] = holiday_name if is_holiday_flag else None
 
         # End of month pattern (fraudsters often target payroll dates)
-        is_end_of_month = day >= 28 or day <= 3
+        is_end_of_month = tx_day >= 28 or tx_day <= 3
         context["is_end_of_month"] = is_end_of_month
 
         # Get historical transactions for pattern analysis
