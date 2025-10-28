@@ -660,6 +660,82 @@ class MerchantProfile(Base):
     notes = Column(Text, nullable=True)
     additional_data = Column(Text, nullable=True)  # JSON for extra fields
 
+class AccountLimit(Base):
+    """Model for tracking account transaction limits and thresholds"""
+    __tablename__ = "account_limits"
+
+    id = Column(Integer, primary_key=True, index=True)
+    account_id = Column(String(255), nullable=False, index=True)
+
+    # Limit types and values
+    # Daily limits
+    daily_transaction_count_limit = Column(Integer, nullable=True)  # Max number of transactions per day
+    daily_transaction_amount_limit = Column(Float, nullable=True)  # Max total amount per day
+    daily_debit_limit = Column(Float, nullable=True)  # Max total debit amount per day
+    daily_credit_limit = Column(Float, nullable=True)  # Max total credit amount per day
+
+    # Single transaction limits
+    single_transaction_limit = Column(Float, nullable=True)  # Max amount for a single transaction
+    single_debit_limit = Column(Float, nullable=True)  # Max amount for a single debit
+    single_credit_limit = Column(Float, nullable=True)  # Max amount for a single credit
+
+    # Weekly/Monthly limits (optional)
+    weekly_transaction_amount_limit = Column(Float, nullable=True)
+    monthly_transaction_amount_limit = Column(Float, nullable=True)
+
+    # Per-transaction-type limits
+    ach_daily_limit = Column(Float, nullable=True)
+    wire_daily_limit = Column(Float, nullable=True)
+    card_daily_limit = Column(Float, nullable=True)
+    upi_daily_limit = Column(Float, nullable=True)
+
+    # Per-counterparty limits
+    per_beneficiary_daily_limit = Column(Float, nullable=True)  # Max amount to single beneficiary per day
+    per_beneficiary_transaction_limit = Column(Float, nullable=True)  # Max amount per transaction to beneficiary
+
+    # Limit status
+    status = Column(String(50), nullable=False, default="active", index=True)  # "active", "suspended", "override"
+    is_custom_limit = Column(Boolean, default=False)  # Custom vs default limit
+    risk_based_adjustment = Column(Float, default=1.0)  # Multiplier for risk-based limit adjustment (0.5 = 50% of normal)
+
+    # Effective dates
+    effective_date = Column(DateTime, nullable=False, default=datetime.datetime.utcnow, index=True)
+    expiration_date = Column(DateTime, nullable=True, index=True)
+
+    # Limit override tracking
+    override_enabled = Column(Boolean, default=False)
+    override_reason = Column(Text, nullable=True)
+    override_approved_by = Column(String(255), nullable=True)
+    override_expiration = Column(DateTime, nullable=True)
+
+    # Violation tracking
+    total_violations = Column(Integer, default=0)
+    last_violation_date = Column(DateTime, nullable=True, index=True)
+    consecutive_violations = Column(Integer, default=0)
+
+    # Limit modification history
+    previous_limit_value = Column(Text, nullable=True)  # JSON of previous limit values
+    limit_change_count = Column(Integer, default=0)
+    last_limit_change_date = Column(DateTime, nullable=True)
+    last_limit_change_reason = Column(Text, nullable=True)
+
+    # Compliance and regulatory
+    regulatory_limit = Column(Boolean, default=False)  # True if limit is regulatory requirement
+    compliance_notes = Column(Text, nullable=True)
+
+    # Usage tracking (for current period)
+    current_daily_count = Column(Integer, default=0)
+    current_daily_amount = Column(Float, default=0.0)
+    current_period_reset_time = Column(DateTime, nullable=True)  # When current period counters reset
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Additional metadata
+    notes = Column(Text, nullable=True)
+    additional_data = Column(Text, nullable=True)  # JSON for extra fields
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)

@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric, FraudFlag, FraudComplaint, MerchantProfile
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric, FraudFlag, FraudComplaint, MerchantProfile, AccountLimit
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -120,6 +120,9 @@ class ContextProvider:
 
         # Add merchant category mismatch detection context
         self._add_merchant_category_mismatch_context(context, account_id, transaction)
+
+        # Add user daily limit exceeded detection context
+        self._add_user_daily_limit_exceeded_context(context, account_id, transaction)
 
         return context
     
@@ -5950,3 +5953,401 @@ class ContextProvider:
             category_risk_level = "minimal"
 
         context["merchant_category_risk_level"] = category_risk_level
+
+    def _add_user_daily_limit_exceeded_context(self, context: Dict[str, Any],
+                                                account_id: str,
+                                                transaction: Dict[str, Any]) -> None:
+        """
+        Add user daily limit exceeded detection context to transaction.
+
+        Detects:
+        - Transactions that exceed daily transaction count limits
+        - Transactions that exceed daily amount limits
+        - Transactions that exceed single transaction limits
+        - Transactions that exceed transaction-type specific limits
+        - Pattern of limit violations
+        - Override and regulatory limit violations
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        # Get account limits
+        account_limits = self.db.query(AccountLimit).filter(
+            AccountLimit.account_id == account_id,
+            AccountLimit.status == "active"
+        ).order_by(AccountLimit.effective_date.desc()).first()
+
+        if not account_limits:
+            context["daily_limit_check_possible"] = False
+            context["daily_limit_check_reason"] = "no_limits_configured"
+            context["no_limits_is_risk"] = True  # Accounts without limits are risky
+            return
+
+        context["daily_limit_check_possible"] = True
+
+        # Check if limits are expired
+        if account_limits.expiration_date and account_limits.expiration_date < datetime.datetime.utcnow():
+            context["limits_expired"] = True
+            context["limits_expired_is_risk"] = True
+            return
+
+        # Extract transaction details
+        tx_amount = transaction.get("amount", 0)
+        tx_direction = transaction.get("direction", "debit")
+        tx_type = transaction.get("transaction_type", "").lower()
+        tx_timestamp = transaction.get("timestamp")
+        counterparty_id = transaction.get("counterparty_id")
+
+        # Parse timestamp
+        if isinstance(tx_timestamp, str):
+            try:
+                tx_datetime = datetime.datetime.fromisoformat(tx_timestamp)
+            except:
+                tx_datetime = datetime.datetime.utcnow()
+        else:
+            tx_datetime = datetime.datetime.utcnow()
+
+        # Get today's date boundaries
+        today_start = datetime.datetime.combine(tx_datetime.date(), datetime.time.min)
+        today_end = datetime.datetime.combine(tx_datetime.date(), datetime.time.max)
+
+        # Query today's transactions for the account (excluding current transaction)
+        today_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp >= today_start.isoformat(),
+            Transaction.timestamp <= today_end.isoformat()
+        ).all()
+
+        # Calculate today's usage
+        today_tx_count = len(today_txs)
+        today_total_amount = sum([float(tx.amount) for tx in today_txs if tx.amount])
+        today_debit_amount = sum([float(tx.amount) for tx in today_txs if tx.amount and tx.direction == "debit"])
+        today_credit_amount = sum([float(tx.amount) for tx in today_txs if tx.amount and tx.direction == "credit"])
+
+        # Calculate amounts including current transaction
+        projected_tx_count = today_tx_count + 1
+        projected_total_amount = today_total_amount + tx_amount
+        projected_debit_amount = today_debit_amount + (tx_amount if tx_direction == "debit" else 0)
+        projected_credit_amount = today_credit_amount + (tx_amount if tx_direction == "credit" else 0)
+
+        # Store current usage context
+        context["daily_tx_count_today"] = today_tx_count
+        context["daily_total_amount_today"] = round(today_total_amount, 2)
+        context["daily_debit_amount_today"] = round(today_debit_amount, 2)
+        context["daily_credit_amount_today"] = round(today_credit_amount, 2)
+
+        # Store limit information
+        context["has_daily_transaction_count_limit"] = account_limits.daily_transaction_count_limit is not None
+        context["has_daily_amount_limit"] = account_limits.daily_transaction_amount_limit is not None
+        context["has_single_transaction_limit"] = account_limits.single_transaction_limit is not None
+        context["is_custom_limit"] = account_limits.is_custom_limit
+        context["regulatory_limit"] = account_limits.regulatory_limit
+
+        # Override status
+        context["limit_override_enabled"] = account_limits.override_enabled
+        if account_limits.override_enabled:
+            context["limit_override_reason"] = account_limits.override_reason
+            context["limit_override_approved_by"] = account_limits.override_approved_by
+
+            # Check if override is expired
+            if account_limits.override_expiration and account_limits.override_expiration < datetime.datetime.utcnow():
+                context["limit_override_expired"] = True
+
+        # Violation tracking
+        context["total_limit_violations"] = account_limits.total_violations
+        context["consecutive_limit_violations"] = account_limits.consecutive_violations
+
+        if account_limits.last_violation_date:
+            days_since_violation = (datetime.datetime.utcnow() - account_limits.last_violation_date).days
+            context["days_since_last_violation"] = days_since_violation
+            context["recent_violation_history"] = days_since_violation < 30
+
+        # Apply risk-based adjustment
+        risk_adjustment = account_limits.risk_based_adjustment
+        context["risk_based_adjustment_factor"] = risk_adjustment
+
+        # Initialize violation flags
+        violations = []
+        violation_severity = "none"
+
+        # 1. Check daily transaction count limit
+        if account_limits.daily_transaction_count_limit:
+            limit_value = account_limits.daily_transaction_count_limit
+            context["daily_transaction_count_limit"] = limit_value
+            context["projected_daily_tx_count"] = projected_tx_count
+
+            if projected_tx_count > limit_value:
+                violations.append("daily_transaction_count_exceeded")
+                context["daily_transaction_count_exceeded"] = True
+                context["daily_tx_count_overage"] = projected_tx_count - limit_value
+                context["daily_tx_count_overage_pct"] = round(((projected_tx_count - limit_value) / limit_value) * 100, 2)
+                violation_severity = max(violation_severity, "high")
+
+        # 2. Check daily transaction amount limit
+        if account_limits.daily_transaction_amount_limit:
+            adjusted_limit = account_limits.daily_transaction_amount_limit * risk_adjustment
+            context["daily_transaction_amount_limit"] = round(adjusted_limit, 2)
+            context["projected_daily_amount"] = round(projected_total_amount, 2)
+
+            if projected_total_amount > adjusted_limit:
+                violations.append("daily_transaction_amount_exceeded")
+                context["daily_transaction_amount_exceeded"] = True
+                context["daily_amount_overage"] = round(projected_total_amount - adjusted_limit, 2)
+                context["daily_amount_overage_pct"] = round(((projected_total_amount - adjusted_limit) / adjusted_limit) * 100, 2)
+
+                if projected_total_amount > adjusted_limit * 1.5:
+                    violation_severity = max(violation_severity, "critical")
+                    context["daily_amount_significantly_exceeded"] = True
+                elif projected_total_amount > adjusted_limit * 1.2:
+                    violation_severity = max(violation_severity, "high")
+                    context["daily_amount_moderately_exceeded"] = True
+                else:
+                    violation_severity = max(violation_severity, "medium")
+
+        # 3. Check daily debit limit
+        if account_limits.daily_debit_limit and tx_direction == "debit":
+            adjusted_limit = account_limits.daily_debit_limit * risk_adjustment
+            context["daily_debit_limit"] = round(adjusted_limit, 2)
+            context["projected_daily_debit"] = round(projected_debit_amount, 2)
+
+            if projected_debit_amount > adjusted_limit:
+                violations.append("daily_debit_limit_exceeded")
+                context["daily_debit_limit_exceeded"] = True
+                context["daily_debit_overage"] = round(projected_debit_amount - adjusted_limit, 2)
+                context["daily_debit_overage_pct"] = round(((projected_debit_amount - adjusted_limit) / adjusted_limit) * 100, 2)
+                violation_severity = max(violation_severity, "high")
+
+        # 4. Check daily credit limit
+        if account_limits.daily_credit_limit and tx_direction == "credit":
+            adjusted_limit = account_limits.daily_credit_limit * risk_adjustment
+            context["daily_credit_limit"] = round(adjusted_limit, 2)
+            context["projected_daily_credit"] = round(projected_credit_amount, 2)
+
+            if projected_credit_amount > adjusted_limit:
+                violations.append("daily_credit_limit_exceeded")
+                context["daily_credit_limit_exceeded"] = True
+                context["daily_credit_overage"] = round(projected_credit_amount - adjusted_limit, 2)
+                violation_severity = max(violation_severity, "medium")
+
+        # 5. Check single transaction limit
+        if account_limits.single_transaction_limit:
+            adjusted_limit = account_limits.single_transaction_limit * risk_adjustment
+            context["single_transaction_limit"] = round(adjusted_limit, 2)
+
+            if tx_amount > adjusted_limit:
+                violations.append("single_transaction_limit_exceeded")
+                context["single_transaction_limit_exceeded"] = True
+                context["single_tx_overage"] = round(tx_amount - adjusted_limit, 2)
+                context["single_tx_overage_pct"] = round(((tx_amount - adjusted_limit) / adjusted_limit) * 100, 2)
+
+                if tx_amount > adjusted_limit * 2:
+                    violation_severity = max(violation_severity, "critical")
+                    context["single_tx_significantly_exceeded"] = True
+                else:
+                    violation_severity = max(violation_severity, "high")
+
+        # 6. Check single debit/credit limits
+        if tx_direction == "debit" and account_limits.single_debit_limit:
+            adjusted_limit = account_limits.single_debit_limit * risk_adjustment
+            context["single_debit_limit"] = round(adjusted_limit, 2)
+
+            if tx_amount > adjusted_limit:
+                violations.append("single_debit_limit_exceeded")
+                context["single_debit_limit_exceeded"] = True
+                violation_severity = max(violation_severity, "high")
+
+        if tx_direction == "credit" and account_limits.single_credit_limit:
+            adjusted_limit = account_limits.single_credit_limit * risk_adjustment
+            context["single_credit_limit"] = round(adjusted_limit, 2)
+
+            if tx_amount > adjusted_limit:
+                violations.append("single_credit_limit_exceeded")
+                context["single_credit_limit_exceeded"] = True
+                violation_severity = max(violation_severity, "medium")
+
+        # 7. Check transaction-type specific limits
+        tx_type_limit = None
+        if tx_type == "ach" and account_limits.ach_daily_limit:
+            tx_type_limit = account_limits.ach_daily_limit
+            limit_name = "ach_daily_limit"
+        elif tx_type == "wire" and account_limits.wire_daily_limit:
+            tx_type_limit = account_limits.wire_daily_limit
+            limit_name = "wire_daily_limit"
+        elif tx_type == "card" and account_limits.card_daily_limit:
+            tx_type_limit = account_limits.card_daily_limit
+            limit_name = "card_daily_limit"
+        elif tx_type == "upi" and account_limits.upi_daily_limit:
+            tx_type_limit = account_limits.upi_daily_limit
+            limit_name = "upi_daily_limit"
+
+        if tx_type_limit:
+            # Calculate today's amount for this transaction type
+            today_type_amount = sum([
+                float(tx.amount) for tx in today_txs
+                if tx.amount and tx.transaction_type and tx.transaction_type.lower() == tx_type
+            ])
+            projected_type_amount = today_type_amount + tx_amount
+
+            adjusted_limit = tx_type_limit * risk_adjustment
+            context[f"{limit_name}"] = round(adjusted_limit, 2)
+            context[f"today_{tx_type}_amount"] = round(today_type_amount, 2)
+            context[f"projected_{tx_type}_amount"] = round(projected_type_amount, 2)
+
+            if projected_type_amount > adjusted_limit:
+                violations.append(f"{limit_name}_exceeded")
+                context[f"{limit_name}_exceeded"] = True
+                context[f"{tx_type}_overage"] = round(projected_type_amount - adjusted_limit, 2)
+                violation_severity = max(violation_severity, "high")
+
+        # 8. Check per-beneficiary limits
+        if counterparty_id and account_limits.per_beneficiary_daily_limit:
+            # Calculate today's amount to this beneficiary
+            today_beneficiary_txs = [
+                tx for tx in today_txs
+                if tx.counterparty_id == counterparty_id
+            ]
+            today_beneficiary_amount = sum([float(tx.amount) for tx in today_beneficiary_txs if tx.amount])
+            projected_beneficiary_amount = today_beneficiary_amount + tx_amount
+
+            adjusted_limit = account_limits.per_beneficiary_daily_limit * risk_adjustment
+            context["per_beneficiary_daily_limit"] = round(adjusted_limit, 2)
+            context["today_beneficiary_amount"] = round(today_beneficiary_amount, 2)
+            context["projected_beneficiary_amount"] = round(projected_beneficiary_amount, 2)
+
+            if projected_beneficiary_amount > adjusted_limit:
+                violations.append("per_beneficiary_daily_limit_exceeded")
+                context["per_beneficiary_daily_limit_exceeded"] = True
+                context["beneficiary_overage"] = round(projected_beneficiary_amount - adjusted_limit, 2)
+                violation_severity = max(violation_severity, "medium")
+
+        if counterparty_id and account_limits.per_beneficiary_transaction_limit:
+            adjusted_limit = account_limits.per_beneficiary_transaction_limit * risk_adjustment
+            context["per_beneficiary_transaction_limit"] = round(adjusted_limit, 2)
+
+            if tx_amount > adjusted_limit:
+                violations.append("per_beneficiary_transaction_limit_exceeded")
+                context["per_beneficiary_transaction_limit_exceeded"] = True
+                violation_severity = max(violation_severity, "medium")
+
+        # Aggregate violation information
+        context["limit_violations"] = violations
+        context["limit_violation_count"] = len(violations)
+        context["has_limit_violations"] = len(violations) > 0
+        context["limit_violation_severity"] = violation_severity
+
+        # Multiple violations are more serious
+        if len(violations) >= 3:
+            context["multiple_limit_violations"] = True
+            context["multiple_violations_critical"] = True
+        elif len(violations) >= 2:
+            context["multiple_limit_violations"] = True
+
+        # Regulatory limit violation is critical
+        if account_limits.regulatory_limit and len(violations) > 0:
+            context["regulatory_limit_violated"] = True
+            violation_severity = "critical"
+
+        # Pattern analysis - check for systematic limit testing
+        if today_tx_count >= 5:
+            # Check if multiple transactions are close to limits
+            near_limit_count = 0
+            for tx in today_txs:
+                tx_amt = float(tx.amount) if tx.amount else 0
+                if account_limits.single_transaction_limit:
+                    limit_ratio = tx_amt / (account_limits.single_transaction_limit * risk_adjustment)
+                    if 0.8 <= limit_ratio <= 1.0:  # 80-100% of limit
+                        near_limit_count += 1
+
+            if near_limit_count >= 3:
+                context["systematic_limit_testing_detected"] = True
+                violation_severity = "critical"
+
+        # Check for limit change recency (potential fraud after limit increase)
+        if account_limits.limit_change_count > 0 and account_limits.last_limit_change_date:
+            days_since_change = (datetime.datetime.utcnow() - account_limits.last_limit_change_date).days
+            context["days_since_limit_change"] = days_since_change
+
+            if days_since_change < 7 and len(violations) > 0:
+                context["violation_shortly_after_limit_change"] = True
+                violation_severity = max(violation_severity, "high")
+
+        # Consecutive violations pattern
+        if account_limits.consecutive_violations >= 3:
+            context["pattern_of_violations"] = True
+            context["persistent_violator"] = True
+            violation_severity = max(violation_severity, "high")
+
+        # Risk score calculation (0-100)
+        risk_score = 0
+
+        # Base score from violation severity
+        if violation_severity == "critical":
+            risk_score += 40
+        elif violation_severity == "high":
+            risk_score += 30
+        elif violation_severity == "medium":
+            risk_score += 20
+
+        # Multiple violations
+        if len(violations) >= 3:
+            risk_score += 25
+        elif len(violations) >= 2:
+            risk_score += 15
+        elif len(violations) == 1:
+            risk_score += 10
+
+        # Overage magnitude
+        if context.get("daily_amount_significantly_exceeded"):
+            risk_score += 20
+        elif context.get("daily_amount_moderately_exceeded"):
+            risk_score += 10
+
+        if context.get("single_tx_significantly_exceeded"):
+            risk_score += 15
+
+        # Regulatory limit violation
+        if context.get("regulatory_limit_violated"):
+            risk_score += 30
+
+        # Systematic limit testing
+        if context.get("systematic_limit_testing_detected"):
+            risk_score += 20
+
+        # Pattern of violations
+        if context.get("persistent_violator"):
+            risk_score += 15
+        elif account_limits.consecutive_violations >= 2:
+            risk_score += 10
+
+        # Recent limit change
+        if context.get("violation_shortly_after_limit_change"):
+            risk_score += 10
+
+        # No limits configured (risky)
+        if context.get("no_limits_is_risk"):
+            risk_score += 25
+
+        # Override expired
+        if context.get("limit_override_expired"):
+            risk_score += 10
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["daily_limit_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            limit_risk_level = "critical"
+        elif risk_score >= 60:
+            limit_risk_level = "high"
+        elif risk_score >= 40:
+            limit_risk_level = "medium"
+        elif risk_score >= 20:
+            limit_risk_level = "low"
+        else:
+            limit_risk_level = "minimal"
+
+        context["daily_limit_risk_level"] = limit_risk_level
