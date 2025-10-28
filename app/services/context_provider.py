@@ -112,6 +112,9 @@ class ContextProvider:
         # Add normalized transaction amount detection context
         self._add_normalized_transaction_amount_context(context, account_id, transaction)
 
+        # Add transaction context anomalies detection context
+        self._add_transaction_context_anomalies_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -4548,3 +4551,551 @@ class ContextProvider:
             amount_risk_level = "minimal"
 
         context["normalized_amount_risk_level"] = amount_risk_level
+
+    def _add_transaction_context_anomalies_context(self, context: Dict[str, Any],
+                                                     account_id: str,
+                                                     transaction: Dict[str, Any]) -> None:
+        """
+        Add transaction context anomalies detection for fraud analysis.
+
+        Flags transactions that don't align with user's typical spending habits
+        including sudden large purchases, unusual categories, merchant type changes,
+        velocity anomalies, and behavioral pattern breaks.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account identifier
+            transaction: Current transaction data
+        """
+        import statistics
+        from collections import Counter, defaultdict
+
+        now = datetime.datetime.utcnow()
+        tx_amount = abs(float(transaction.get("amount", 0)))
+
+        if tx_amount == 0:
+            context["context_anomaly_check_available"] = False
+            return
+
+        context["context_anomaly_check_available"] = True
+
+        # Extract transaction context
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            tx_metadata = {}
+
+        # Current transaction attributes
+        current_category = tx_metadata.get("category", "unknown")
+        current_merchant = tx_metadata.get("merchant_name") or tx_metadata.get("merchant")
+        current_merchant_type = tx_metadata.get("merchant_type") or tx_metadata.get("mcc_category")
+        current_description = transaction.get("description", "")
+        tx_type = transaction.get("transaction_type", "transfer")
+        tx_timestamp = datetime.datetime.fromisoformat(transaction.get("timestamp", now.isoformat()))
+        tx_day_of_week = tx_timestamp.weekday()  # 0=Monday, 6=Sunday
+        tx_hour = tx_timestamp.hour
+
+        context["current_transaction_category"] = current_category
+        context["current_transaction_merchant_type"] = current_merchant_type
+        context["current_transaction_type"] = tx_type
+
+        # Get historical transactions for pattern analysis
+        ninety_days_ago = (now - datetime.timedelta(days=90)).isoformat()
+        thirty_days_ago = (now - datetime.timedelta(days=30)).isoformat()
+        seven_days_ago = (now - datetime.timedelta(days=7)).isoformat()
+
+        # Query historical transactions
+        historical_txs_90d = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > ninety_days_ago
+        ).order_by(Transaction.timestamp.desc()).all()
+
+        if len(historical_txs_90d) < 5:
+            context["insufficient_context_history"] = True
+            context["historical_transaction_count_for_context"] = len(historical_txs_90d)
+            return
+
+        context["historical_transaction_count_for_context"] = len(historical_txs_90d)
+
+        # 1. CATEGORY ANALYSIS
+        category_counts = Counter()
+        category_amounts = defaultdict(list)
+        merchant_type_counts = Counter()
+        merchant_counts = Counter()
+
+        for tx in historical_txs_90d:
+            tx_meta = {}
+            if tx.tx_metadata:
+                try:
+                    tx_meta = json.loads(tx.tx_metadata) if isinstance(tx.tx_metadata, str) else tx.tx_metadata
+                except (json.JSONDecodeError, TypeError):
+                    tx_meta = {}
+
+            cat = tx_meta.get("category", "unknown")
+            merchant_type = tx_meta.get("merchant_type") or tx_meta.get("mcc_category")
+            merchant = tx_meta.get("merchant_name") or tx_meta.get("merchant")
+
+            category_counts[cat] += 1
+            category_amounts[cat].append(abs(float(tx.amount)))
+
+            if merchant_type:
+                merchant_type_counts[merchant_type] += 1
+
+            if merchant:
+                merchant_counts[merchant] += 1
+
+        # Analyze current category
+        total_txs = len(historical_txs_90d)
+        current_category_count = category_counts.get(current_category, 0)
+        current_category_frequency = (current_category_count / total_txs) * 100 if total_txs > 0 else 0
+
+        context["current_category_historical_frequency_pct"] = current_category_frequency
+        context["current_category_historical_count"] = current_category_count
+
+        # Is this a new/rare category?
+        is_new_category = current_category_count == 0
+        is_rare_category = 0 < current_category_frequency < 5  # Less than 5% of transactions
+
+        context["is_new_spending_category"] = is_new_category
+        context["is_rare_spending_category"] = is_rare_category
+
+        # Top categories
+        top_categories = category_counts.most_common(5)
+        context["top_spending_categories"] = [{"category": cat, "count": count, "percentage": (count/total_txs)*100}
+                                             for cat, count in top_categories]
+
+        # Category diversity (how many different categories)
+        unique_categories = len(category_counts)
+        context["unique_spending_categories"] = unique_categories
+
+        # Check if amount is unusual for this category
+        if current_category in category_amounts and category_amounts[current_category]:
+            cat_amounts = category_amounts[current_category]
+            cat_avg = statistics.mean(cat_amounts)
+            cat_max = max(cat_amounts)
+
+            context["category_avg_amount"] = cat_avg
+            context["category_max_amount"] = cat_max
+
+            # Is current amount unusually high for this category?
+            if tx_amount > cat_max:
+                context["exceeds_category_historical_max"] = True
+            else:
+                context["exceeds_category_historical_max"] = False
+
+            if len(cat_amounts) >= 2:
+                cat_stddev = statistics.stdev(cat_amounts)
+                if cat_stddev > 0:
+                    category_z_score = (tx_amount - cat_avg) / cat_stddev
+                    context["category_amount_z_score"] = category_z_score
+
+                    if abs(category_z_score) >= 2:
+                        context["category_amount_anomaly"] = True
+                    else:
+                        context["category_amount_anomaly"] = False
+                else:
+                    context["category_amount_anomaly"] = False
+            else:
+                context["category_amount_anomaly"] = False
+
+        # 2. MERCHANT TYPE ANALYSIS
+        if current_merchant_type:
+            merchant_type_count = merchant_type_counts.get(current_merchant_type, 0)
+            merchant_type_frequency = (merchant_type_count / total_txs) * 100 if total_txs > 0 else 0
+
+            context["current_merchant_type_frequency_pct"] = merchant_type_frequency
+            context["is_new_merchant_type"] = merchant_type_count == 0
+            context["is_rare_merchant_type"] = 0 < merchant_type_frequency < 5
+
+            # Top merchant types
+            top_merchant_types = merchant_type_counts.most_common(5)
+            context["top_merchant_types"] = [{"type": mt, "count": count, "percentage": (count/total_txs)*100}
+                                            for mt, count in top_merchant_types]
+        else:
+            context["merchant_type_analysis_unavailable"] = True
+
+        # 3. MERCHANT ANALYSIS
+        if current_merchant:
+            merchant_count = merchant_counts.get(current_merchant, 0)
+            context["current_merchant_historical_count"] = merchant_count
+            context["is_new_merchant"] = merchant_count == 0
+
+            # Top merchants
+            top_merchants = merchant_counts.most_common(10)
+            context["top_merchants"] = [{"merchant": merch, "count": count}
+                                       for merch, count in top_merchants]
+        else:
+            context["merchant_analysis_unavailable"] = True
+
+        # 4. TRANSACTION TYPE ANALYSIS
+        type_counts = Counter()
+        for tx in historical_txs_90d:
+            type_counts[tx.transaction_type] += 1
+
+        current_type_count = type_counts.get(tx_type, 0)
+        current_type_frequency = (current_type_count / total_txs) * 100 if total_txs > 0 else 0
+
+        context["current_type_frequency_pct"] = current_type_frequency
+        context["is_new_transaction_type"] = current_type_count == 0
+        context["transaction_type_distribution"] = dict(type_counts)
+
+        # 5. VELOCITY ANALYSIS (sudden changes in transaction frequency)
+        # Compare recent 7 days vs previous weeks
+        recent_7d_txs = [tx for tx in historical_txs_90d
+                        if datetime.datetime.fromisoformat(tx.timestamp) >= datetime.datetime.fromisoformat(seven_days_ago)]
+        week_2_txs = [tx for tx in historical_txs_90d
+                     if datetime.datetime.fromisoformat(seven_days_ago) > datetime.datetime.fromisoformat(tx.timestamp) >=
+                        datetime.datetime.fromisoformat((now - datetime.timedelta(days=14)).isoformat())]
+        week_3_txs = [tx for tx in historical_txs_90d
+                     if datetime.datetime.fromisoformat((now - datetime.timedelta(days=14)).isoformat()) >
+                        datetime.datetime.fromisoformat(tx.timestamp) >=
+                        datetime.datetime.fromisoformat((now - datetime.timedelta(days=21)).isoformat())]
+
+        context["transactions_last_7_days"] = len(recent_7d_txs)
+        context["transactions_week_2"] = len(week_2_txs)
+        context["transactions_week_3"] = len(week_3_txs)
+
+        # Calculate velocity change
+        if len(week_2_txs) > 0 and len(week_3_txs) > 0:
+            avg_weekly_baseline = (len(week_2_txs) + len(week_3_txs)) / 2
+            velocity_change = ((len(recent_7d_txs) - avg_weekly_baseline) / avg_weekly_baseline) * 100 if avg_weekly_baseline > 0 else 0
+            context["velocity_change_pct"] = velocity_change
+
+            # Flag sudden velocity increase
+            if velocity_change > 100:
+                context["velocity_spike_detected"] = True
+            else:
+                context["velocity_spike_detected"] = False
+        else:
+            context["velocity_spike_detected"] = False
+
+        # 6. AMOUNT PATTERN ANALYSIS
+        amounts_90d = [abs(float(tx.amount)) for tx in historical_txs_90d]
+
+        # Sudden large purchase detection
+        if amounts_90d:
+            avg_amount = statistics.mean(amounts_90d)
+            max_amount = max(amounts_90d)
+
+            context["avg_transaction_amount_90d"] = avg_amount
+            context["max_transaction_amount_90d"] = max_amount
+
+            # Sudden large purchase: amount significantly higher than typical
+            amount_multiplier = tx_amount / avg_amount if avg_amount > 0 else 0
+            context["current_to_avg_multiplier"] = amount_multiplier
+
+            if amount_multiplier >= 5:
+                context["sudden_large_purchase_detected"] = True
+            else:
+                context["sudden_large_purchase_detected"] = False
+
+            # Amount consistency analysis
+            if len(amounts_90d) >= 10:
+                amount_stddev = statistics.stdev(amounts_90d)
+                coefficient_of_variation = (amount_stddev / avg_amount) * 100 if avg_amount > 0 else 0
+                context["amount_coefficient_of_variation"] = coefficient_of_variation
+
+                # High CV indicates inconsistent spending; low CV indicates consistent
+                if coefficient_of_variation < 30:
+                    spending_consistency = "very_consistent"
+                elif coefficient_of_variation < 60:
+                    spending_consistency = "consistent"
+                elif coefficient_of_variation < 100:
+                    spending_consistency = "moderate"
+                else:
+                    spending_consistency = "inconsistent"
+
+                context["spending_consistency_classification"] = spending_consistency
+
+                # For consistent spenders, unusual amounts are more suspicious
+                if spending_consistency in ["very_consistent", "consistent"] and amount_multiplier >= 3:
+                    context["consistent_spender_unusual_amount"] = True
+                else:
+                    context["consistent_spender_unusual_amount"] = False
+
+        # 7. DAY-OF-WEEK PATTERN ANALYSIS
+        day_of_week_counts = Counter()
+        for tx in historical_txs_90d:
+            tx_time = datetime.datetime.fromisoformat(tx.timestamp)
+            day_of_week_counts[tx_time.weekday()] += 1
+
+        current_day_count = day_of_week_counts.get(tx_day_of_week, 0)
+        context["current_day_historical_count"] = current_day_count
+
+        # Typical transaction days
+        avg_day_count = total_txs / 7 if total_txs > 0 else 0
+        context["avg_transactions_per_day_of_week"] = avg_day_count
+
+        if current_day_count < avg_day_count * 0.5:
+            context["unusual_day_of_week"] = True
+        else:
+            context["unusual_day_of_week"] = False
+
+        # 8. TIME-OF-DAY PATTERN ANALYSIS
+        hour_of_day_counts = Counter()
+        for tx in historical_txs_90d:
+            tx_time = datetime.datetime.fromisoformat(tx.timestamp)
+            hour_of_day_counts[tx_time.hour] += 1
+
+        current_hour_count = hour_of_day_counts.get(tx_hour, 0)
+        context["current_hour_historical_count"] = current_hour_count
+
+        avg_hour_count = total_txs / 24 if total_txs > 0 else 0
+        if current_hour_count < avg_hour_count * 0.25:
+            context["unusual_hour_of_day"] = True
+        else:
+            context["unusual_hour_of_day"] = False
+
+        # 9. RECURRING TRANSACTION DETECTION
+        # Check if user has recurring patterns (similar amounts at regular intervals)
+        recurring_patterns = []
+        amount_tolerance = 0.05  # 5% tolerance
+
+        # Group similar amounts
+        amount_groups = defaultdict(list)
+        for tx in historical_txs_90d:
+            amount = abs(float(tx.amount))
+            # Find group with similar amount
+            found_group = False
+            for key_amount in amount_groups.keys():
+                if abs(amount - key_amount) / key_amount < amount_tolerance:
+                    amount_groups[key_amount].append(tx)
+                    found_group = True
+                    break
+            if not found_group:
+                amount_groups[amount].append(tx)
+
+        # Check for recurring patterns (3+ occurrences of similar amount)
+        for amount, txs in amount_groups.items():
+            if len(txs) >= 3:
+                # Check time intervals
+                timestamps = sorted([datetime.datetime.fromisoformat(tx.timestamp) for tx in txs])
+                intervals = [(timestamps[i+1] - timestamps[i]).days for i in range(len(timestamps)-1)]
+
+                if intervals:
+                    avg_interval = statistics.mean(intervals)
+                    if 25 <= avg_interval <= 35:  # Monthly-ish
+                        recurring_patterns.append({
+                            "amount": amount,
+                            "frequency": "monthly",
+                            "count": len(txs),
+                            "avg_interval_days": avg_interval
+                        })
+                    elif 5 <= avg_interval <= 9:  # Weekly-ish
+                        recurring_patterns.append({
+                            "amount": amount,
+                            "frequency": "weekly",
+                            "count": len(txs),
+                            "avg_interval_days": avg_interval
+                        })
+
+        context["recurring_payment_patterns"] = recurring_patterns
+        context["recurring_pattern_count"] = len(recurring_patterns)
+
+        # Check if current transaction breaks recurring pattern
+        breaks_recurring_pattern = False
+        for pattern in recurring_patterns:
+            if abs(tx_amount - pattern["amount"]) / pattern["amount"] > amount_tolerance:
+                # Similar timing but different amount
+                breaks_recurring_pattern = True
+
+        context["breaks_recurring_pattern"] = breaks_recurring_pattern
+
+        # 10. BENEFICIARY CONSISTENCY ANALYSIS
+        beneficiary_id = transaction.get("beneficiary_id")
+        if beneficiary_id:
+            beneficiary_txs = [tx for tx in historical_txs_90d
+                              if json.loads(tx.tx_metadata if tx.tx_metadata else '{}').get("beneficiary_id") == beneficiary_id
+                              or (hasattr(tx, 'beneficiary_id') and tx.beneficiary_id == beneficiary_id)]
+
+            context["transactions_to_current_beneficiary"] = len(beneficiary_txs)
+
+            if beneficiary_txs:
+                # Typical amounts to this beneficiary
+                beneficiary_amounts = [abs(float(tx.amount)) for tx in beneficiary_txs]
+                beneficiary_avg = statistics.mean(beneficiary_amounts)
+                beneficiary_max = max(beneficiary_amounts)
+
+                context["beneficiary_avg_amount"] = beneficiary_avg
+                context["beneficiary_max_amount"] = beneficiary_max
+
+                if tx_amount > beneficiary_max:
+                    context["exceeds_beneficiary_historical_max"] = True
+                else:
+                    context["exceeds_beneficiary_historical_max"] = False
+
+                # Check if amount is unusual for this beneficiary
+                if len(beneficiary_amounts) >= 2:
+                    beneficiary_stddev = statistics.stdev(beneficiary_amounts)
+                    if beneficiary_stddev > 0:
+                        beneficiary_z = (tx_amount - beneficiary_avg) / beneficiary_stddev
+                        if abs(beneficiary_z) >= 2:
+                            context["unusual_amount_for_beneficiary"] = True
+                        else:
+                            context["unusual_amount_for_beneficiary"] = False
+                    else:
+                        context["unusual_amount_for_beneficiary"] = False
+            else:
+                context["first_transaction_to_beneficiary"] = True
+
+        # 11. GENERATE CONTEXT ANOMALY RISK FLAGS
+        risk_flags = []
+
+        # Category anomalies
+        if is_new_category:
+            risk_flags.append("new_spending_category")
+
+        if is_rare_category:
+            risk_flags.append("rare_spending_category")
+
+        if context.get("exceeds_category_historical_max"):
+            risk_flags.append("exceeds_category_max")
+
+        if context.get("category_amount_anomaly"):
+            risk_flags.append("category_amount_anomaly")
+
+        # Merchant anomalies
+        if context.get("is_new_merchant_type"):
+            risk_flags.append("new_merchant_type")
+
+        if context.get("is_new_merchant"):
+            risk_flags.append("new_merchant")
+
+        # Transaction type anomaly
+        if context.get("is_new_transaction_type"):
+            risk_flags.append("new_transaction_type")
+
+        # Velocity anomalies
+        if context.get("velocity_spike_detected"):
+            risk_flags.append("velocity_spike")
+
+        # Amount anomalies
+        if context.get("sudden_large_purchase_detected"):
+            risk_flags.append("sudden_large_purchase")
+
+        if context.get("consistent_spender_unusual_amount"):
+            risk_flags.append("consistent_spender_unusual_amount")
+
+        # Timing anomalies
+        if context.get("unusual_day_of_week"):
+            risk_flags.append("unusual_day_of_week")
+
+        if context.get("unusual_hour_of_day"):
+            risk_flags.append("unusual_hour_of_day")
+
+        # Pattern breaks
+        if context.get("breaks_recurring_pattern"):
+            risk_flags.append("breaks_recurring_pattern")
+
+        # Beneficiary anomalies
+        if context.get("exceeds_beneficiary_historical_max"):
+            risk_flags.append("exceeds_beneficiary_max")
+
+        if context.get("unusual_amount_for_beneficiary"):
+            risk_flags.append("unusual_amount_for_beneficiary")
+
+        if context.get("first_transaction_to_beneficiary"):
+            risk_flags.append("first_transaction_to_beneficiary")
+
+        # Multiple simultaneous anomalies (compound risk)
+        if len(risk_flags) >= 4:
+            risk_flags.append("multiple_context_anomalies")
+
+        context["context_anomaly_flags"] = risk_flags
+        context["context_anomaly_flag_count"] = len(risk_flags)
+
+        # 12. CALCULATE CONTEXT ANOMALY RISK SCORE (0-100)
+        risk_score = 0
+
+        # Category anomalies
+        if is_new_category:
+            risk_score += 20
+        elif is_rare_category:
+            risk_score += 10
+
+        if context.get("exceeds_category_historical_max"):
+            risk_score += 15
+
+        if context.get("category_amount_anomaly"):
+            risk_score += 12
+
+        # Merchant anomalies
+        if context.get("is_new_merchant_type"):
+            risk_score += 15
+
+        if context.get("is_new_merchant"):
+            risk_score += 8
+
+        # Transaction type
+        if context.get("is_new_transaction_type"):
+            risk_score += 18
+
+        # Velocity
+        velocity_change = context.get("velocity_change_pct", 0)
+        if velocity_change > 200:
+            risk_score += 25
+        elif velocity_change > 100:
+            risk_score += 15
+
+        # Amount anomalies
+        if context.get("sudden_large_purchase_detected"):
+            risk_score += 20
+
+        multiplier = context.get("current_to_avg_multiplier", 1)
+        if multiplier >= 10:
+            risk_score += 25
+        elif multiplier >= 5:
+            risk_score += 15
+        elif multiplier >= 3:
+            risk_score += 8
+
+        if context.get("consistent_spender_unusual_amount"):
+            risk_score += 15
+
+        # Timing
+        if context.get("unusual_day_of_week"):
+            risk_score += 8
+
+        if context.get("unusual_hour_of_day"):
+            risk_score += 8
+
+        # Pattern breaks
+        if context.get("breaks_recurring_pattern"):
+            risk_score += 15
+
+        # Beneficiary
+        if context.get("first_transaction_to_beneficiary") and tx_amount > 1000:
+            risk_score += 12
+
+        if context.get("unusual_amount_for_beneficiary"):
+            risk_score += 10
+
+        # Multiple anomalies multiplier
+        if len(risk_flags) >= 5:
+            risk_score += 20
+        elif len(risk_flags) >= 3:
+            risk_score += 10
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["context_anomaly_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            context_risk_level = "critical"
+        elif risk_score >= 60:
+            context_risk_level = "high"
+        elif risk_score >= 40:
+            context_risk_level = "medium"
+        elif risk_score >= 20:
+            context_risk_level = "low"
+        else:
+            context_risk_level = "minimal"
+
+        context["context_anomaly_risk_level"] = context_risk_level
