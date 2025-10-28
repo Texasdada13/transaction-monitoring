@@ -97,6 +97,9 @@ class ContextProvider:
         # Add social trust score context
         self._add_social_trust_score_context(context, account_id, transaction)
 
+        # Add account age fraud detection context
+        self._add_account_age_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -2491,3 +2494,232 @@ class ContextProvider:
             trust_deficit = 60 - trust_score
             context["trust_deficit"] = trust_deficit
             context["requires_additional_verification"] = trust_deficit >= 20
+
+    def _add_account_age_context(self, context: Dict[str, Any],
+                                  account_id: str,
+                                  transaction: Dict[str, Any]) -> None:
+        """
+        Add account age analysis for fraud detection.
+
+        Analyzes account maturity and flags newly created accounts performing
+        high-risk transactions. New accounts are prime targets for fraud.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        # Get account information (already queried earlier but re-fetch for completeness)
+        account = self.db.query(Account).filter(Account.account_id == account_id).first()
+
+        if not account:
+            context["account_age_check_available"] = False
+            return
+
+        context["account_age_check_available"] = True
+
+        # Calculate account age (also calculated earlier, but ensure we have it)
+        creation_date = datetime.datetime.fromisoformat(account.creation_date)
+        now = datetime.datetime.utcnow()
+        account_age_days = (now - creation_date).days
+        account_age_hours = (now - creation_date).total_seconds() / 3600
+
+        context["account_creation_date"] = account.creation_date
+        context["account_age_days"] = account_age_days
+        context["account_age_hours"] = account_age_hours
+
+        # Classify account maturity
+        if account_age_days < 1:
+            account_maturity = "brand_new"  # Less than 1 day old
+        elif account_age_days < 7:
+            account_maturity = "very_new"  # Less than 1 week
+        elif account_age_days < 30:
+            account_maturity = "new"  # Less than 1 month
+        elif account_age_days < 90:
+            account_maturity = "young"  # Less than 3 months
+        elif account_age_days < 180:
+            account_maturity = "maturing"  # 3-6 months
+        elif account_age_days < 365:
+            account_maturity = "established"  # 6-12 months
+        else:
+            account_maturity = "mature"  # 1+ years
+
+        context["account_maturity"] = account_maturity
+
+        # Flag new accounts
+        is_brand_new = account_age_days < 1
+        is_very_new = account_age_days < 7
+        is_new = account_age_days < 30
+
+        context["is_brand_new_account"] = is_brand_new
+        context["is_very_new_account"] = is_very_new
+        context["is_new_account"] = is_new
+
+        # Get all transactions for this account
+        all_account_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id
+        ).order_by(Transaction.timestamp).all()
+
+        total_txs = len(all_account_txs)
+        context["total_account_transactions"] = total_txs
+
+        # Calculate transaction velocity since account creation
+        if account_age_days > 0:
+            txs_per_day = total_txs / account_age_days
+            context["transactions_per_day_since_creation"] = txs_per_day
+        else:
+            context["transactions_per_day_since_creation"] = total_txs  # Brand new account
+
+        # Analyze transaction patterns for new accounts
+        current_amount = transaction.get("amount", 0)
+        current_direction = transaction.get("direction", "")
+
+        # Risk flags for new accounts
+        risk_flags = []
+
+        # Flag 1: Brand new account (< 24 hours)
+        if is_brand_new:
+            risk_flags.append("brand_new_account")
+
+        # Flag 2: Very new account with large transaction
+        if is_very_new and current_amount > 5000:
+            risk_flags.append("very_new_account_large_amount")
+
+        # Flag 3: New account with very large transaction
+        if is_new and current_amount > 10000:
+            risk_flags.append("new_account_very_large_amount")
+
+        # Flag 4: New account with high transaction velocity
+        if is_new and total_txs >= 10:
+            risk_flags.append("new_account_high_velocity")
+
+        # Flag 5: Brand new account with outgoing transfer
+        if is_brand_new and current_direction == "debit":
+            risk_flags.append("brand_new_account_outgoing_transfer")
+
+        # Flag 6: Very new account with international transaction
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if tx_metadata:
+            country = tx_metadata.get("country") or tx_metadata.get("country_code")
+            if is_very_new and country and country.upper()[:2] != "US":
+                risk_flags.append("very_new_account_international")
+
+        # Analyze first transaction timing
+        if all_account_txs:
+            first_tx = all_account_txs[0]
+            first_tx_time = datetime.datetime.fromisoformat(first_tx.timestamp)
+            time_to_first_tx = (first_tx_time - creation_date).total_seconds() / 3600  # hours
+
+            context["hours_to_first_transaction"] = time_to_first_tx
+
+            # Flag 7: Immediate first transaction (within 1 hour of account creation)
+            if time_to_first_tx < 1:
+                risk_flags.append("immediate_first_transaction")
+
+            # Flag 8: First transaction is large
+            if first_tx.amount > 5000:
+                risk_flags.append("first_transaction_large_amount")
+
+        # Calculate account age vs transaction amount risk score
+        # New accounts with large amounts are risky
+        account_age_amount_risk = 0
+
+        if current_amount > 0:
+            # Risk increases as amount increases and account age decreases
+            amount_factor = min(current_amount / 1000, 100)  # Scale amount
+
+            if account_age_days < 1:
+                age_multiplier = 10  # Extreme risk
+            elif account_age_days < 7:
+                age_multiplier = 5  # Very high risk
+            elif account_age_days < 30:
+                age_multiplier = 3  # High risk
+            elif account_age_days < 90:
+                age_multiplier = 2  # Moderate risk
+            else:
+                age_multiplier = 1  # Lower risk
+
+            account_age_amount_risk = amount_factor * age_multiplier
+
+        context["account_age_amount_risk_score"] = min(account_age_amount_risk, 100)
+
+        # Classify risk level based on account age
+        if is_brand_new:
+            account_age_risk_level = "critical"
+        elif is_very_new:
+            account_age_risk_level = "high"
+        elif is_new:
+            account_age_risk_level = "medium"
+        elif account_age_days < 90:
+            account_age_risk_level = "low"
+        else:
+            account_age_risk_level = "minimal"
+
+        context["account_age_risk_level"] = account_age_risk_level
+
+        # Store risk flags
+        context["account_age_risk_flags"] = risk_flags
+        context["account_age_risk_flag_count"] = len(risk_flags)
+        context["account_age_high_risk"] = len(risk_flags) >= 2 or is_brand_new
+
+        # Calculate average transaction amount for account
+        if all_account_txs:
+            amounts = [tx.amount for tx in all_account_txs]
+            avg_account_amount = sum(amounts) / len(amounts)
+            max_account_amount = max(amounts)
+
+            context["avg_account_transaction_amount"] = avg_account_amount
+            context["max_account_transaction_amount"] = max_account_amount
+
+            # Check if current transaction is unusually large for this account
+            if current_amount > max_account_amount:
+                context["current_exceeds_account_max"] = True
+                context["account_max_exceeded_by"] = current_amount - max_account_amount
+            else:
+                context["current_exceeds_account_max"] = False
+
+            # For new accounts, check if transaction is much larger than average
+            if is_new and total_txs >= 3:
+                if current_amount > avg_account_amount * 3:  # 3x average
+                    risk_flags.append("new_account_amount_spike")
+                    context["account_age_risk_flags"] = risk_flags
+                    context["account_age_risk_flag_count"] = len(risk_flags)
+
+        # Analyze account activity pattern
+        # New accounts with burst activity are suspicious
+        if is_new and total_txs > 0:
+            # Calculate daily transaction rate
+            daily_rate = total_txs / max(account_age_days, 1)
+
+            if daily_rate >= 5:  # 5+ transactions per day
+                context["account_high_activity_rate"] = True
+                context["account_daily_transaction_rate"] = daily_rate
+            else:
+                context["account_high_activity_rate"] = False
+                context["account_daily_transaction_rate"] = daily_rate
+        else:
+            context["account_high_activity_rate"] = False
+
+        # Check for account warming pattern
+        # Fraudsters often "warm up" accounts with small transactions before fraud
+        if is_new and total_txs >= 5:
+            small_tx_count = sum(1 for tx in all_account_txs if abs(tx.amount) <= 100)
+            small_tx_percentage = (small_tx_count / total_txs) * 100
+
+            # If 50%+ transactions are small, might be warming pattern
+            if small_tx_percentage >= 50 and current_amount > 1000:
+                risk_flags.append("account_warming_pattern")
+                context["account_age_risk_flags"] = risk_flags
+                context["account_age_risk_flag_count"] = len(risk_flags)
+                context["account_warming_detected"] = True
+                context["small_transaction_percentage"] = small_tx_percentage
+            else:
+                context["account_warming_detected"] = False
+        else:
+            context["account_warming_detected"] = False
