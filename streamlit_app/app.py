@@ -122,7 +122,7 @@ def main_dashboard():
 
         page = st.radio(
             "Select Page",
-            ["🚨 Real-Time Monitoring", "📊 Risk Analytics", "🔍 Investigation Tools", "🏥 System Health"],
+            ["🚨 Real-Time Monitoring", "📊 Risk Analytics", "🔍 Investigation Tools", "📚 Module Catalog", "🏥 System Health"],
             label_visibility="collapsed"
         )
 
@@ -144,6 +144,9 @@ def main_dashboard():
     elif page == "🔍 Investigation Tools":
         from streamlit_app.pages import investigation_tools
         investigation_tools.render()
+    elif page == "📚 Module Catalog":
+        from streamlit_app.pages import module_catalog
+        module_catalog.render()
     elif page == "🏥 System Health":
         st.info("🏥 System Health page - Coming soon!")
 

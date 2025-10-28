@@ -17,6 +17,7 @@ from app.models.database import get_db
 from dashboard.main import DashboardData
 from run import TransactionMonitor
 from api.auth import authenticate_user, create_access_token, decode_token, Token, ACCESS_TOKEN_EXPIRE_MINUTES
+from api.fraud_modules_catalog import FRAUD_MODULES_CATALOG, get_module_by_category, get_module_count, get_module_by_severity
 
 # Initialize FastAPI
 app = FastAPI(
@@ -770,6 +771,50 @@ async def get_transaction_module_breakdown(
         "total_modules_triggered": len(modules),
         "total_modules_available": 25
     }
+
+@app.get("/api/v1/modules/catalog")
+async def get_fraud_modules_catalog(
+    group_by: Optional[str] = None,
+    user: dict = Depends(verify_token)
+):
+    """
+    Get comprehensive fraud detection modules catalog.
+
+    Shows all 25+ fraud detection modules with detailed information about
+    what each module detects, severity levels, and categories.
+
+    Args:
+        group_by: Optional grouping (category, severity)
+
+    Returns:
+        Complete catalog of fraud detection modules
+    """
+    if group_by == "category":
+        modules = get_module_by_category()
+        return {
+            "grouped_by": "category",
+            "total_modules": get_module_count(),
+            "data": modules
+        }
+    elif group_by == "severity":
+        modules = get_module_by_severity()
+        return {
+            "grouped_by": "severity",
+            "total_modules": get_module_count(),
+            "data": modules
+        }
+    else:
+        # Return flat list with module IDs
+        modules = []
+        for module_id, module_info in FRAUD_MODULES_CATALOG.items():
+            modules.append({
+                "id": module_id,
+                **module_info
+            })
+        return {
+            "total_modules": get_module_count(),
+            "modules": modules
+        }
 
 # ==================== Run Application ====================
 

@@ -331,6 +331,28 @@ class FraudAPIClient:
         response.raise_for_status()
         return response.json()
 
+    def get_modules_catalog(self, group_by: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get complete fraud detection modules catalog.
+
+        Args:
+            group_by: Optional grouping (category, severity)
+
+        Returns:
+            Catalog of all fraud detection modules
+        """
+        params = {}
+        if group_by:
+            params["group_by"] = group_by
+
+        response = requests.get(
+            f"{self.base_url}/api/v1/modules/catalog",
+            headers=self._get_headers(),
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+
 # ==================== Streamlit Session State Management ====================
 
 def get_api_client() -> FraudAPIClient:

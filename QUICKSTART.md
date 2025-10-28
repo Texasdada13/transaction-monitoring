@@ -69,6 +69,24 @@ Use these test credentials:
 - **Scenario Breakdown**: Activity by fraud type (payroll, beneficiary, etc.)
 - **Quick Actions**: Approve/Reject/Escalate buttons for each alert
 
+### Risk Analytics Page
+- **Time-Series Analysis**: Transaction and risk trends over time
+- **Risk Distribution**: Histogram of risk scores
+- **Money Saved**: Financial impact of fraud prevention
+- **Module Performance**: Top performing fraud detection modules
+
+### Investigation Tools Page
+- **Transaction Search**: Multi-criteria search with filters
+- **Account Deep-Dive**: Comprehensive account investigation
+- **Module Breakdown**: Detailed view of triggered modules per transaction
+
+### Module Catalog Page (NEW!)
+- **All 25+ Modules**: Complete showcase of fraud detection modules
+- **Grouped by Category**: Behavioral, Financial Crime, Location Analysis, etc.
+- **Grouped by Severity**: Critical, High, Medium, Low
+- **Search & Filter**: Find specific modules quickly
+- **Detection Capabilities**: What each module detects and why
+
 ## Troubleshooting
 
 ### "Cannot connect to API server"
