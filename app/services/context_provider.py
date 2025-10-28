@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -81,6 +81,9 @@ class ContextProvider:
 
         # Add device fingerprinting context
         self._add_device_fingerprint_context(context, account_id, transaction)
+
+        # Add VPN/proxy detection context
+        self._add_vpn_proxy_context(context, transaction)
 
         return context
     
@@ -1303,3 +1306,153 @@ class ContextProvider:
             context["hours_since_device_last_seen"] = hours_since_last_seen
             context["device_session_count"] = matching_device.session_count
             context["device_is_trusted"] = matching_device.is_trusted_device
+
+    def _add_vpn_proxy_context(self, context: Dict[str, Any],
+                                transaction: Dict[str, Any]) -> None:
+        """
+        Add VPN/proxy detection context for fraud detection.
+
+        Flags transactions from masked IP addresses (VPN, proxy, Tor, datacenter IPs).
+
+        Args:
+            context: Context dictionary to update
+            transaction: Transaction data
+        """
+        # Extract IP address from transaction metadata
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            context["vpn_proxy_check_available"] = False
+            return
+
+        # Get current IP address
+        current_ip = tx_metadata.get("ip_address")
+
+        if not current_ip:
+            context["vpn_proxy_check_available"] = False
+            return
+
+        context["vpn_proxy_check_available"] = True
+        context["transaction_ip"] = current_ip
+
+        # Initialize VPN/proxy flags
+        context["is_vpn_or_proxy"] = False
+        context["vpn_proxy_matches"] = []
+
+        # Check against VPN/proxy IP database
+        # 1. Check for exact IP match
+        exact_matches = self.db.query(VPNProxyIP).filter(
+            VPNProxyIP.status == "active",
+            VPNProxyIP.ip_address == current_ip
+        ).all()
+
+        # 2. Check for subnet/range matches
+        # Note: For production, you'd want proper CIDR matching using ipaddress module
+        # This is a simplified check
+        subnet_matches = self.db.query(VPNProxyIP).filter(
+            VPNProxyIP.status == "active",
+            VPNProxyIP.subnet.isnot(None)
+        ).all()
+
+        # Simple subnet checking (in production, use ipaddress.ip_address and ip_network)
+        range_matches = []
+        for entry in subnet_matches:
+            if entry.subnet and current_ip.startswith(entry.subnet.split('/')[0].rsplit('.', 1)[0]):
+                range_matches.append(entry)
+
+        all_matches = exact_matches + range_matches
+
+        # Check metadata for VPN/proxy indicators
+        # Some detection services add flags to metadata
+        vpn_detected = tx_metadata.get("is_vpn", False)
+        proxy_detected = tx_metadata.get("is_proxy", False)
+        tor_detected = tx_metadata.get("is_tor", False)
+        datacenter_detected = tx_metadata.get("is_datacenter", False)
+        hosting_detected = tx_metadata.get("is_hosting", False)
+
+        metadata_indicators = []
+        if vpn_detected:
+            metadata_indicators.append("vpn")
+        if proxy_detected:
+            metadata_indicators.append("proxy")
+        if tor_detected:
+            metadata_indicators.append("tor")
+        if datacenter_detected:
+            metadata_indicators.append("datacenter")
+        if hosting_detected:
+            metadata_indicators.append("hosting")
+
+        context["metadata_vpn_proxy_indicators"] = metadata_indicators
+
+        # Process database matches
+        if all_matches:
+            context["is_vpn_or_proxy"] = True
+            context["vpn_proxy_matches"] = [
+                {
+                    "service_type": entry.service_type,
+                    "service_name": entry.service_name,
+                    "provider": entry.provider,
+                    "risk_level": entry.risk_level,
+                    "is_residential_proxy": entry.is_residential_proxy,
+                    "is_mobile_proxy": entry.is_mobile_proxy,
+                    "confidence": entry.confidence,
+                    "country": entry.country,
+                    "source": entry.source
+                }
+                for entry in all_matches
+            ]
+
+            # Get highest risk level
+            risk_order = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+            max_risk = max(
+                (entry.risk_level for entry in all_matches),
+                key=lambda r: risk_order.get(r, 0)
+            )
+            context["vpn_proxy_max_risk_level"] = max_risk
+
+            # Get highest confidence score
+            max_confidence = max(entry.confidence for entry in all_matches)
+            context["vpn_proxy_max_confidence"] = max_confidence
+
+            # Identify service types detected
+            service_types = list(set(entry.service_type for entry in all_matches if entry.service_type))
+            context["vpn_proxy_service_types"] = service_types
+
+            # Check for residential/mobile proxies (harder to detect, more sophisticated)
+            has_residential = any(entry.is_residential_proxy for entry in all_matches)
+            has_mobile = any(entry.is_mobile_proxy for entry in all_matches)
+            context["is_residential_proxy"] = has_residential
+            context["is_mobile_proxy"] = has_mobile
+
+            context["vpn_proxy_match_count"] = len(all_matches)
+
+        # Check metadata indicators even if no database match
+        elif metadata_indicators:
+            context["is_vpn_or_proxy"] = True
+            context["vpn_proxy_detection_source"] = "metadata"
+            context["vpn_proxy_service_types"] = metadata_indicators
+
+        # Additional context from metadata
+        if tx_metadata.get("connection_type"):
+            context["connection_type"] = tx_metadata.get("connection_type")
+
+        # ISP information (can help identify datacenter/hosting IPs)
+        if tx_metadata.get("isp"):
+            context["isp"] = tx_metadata.get("isp")
+
+            # Common datacenter/hosting ISP indicators
+            datacenter_keywords = ["amazon", "aws", "google cloud", "azure", "digitalocean",
+                                   "linode", "ovh", "hetzner", "vultr", "rackspace"]
+            isp_lower = tx_metadata.get("isp", "").lower()
+
+            is_datacenter_isp = any(keyword in isp_lower for keyword in datacenter_keywords)
+            if is_datacenter_isp and not context["is_vpn_or_proxy"]:
+                context["is_vpn_or_proxy"] = True
+                context["vpn_proxy_detection_source"] = "datacenter_isp"
+                context["vpn_proxy_service_types"] = ["datacenter"]
+                context["vpn_proxy_max_risk_level"] = "medium"

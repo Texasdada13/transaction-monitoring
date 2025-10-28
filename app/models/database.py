@@ -283,6 +283,50 @@ class DeviceSession(Base):
     account = relationship("Account")
     transaction = relationship("Transaction")
 
+class VPNProxyIP(Base):
+    """
+    Tracks known VPN and proxy IP addresses/ranges for fraud detection.
+    Used to flag transactions from masked IP addresses.
+    """
+    __tablename__ = "vpn_proxy_ips"
+
+    entry_id = Column(String, primary_key=True, index=True)
+
+    # IP information
+    ip_address = Column(String, index=True, nullable=True)  # Specific IP address
+    ip_range_start = Column(String, nullable=True)  # Start of IP range (CIDR notation or start IP)
+    ip_range_end = Column(String, nullable=True)  # End of IP range
+    subnet = Column(String, index=True, nullable=True)  # CIDR subnet (e.g., "192.168.1.0/24")
+
+    # VPN/Proxy details
+    service_type = Column(String, index=True)  # "vpn", "proxy", "tor", "datacenter", "hosting"
+    service_name = Column(String, nullable=True)  # Name of VPN/proxy service (e.g., "NordVPN", "Tor Exit Node")
+    provider = Column(String, nullable=True)  # Provider/company name
+
+    # Location information
+    country = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    datacenter = Column(String, nullable=True)  # Datacenter/hosting provider
+
+    # Risk assessment
+    risk_level = Column(String, default="medium")  # "low", "medium", "high", "critical"
+    is_residential_proxy = Column(Boolean, default=False)  # Residential proxies harder to detect
+    is_mobile_proxy = Column(Boolean, default=False)
+
+    # Metadata
+    added_date = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
+    added_by = Column(String, nullable=True)  # Admin/system that added this entry
+    source = Column(String, nullable=True)  # "manual", "api", "threat_intelligence", "ip2proxy", "maxmind"
+    last_verified = Column(String, nullable=True)  # When this was last verified as VPN/proxy
+
+    # Status
+    status = Column(String, default="active", index=True)  # "active", "removed", "expired"
+    confidence = Column(Float, default=1.0)  # Confidence score (0.0 to 1.0)
+
+    # Additional context
+    notes = Column(Text, nullable=True)
+    external_reference = Column(String, nullable=True)
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
