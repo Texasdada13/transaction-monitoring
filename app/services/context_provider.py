@@ -106,6 +106,9 @@ class ContextProvider:
         # Add past fraudulent behavior flags detection context
         self._add_past_fraud_flags_context(context, account_id, transaction)
 
+        # Add location-inconsistent transactions detection context
+        self._add_location_inconsistent_transactions_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -3607,3 +3610,492 @@ class ContextProvider:
             fraud_risk_level = "minimal"
 
         context["past_fraud_risk_level"] = fraud_risk_level
+
+    def _add_location_inconsistent_transactions_context(self, context: Dict[str, Any],
+                                                         account_id: str,
+                                                         transaction: Dict[str, Any]) -> None:
+        """
+        Add location-inconsistent transactions detection for fraud analysis.
+
+        Detects transactions initiated from multiple geolocations in short time
+        frames, indicating compromised credentials or account takeover. Focuses
+        on location hopping patterns and rapid geographic changes.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account identifier
+            transaction: Current transaction data
+        """
+        import math
+        from collections import Counter
+
+        now = datetime.datetime.utcnow()
+
+        # Extract current transaction location
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            tx_metadata = {}
+
+        current_country = tx_metadata.get("country") or tx_metadata.get("country_code")
+        current_city = tx_metadata.get("city")
+        current_region = tx_metadata.get("region") or tx_metadata.get("state")
+        current_ip = tx_metadata.get("ip_address")
+        current_lat = tx_metadata.get("latitude")
+        current_lon = tx_metadata.get("longitude")
+        tx_timestamp_str = transaction.get("timestamp", now.isoformat())
+        tx_timestamp = datetime.datetime.fromisoformat(tx_timestamp_str)
+
+        if not current_country:
+            context["location_inconsistency_check_available"] = False
+            return
+
+        context["location_inconsistency_check_available"] = True
+
+        # Helper function: Calculate distance using Haversine formula
+        def calculate_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+            """Calculate distance between two coordinates in kilometers"""
+            R = 6371  # Earth radius in km
+
+            lat1_rad = math.radians(lat1)
+            lat2_rad = math.radians(lat2)
+            delta_lat = math.radians(lat2 - lat1)
+            delta_lon = math.radians(lon2 - lon1)
+
+            a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon/2)**2
+            c = 2 * math.asin(math.sqrt(a))
+            return R * c
+
+        # Get recent transactions/sessions with location data for velocity analysis
+        # Check multiple time windows for pattern detection
+        time_windows = {
+            "1_hour": 1,
+            "3_hours": 3,
+            "6_hours": 6,
+            "12_hours": 12,
+            "24_hours": 24,
+            "48_hours": 48,
+            "7_days": 168,
+            "30_days": 720
+        }
+
+        # Query recent device sessions with location data
+        thirty_days_ago = (now - datetime.timedelta(days=30)).isoformat()
+        recent_sessions = self.db.query(DeviceSession).filter(
+            DeviceSession.account_id == account_id,
+            DeviceSession.timestamp > thirty_days_ago,
+            DeviceSession.ip_country.isnot(None)
+        ).order_by(DeviceSession.timestamp.desc()).all()
+
+        # Also query recent transactions with location data
+        recent_transactions = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > thirty_days_ago
+        ).order_by(Transaction.timestamp.desc()).all()
+
+        # Combine location data from both sources
+        location_events = []
+
+        # Add session locations
+        for session in recent_sessions:
+            try:
+                session_time = datetime.datetime.fromisoformat(session.timestamp)
+                session_metadata = json.loads(session.user_agent) if session.user_agent else {}
+
+                location_events.append({
+                    "timestamp": session_time,
+                    "country": session.ip_country,
+                    "city": session.ip_city,
+                    "latitude": session_metadata.get("latitude"),
+                    "longitude": session_metadata.get("longitude"),
+                    "ip": session.ip_address,
+                    "source": "session"
+                })
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+        # Add transaction locations
+        for tx in recent_transactions:
+            try:
+                tx_time = datetime.datetime.fromisoformat(tx.timestamp)
+                tx_meta = json.loads(tx.tx_metadata) if tx.tx_metadata else {}
+
+                tx_country = tx_meta.get("country") or tx_meta.get("country_code")
+                if tx_country:
+                    location_events.append({
+                        "timestamp": tx_time,
+                        "country": tx_country,
+                        "city": tx_meta.get("city"),
+                        "latitude": tx_meta.get("latitude"),
+                        "longitude": tx_meta.get("longitude"),
+                        "ip": tx_meta.get("ip_address"),
+                        "source": "transaction"
+                    })
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+        # Sort by timestamp descending
+        location_events.sort(key=lambda x: x["timestamp"], reverse=True)
+
+        # Analyze location inconsistencies across time windows
+        for window_name, hours in time_windows.items():
+            window_start = now - datetime.timedelta(hours=hours)
+
+            window_events = [e for e in location_events
+                           if e["timestamp"] >= window_start]
+
+            if not window_events:
+                continue
+
+            # Count unique countries
+            window_countries = [e["country"] for e in window_events if e["country"]]
+            unique_countries = list(set(window_countries))
+            context[f"unique_countries_{window_name}"] = len(unique_countries)
+            context[f"countries_list_{window_name}"] = unique_countries
+
+            # Count unique cities
+            window_cities = [e["city"] for e in window_events if e["city"]]
+            unique_cities = list(set(window_cities))
+            context[f"unique_cities_{window_name}"] = len(unique_cities)
+
+            # Count unique IPs
+            window_ips = [e["ip"] for e in window_events if e["ip"]]
+            unique_ips = list(set(window_ips))
+            context[f"unique_ips_{window_name}"] = len(unique_ips)
+
+            # Count total location events
+            context[f"location_events_{window_name}"] = len(window_events)
+
+        # Detailed analysis for critical short time windows
+        critical_windows = {
+            "1h": (1, "1_hour"),
+            "3h": (3, "3_hours"),
+            "6h": (6, "6_hours"),
+            "24h": (24, "24_hours")
+        }
+
+        location_hopping_detected = False
+        max_location_changes = 0
+
+        for label, (hours, window_key) in critical_windows.items():
+            unique_countries = context.get(f"unique_countries_{window_key}", 0)
+
+            # Flag location hopping: 3+ countries in 24 hours, 2+ in 6 hours, etc.
+            if (hours <= 6 and unique_countries >= 2) or \
+               (hours <= 24 and unique_countries >= 3):
+                location_hopping_detected = True
+                max_location_changes = max(max_location_changes, unique_countries)
+
+        context["location_hopping_detected"] = location_hopping_detected
+        context["max_location_changes_24h"] = context.get("unique_countries_24_hours", 0)
+
+        # Calculate location velocity (location changes per day)
+        window_7d_events = [e for e in location_events
+                           if e["timestamp"] >= (now - datetime.timedelta(days=7))]
+
+        if len(window_7d_events) >= 2:
+            # Count location changes (country or city changes)
+            location_changes = 0
+            for i in range(1, len(window_7d_events)):
+                prev = window_7d_events[i-1]
+                curr = window_7d_events[i]
+
+                if prev["country"] != curr["country"] or \
+                   (prev["city"] and curr["city"] and prev["city"] != curr["city"]):
+                    location_changes += 1
+
+            # Calculate velocity (changes per day)
+            days_span = 7
+            location_velocity = location_changes / days_span
+            context["location_velocity_changes_per_day"] = location_velocity
+            context["total_location_changes_7d"] = location_changes
+        else:
+            context["location_velocity_changes_per_day"] = 0
+            context["total_location_changes_7d"] = 0
+
+        # Analyze travel patterns - detect impossible/suspicious travel
+        impossible_travel_count = 0
+        suspicious_travel_count = 0
+        rapid_travel_events = []
+
+        if current_lat and current_lon:
+            # Check against recent events with coordinates
+            for event in location_events[:10]:  # Check last 10 events
+                if not event["latitude"] or not event["longitude"]:
+                    continue
+
+                # Calculate distance and time
+                distance_km = calculate_distance_km(
+                    float(event["latitude"]), float(event["longitude"]),
+                    float(current_lat), float(current_lon)
+                )
+
+                time_diff_hours = (tx_timestamp - event["timestamp"]).total_seconds() / 3600
+
+                if time_diff_hours > 0 and distance_km > 50:  # Only check if meaningful distance
+                    required_speed = distance_km / time_diff_hours
+
+                    # Impossible travel: >900 km/h (faster than commercial flight)
+                    if required_speed > 900:
+                        impossible_travel_count += 1
+                        rapid_travel_events.append({
+                            "from": f"{event['city']}, {event['country']}",
+                            "distance_km": round(distance_km, 2),
+                            "time_hours": round(time_diff_hours, 2),
+                            "speed_kmh": round(required_speed, 2),
+                            "category": "impossible"
+                        })
+                    # Suspicious travel: >500 km/h (very fast, unusual)
+                    elif required_speed > 500:
+                        suspicious_travel_count += 1
+                        rapid_travel_events.append({
+                            "from": f"{event['city']}, {event['country']}",
+                            "distance_km": round(distance_km, 2),
+                            "time_hours": round(time_diff_hours, 2),
+                            "speed_kmh": round(required_speed, 2),
+                            "category": "suspicious"
+                        })
+
+        context["impossible_travel_count_recent"] = impossible_travel_count
+        context["suspicious_travel_count_recent"] = suspicious_travel_count
+        context["rapid_travel_events"] = rapid_travel_events[:5]  # Top 5 most suspicious
+
+        # Analyze historical location stability
+        # Check if user typically operates from consistent locations
+        historical_90d_events = [e for e in location_events
+                                if e["timestamp"] >= (now - datetime.timedelta(days=90))]
+
+        if len(historical_90d_events) >= 10:
+            # Calculate location entropy/consistency
+            country_counts = Counter([e["country"] for e in historical_90d_events if e["country"]])
+
+            if country_counts:
+                total_events = sum(country_counts.values())
+                # Primary country percentage
+                most_common_country, primary_count = country_counts.most_common(1)[0]
+                primary_country_pct = (primary_count / total_events) * 100
+
+                context["historical_primary_country"] = most_common_country
+                context["historical_primary_country_percentage"] = primary_country_pct
+
+                # Location consistency score (0-100, higher = more consistent)
+                # Based on how concentrated locations are
+                location_consistency = primary_country_pct
+                context["location_consistency_score"] = location_consistency
+
+                # Flag if currently deviating from typical location
+                if current_country.upper()[:2] != most_common_country.upper()[:2]:
+                    context["current_location_deviates_from_primary"] = True
+
+                    # Extra flag if user is highly location-consistent (>90%)
+                    if primary_country_pct >= 90:
+                        context["high_consistency_user_in_unusual_location"] = True
+                    else:
+                        context["high_consistency_user_in_unusual_location"] = False
+                else:
+                    context["current_location_deviates_from_primary"] = False
+                    context["high_consistency_user_in_unusual_location"] = False
+        else:
+            context["location_consistency_score"] = None
+            context["current_location_deviates_from_primary"] = False
+            context["high_consistency_user_in_unusual_location"] = False
+
+        # Detect simultaneous or near-simultaneous access from different locations
+        # Check for transactions/sessions within 15 minutes from different countries
+        simultaneous_access_events = []
+
+        for i in range(len(location_events) - 1):
+            event1 = location_events[i]
+            event2 = location_events[i + 1]
+
+            time_diff_minutes = (event1["timestamp"] - event2["timestamp"]).total_seconds() / 60
+
+            # If within 15 minutes and different countries
+            if time_diff_minutes <= 15 and \
+               event1["country"] and event2["country"] and \
+               event1["country"].upper()[:2] != event2["country"].upper()[:2]:
+                simultaneous_access_events.append({
+                    "country1": event1["country"],
+                    "country2": event2["country"],
+                    "city1": event1["city"],
+                    "city2": event2["city"],
+                    "time_diff_minutes": round(time_diff_minutes, 2),
+                    "timestamp1": event1["timestamp"].isoformat(),
+                    "timestamp2": event2["timestamp"].isoformat()
+                })
+
+        context["simultaneous_access_count"] = len(simultaneous_access_events)
+        context["simultaneous_access_events"] = simultaneous_access_events[:3]  # Top 3
+
+        # Detect geographic clustering vs dispersion
+        # Check if recent locations are geographically dispersed
+        if len(historical_90d_events) >= 5:
+            unique_countries_90d = list(set([e["country"] for e in historical_90d_events if e["country"]]))
+
+            # Geographic dispersion score (higher = more dispersed)
+            dispersion_score = len(unique_countries_90d)
+            context["geographic_dispersion_score"] = dispersion_score
+
+            # Flag high dispersion (5+ countries in 90 days)
+            context["high_geographic_dispersion"] = dispersion_score >= 5
+        else:
+            context["geographic_dispersion_score"] = 0
+            context["high_geographic_dispersion"] = False
+
+        # Analyze continent changes
+        continent_mapping = {
+            "US": "North America", "CA": "North America", "MX": "North America",
+            "GB": "Europe", "DE": "Europe", "FR": "Europe", "IT": "Europe", "ES": "Europe",
+            "CN": "Asia", "JP": "Asia", "IN": "Asia", "KR": "Asia", "SG": "Asia",
+            "BR": "South America", "AR": "South America", "CL": "South America",
+            "AU": "Oceania", "NZ": "Oceania",
+            "ZA": "Africa", "EG": "Africa", "NG": "Africa"
+        }
+
+        def get_continent(country_code):
+            if not country_code:
+                return "Unknown"
+            return continent_mapping.get(country_code.upper()[:2], "Other")
+
+        # Count unique continents in 24 hours
+        window_24h_events = [e for e in location_events
+                            if e["timestamp"] >= (now - datetime.timedelta(hours=24))]
+
+        continents_24h = [get_continent(e["country"]) for e in window_24h_events if e["country"]]
+        unique_continents_24h = list(set(continents_24h))
+        context["unique_continents_24h"] = len(unique_continents_24h)
+        context["continents_list_24h"] = unique_continents_24h
+
+        # Generate risk flags
+        risk_flags = []
+
+        # Multiple countries in short time
+        if context.get("unique_countries_1_hour", 0) >= 2:
+            risk_flags.append("multiple_countries_1_hour")
+
+        if context.get("unique_countries_3_hours", 0) >= 2:
+            risk_flags.append("multiple_countries_3_hours")
+
+        if context.get("unique_countries_6_hours", 0) >= 3:
+            risk_flags.append("multiple_countries_6_hours")
+
+        if context.get("unique_countries_24_hours", 0) >= 4:
+            risk_flags.append("multiple_countries_24_hours")
+
+        # Location hopping pattern
+        if location_hopping_detected:
+            risk_flags.append("location_hopping_pattern_detected")
+
+        # High location velocity
+        if context.get("location_velocity_changes_per_day", 0) >= 2:
+            risk_flags.append("high_location_velocity")
+
+        # Impossible travel
+        if impossible_travel_count > 0:
+            risk_flags.append("impossible_travel_detected")
+
+        # Suspicious travel
+        if suspicious_travel_count >= 2:
+            risk_flags.append("multiple_suspicious_travel_events")
+
+        # Simultaneous access
+        if context.get("simultaneous_access_count", 0) > 0:
+            risk_flags.append("simultaneous_access_different_locations")
+
+        # High geographic dispersion
+        if context.get("high_geographic_dispersion", False):
+            risk_flags.append("high_geographic_dispersion")
+
+        # Multiple continents in 24h
+        if context.get("unique_continents_24h", 0) >= 3:
+            risk_flags.append("multiple_continents_24h")
+
+        # Deviation from primary location for consistent user
+        if context.get("high_consistency_user_in_unusual_location", False):
+            risk_flags.append("consistent_user_unusual_location")
+
+        # Current location deviates from primary
+        if context.get("current_location_deviates_from_primary", False):
+            risk_flags.append("location_deviates_from_primary")
+
+        # High number of unique IPs in short time
+        if context.get("unique_ips_24_hours", 0) >= 5:
+            risk_flags.append("multiple_ips_24_hours")
+
+        # Many location events in short time (high activity)
+        if context.get("location_events_6_hours", 0) >= 10:
+            risk_flags.append("high_location_activity_6_hours")
+
+        context["location_inconsistency_flags"] = risk_flags
+        context["location_inconsistency_flag_count"] = len(risk_flags)
+
+        # Calculate comprehensive location inconsistency risk score (0-100)
+        risk_score = 0
+
+        # Multiple countries scoring
+        risk_score += context.get("unique_countries_1_hour", 0) * 30  # Very high risk
+        risk_score += context.get("unique_countries_3_hours", 0) * 20
+        risk_score += context.get("unique_countries_6_hours", 0) * 10
+        risk_score += min(context.get("unique_countries_24_hours", 0) * 5, 30)
+
+        # Location velocity scoring
+        velocity = context.get("location_velocity_changes_per_day", 0)
+        if velocity >= 3:
+            risk_score += 35
+        elif velocity >= 2:
+            risk_score += 25
+        elif velocity >= 1:
+            risk_score += 15
+
+        # Impossible/suspicious travel
+        risk_score += impossible_travel_count * 40
+        risk_score += suspicious_travel_count * 20
+
+        # Simultaneous access
+        risk_score += context.get("simultaneous_access_count", 0) * 35
+
+        # Geographic dispersion
+        dispersion = context.get("geographic_dispersion_score", 0)
+        if dispersion >= 10:
+            risk_score += 30
+        elif dispersion >= 5:
+            risk_score += 20
+        elif dispersion >= 3:
+            risk_score += 10
+
+        # Deviation from primary location
+        if context.get("high_consistency_user_in_unusual_location", False):
+            risk_score += 30
+        elif context.get("current_location_deviates_from_primary", False):
+            risk_score += 15
+
+        # Multiple continents
+        continents = context.get("unique_continents_24h", 0)
+        if continents >= 3:
+            risk_score += 25
+        elif continents >= 2:
+            risk_score += 10
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["location_inconsistency_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            inconsistency_risk_level = "critical"
+        elif risk_score >= 60:
+            inconsistency_risk_level = "high"
+        elif risk_score >= 40:
+            inconsistency_risk_level = "medium"
+        elif risk_score >= 20:
+            inconsistency_risk_level = "low"
+        else:
+            inconsistency_risk_level = "minimal"
+
+        context["location_inconsistency_risk_level"] = inconsistency_risk_level
