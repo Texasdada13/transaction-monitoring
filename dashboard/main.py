@@ -222,7 +222,7 @@ def print_dashboard_summary():
 
         # Overview stats
         stats = dashboard.get_overview_stats()
-        print(f"\n=Ê Last 24 Hours Overview:")
+        print(f"\n>> Last 24 Hours Overview:")
         print(f"  Total Transactions: {stats['total_transactions']}")
         print(f"  Total Value: {format_currency(stats['total_value'])}")
         print(f"  Auto-Approved: {stats['auto_approved']} ({stats['auto_approved']/max(stats['total_transactions'],1)*100:.1f}%)")
@@ -231,7 +231,7 @@ def print_dashboard_summary():
 
         # Scenario breakdown
         scenarios = dashboard.get_scenario_breakdown()
-        print(f"\n<¯ Activity by Fraud Scenario:")
+        print(f"\n>> Activity by Fraud Scenario:")
         for name, data in scenarios.items():
             if data['count'] > 0:
                 print(f"  {name.replace('_', ' ').title()}:")
@@ -239,13 +239,13 @@ def print_dashboard_summary():
 
         # Top triggered rules
         top_rules = dashboard.get_top_triggered_rules(5)
-        print(f"\n=¨ Most Triggered Rules:")
+        print(f"\n>> Most Triggered Rules:")
         for i, rule in enumerate(top_rules, 1):
             print(f"  {i}. {rule['description']} (triggered {rule['count']} times)")
 
         # Review queue
         queue = dashboard.get_manual_review_queue()
-        print(f"\n   Manual Review Queue: {len(queue)} items")
+        print(f"\n>> Manual Review Queue: {len(queue)} items")
         for item in queue[:5]:  # Show top 5
             print(f"  - {item['transaction_id']}: {format_currency(item['amount'])} (Risk: {item['risk_score']:.2f})")
 
