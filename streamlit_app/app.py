@@ -139,7 +139,8 @@ def main_dashboard():
         from streamlit_app.pages import real_time_monitoring
         real_time_monitoring.render()
     elif page == "📊 Risk Analytics":
-        st.info("📊 Risk Analytics page - Coming soon!")
+        from streamlit_app.pages import risk_analytics
+        risk_analytics.render()
     elif page == "🔍 Investigation Tools":
         st.info("🔍 Investigation Tools page - Coming soon!")
     elif page == "🏥 System Health":

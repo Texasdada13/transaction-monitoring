@@ -380,13 +380,20 @@ async def get_time_series_metrics(
                 "count": 0,
                 "avg_risk": 0,
                 "total_risk": 0,
-                "high_risk_count": 0
+                "high_risk_count": 0,
+                "manual_review_count": 0,
+                "auto_approve_count": 0
             }
 
         hourly_data[hour]["count"] += 1
         hourly_data[hour]["total_risk"] += assessment.risk_score
         if assessment.risk_score > 0.6:
             hourly_data[hour]["high_risk_count"] += 1
+
+        if assessment.decision == "manual_review":
+            hourly_data[hour]["manual_review_count"] += 1
+        elif assessment.decision == "auto_approve":
+            hourly_data[hour]["auto_approve_count"] += 1
 
     # Calculate averages
     for data in hourly_data.values():
@@ -395,7 +402,150 @@ async def get_time_series_metrics(
 
     return {
         "time_range": time_range,
-        "data": list(hourly_data.values())
+        "data": sorted(hourly_data.values(), key=lambda x: x["timestamp"])
+    }
+
+@app.get("/api/v1/analytics/risk-distribution")
+async def get_risk_distribution(
+    time_range: str = "24h",
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get risk score distribution for histogram.
+
+    Returns:
+        Risk score bins and counts
+    """
+    from app.models.database import RiskAssessment
+
+    time_map = {"1h": 1, "24h": 24, "7d": 168, "30d": 720}
+    hours = time_map.get(time_range, 24)
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+
+    assessments = db.query(RiskAssessment).filter(
+        RiskAssessment.review_timestamp > cutoff
+    ).all()
+
+    risk_scores = [a.risk_score for a in assessments]
+
+    return {
+        "risk_scores": risk_scores,
+        "total_count": len(risk_scores),
+        "avg_risk": sum(risk_scores) / len(risk_scores) if risk_scores else 0,
+        "max_risk": max(risk_scores) if risk_scores else 0,
+        "min_risk": min(risk_scores) if risk_scores else 0
+    }
+
+@app.get("/api/v1/analytics/money-saved")
+async def get_money_saved(
+    time_range: str = "24h",
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Calculate money saved by blocking fraudulent transactions.
+
+    Returns:
+        Amount saved, blocked count, etc.
+    """
+    from app.models.database import RiskAssessment, Transaction
+    import json
+
+    time_map = {"1h": 1, "24h": 24, "7d": 168, "30d": 720}
+    hours = time_map.get(time_range, 24)
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+
+    # Get high-risk transactions that were flagged
+    assessments = db.query(RiskAssessment).filter(
+        RiskAssessment.review_timestamp > cutoff,
+        RiskAssessment.risk_score >= 0.6  # High risk threshold
+    ).all()
+
+    total_saved = 0
+    blocked_count = 0
+    prevented_fraud_count = 0
+
+    for assessment in assessments:
+        tx = db.query(Transaction).filter(
+            Transaction.transaction_id == assessment.transaction_id
+        ).first()
+
+        if tx:
+            # Count as prevented if manual review or high risk
+            if assessment.decision == "manual_review" or assessment.review_status == "rejected":
+                total_saved += tx.amount
+                prevented_fraud_count += 1
+
+            if assessment.review_status == "rejected":
+                blocked_count += 1
+
+    return {
+        "total_amount_saved": total_saved,
+        "blocked_transaction_count": blocked_count,
+        "prevented_fraud_count": prevented_fraud_count,
+        "high_risk_flagged": len(assessments),
+        "time_range": time_range
+    }
+
+@app.get("/api/v1/analytics/module-performance")
+async def get_module_performance(
+    time_range: str = "24h",
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get performance metrics for each fraud detection module.
+
+    Returns:
+        Module statistics including trigger rates, accuracy, etc.
+    """
+    from app.models.database import RiskAssessment
+    import json
+
+    time_map = {"1h": 1, "24h": 24, "7d": 168, "30d": 720}
+    hours = time_map.get(time_range, 24)
+    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+
+    assessments = db.query(RiskAssessment).filter(
+        RiskAssessment.review_timestamp > cutoff
+    ).all()
+
+    module_stats = {}
+
+    for assessment in assessments:
+        triggered = json.loads(assessment.triggered_rules) if assessment.triggered_rules else {}
+
+        for rule_name, rule_info in triggered.items():
+            if rule_name not in module_stats:
+                module_stats[rule_name] = {
+                    "name": rule_name,
+                    "description": rule_info.get("description", ""),
+                    "trigger_count": 0,
+                    "total_weight": 0,
+                    "avg_weight": 0,
+                    "high_risk_triggers": 0,
+                    "confirmed_fraud": 0
+                }
+
+            module_stats[rule_name]["trigger_count"] += 1
+            module_stats[rule_name]["total_weight"] += rule_info.get("weight", 0)
+
+            if assessment.risk_score >= 0.6:
+                module_stats[rule_name]["high_risk_triggers"] += 1
+
+            if assessment.review_status == "rejected":
+                module_stats[rule_name]["confirmed_fraud"] += 1
+
+    # Calculate averages
+    for stats in module_stats.values():
+        if stats["trigger_count"] > 0:
+            stats["avg_weight"] = stats["total_weight"] / stats["trigger_count"]
+            stats["precision"] = stats["confirmed_fraud"] / stats["trigger_count"] if stats["trigger_count"] > 0 else 0
+
+    return {
+        "modules": list(module_stats.values()),
+        "total_modules": len(module_stats)
     }
 
 # ==================== Run Application ====================

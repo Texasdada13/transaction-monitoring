@@ -223,6 +223,60 @@ class FraudAPIClient:
         response.raise_for_status()
         return response.json()
 
+    def get_risk_distribution(self, time_range: str = "24h") -> Dict[str, Any]:
+        """
+        Get risk score distribution for histogram.
+
+        Args:
+            time_range: Time range (1h, 24h, 7d, 30d)
+
+        Returns:
+            Risk distribution data
+        """
+        response = requests.get(
+            f"{self.base_url}/api/v1/analytics/risk-distribution",
+            headers=self._get_headers(),
+            params={"time_range": time_range}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_money_saved(self, time_range: str = "24h") -> Dict[str, Any]:
+        """
+        Get money saved metrics.
+
+        Args:
+            time_range: Time range (1h, 24h, 7d, 30d)
+
+        Returns:
+            Money saved calculations
+        """
+        response = requests.get(
+            f"{self.base_url}/api/v1/analytics/money-saved",
+            headers=self._get_headers(),
+            params={"time_range": time_range}
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_module_performance(self, time_range: str = "24h") -> Dict[str, Any]:
+        """
+        Get fraud detection module performance metrics.
+
+        Args:
+            time_range: Time range (1h, 24h, 7d, 30d)
+
+        Returns:
+            Module performance statistics
+        """
+        response = requests.get(
+            f"{self.base_url}/api/v1/analytics/module-performance",
+            headers=self._get_headers(),
+            params={"time_range": time_range}
+        )
+        response.raise_for_status()
+        return response.json()
+
 
 # ==================== Streamlit Session State Management ====================
 
