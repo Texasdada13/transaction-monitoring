@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -87,6 +87,9 @@ class ContextProvider:
 
         # Add geo-location fraud detection context
         self._add_geolocation_context(context, account_id, transaction)
+
+        # Add behavioral biometrics fraud detection context
+        self._add_behavioral_biometric_context(context, account_id, transaction)
 
         return context
     
@@ -1692,3 +1695,278 @@ class ContextProvider:
             # No historical location data
             context["is_new_country"] = True
             context["historical_countries_count"] = 0
+
+    def _add_behavioral_biometric_context(self, context: Dict[str, Any],
+                                           account_id: str,
+                                           transaction: Dict[str, Any]) -> None:
+        """
+        Add behavioral biometrics fraud detection context.
+
+        Monitors user interaction patterns (typing speed, mouse movement, etc.)
+        and detects deviations from typical behavior indicating account takeover.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        # Extract behavioral data from transaction metadata
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            context["behavioral_biometric_check_available"] = False
+            return
+
+        # Extract behavioral metrics from metadata
+        behavioral_data = tx_metadata.get("behavioral_data") or tx_metadata.get("biometrics")
+
+        if not behavioral_data:
+            context["behavioral_biometric_check_available"] = False
+            return
+
+        context["behavioral_biometric_check_available"] = True
+
+        # Extract current session behavioral metrics
+        current_typing_speed = behavioral_data.get("typing_speed_wpm")
+        current_mouse_speed = behavioral_data.get("mouse_speed_px_sec")
+        current_key_hold_time = behavioral_data.get("key_hold_time_ms")
+        current_key_interval = behavioral_data.get("key_interval_ms")
+        current_mouse_smoothness = behavioral_data.get("mouse_smoothness")
+        current_click_accuracy = behavioral_data.get("click_accuracy")
+        current_actions_per_min = behavioral_data.get("actions_per_minute")
+        current_paste_frequency = behavioral_data.get("paste_frequency")
+        current_uses_autofill = behavioral_data.get("uses_autofill", False)
+        current_uses_shortcuts = behavioral_data.get("uses_shortcuts", False)
+
+        # Store current metrics in context
+        context["current_behavioral_metrics"] = {
+            "typing_speed_wpm": current_typing_speed,
+            "mouse_speed_px_sec": current_mouse_speed,
+            "key_hold_time_ms": current_key_hold_time,
+            "key_interval_ms": current_key_interval,
+            "mouse_smoothness": current_mouse_smoothness,
+            "click_accuracy": current_click_accuracy,
+            "actions_per_minute": current_actions_per_min,
+            "paste_frequency": current_paste_frequency,
+            "uses_autofill": current_uses_autofill,
+            "uses_shortcuts": current_uses_shortcuts
+        }
+
+        # Get historical behavioral baseline (last 90 days of normal behavior)
+        now = datetime.datetime.utcnow()
+        ninety_days_ago = (now - datetime.timedelta(days=90)).isoformat()
+
+        # Get baseline behavioral profiles (excluding anomalous ones)
+        baseline_profiles = self.db.query(BehavioralBiometric).filter(
+            BehavioralBiometric.account_id == account_id,
+            BehavioralBiometric.timestamp > ninety_days_ago,
+            BehavioralBiometric.is_anomalous == False,
+            BehavioralBiometric.is_baseline == True
+        ).all()
+
+        if not baseline_profiles:
+            # No baseline - might be new account or first time tracking
+            context["has_behavioral_baseline"] = False
+            context["behavioral_deviation_detected"] = False
+            context["behavioral_profile_count"] = 0
+            return
+
+        context["has_behavioral_baseline"] = True
+        context["behavioral_profile_count"] = len(baseline_profiles)
+
+        # Calculate baseline averages
+        typing_speeds = [p.avg_typing_speed_wpm for p in baseline_profiles if p.avg_typing_speed_wpm is not None]
+        mouse_speeds = [p.avg_mouse_speed_px_sec for p in baseline_profiles if p.avg_mouse_speed_px_sec is not None]
+        key_hold_times = [p.avg_key_hold_time_ms for p in baseline_profiles if p.avg_key_hold_time_ms is not None]
+        key_intervals = [p.avg_key_interval_ms for p in baseline_profiles if p.avg_key_interval_ms is not None]
+        mouse_smoothness_values = [p.mouse_movement_smoothness for p in baseline_profiles if p.mouse_movement_smoothness is not None]
+        click_accuracies = [p.click_accuracy for p in baseline_profiles if p.click_accuracy is not None]
+        actions_per_min = [p.actions_per_minute for p in baseline_profiles if p.actions_per_minute is not None]
+        paste_frequencies = [p.paste_frequency for p in baseline_profiles if p.paste_frequency is not None]
+
+        # Calculate historical patterns for autofill and shortcuts
+        uses_autofill_count = sum(1 for p in baseline_profiles if p.uses_autofill)
+        uses_shortcuts_count = sum(1 for p in baseline_profiles if p.uses_shortcuts)
+        total_profiles = len(baseline_profiles)
+
+        # Helper function to calculate mean and std dev
+        def calc_stats(values):
+            if not values:
+                return None, None
+            import math
+            mean = sum(values) / len(values)
+            if len(values) > 1:
+                variance = sum((x - mean) ** 2 for x in values) / len(values)
+                std_dev = math.sqrt(variance)
+            else:
+                std_dev = 0
+            return mean, std_dev
+
+        # Calculate baseline statistics
+        baseline_typing_mean, baseline_typing_std = calc_stats(typing_speeds)
+        baseline_mouse_speed_mean, baseline_mouse_speed_std = calc_stats(mouse_speeds)
+        baseline_key_hold_mean, baseline_key_hold_std = calc_stats(key_hold_times)
+        baseline_key_interval_mean, baseline_key_interval_std = calc_stats(key_intervals)
+        baseline_mouse_smooth_mean, baseline_mouse_smooth_std = calc_stats(mouse_smoothness_values)
+        baseline_click_acc_mean, baseline_click_acc_std = calc_stats(click_accuracies)
+        baseline_actions_mean, baseline_actions_std = calc_stats(actions_per_min)
+        baseline_paste_mean, baseline_paste_std = calc_stats(paste_frequencies)
+
+        # Store baseline in context
+        context["behavioral_baseline"] = {
+            "typing_speed_mean": baseline_typing_mean,
+            "mouse_speed_mean": baseline_mouse_speed_mean,
+            "key_hold_time_mean": baseline_key_hold_mean,
+            "key_interval_mean": baseline_key_interval_mean,
+            "mouse_smoothness_mean": baseline_mouse_smooth_mean,
+            "click_accuracy_mean": baseline_click_acc_mean,
+            "actions_per_minute_mean": baseline_actions_mean,
+            "paste_frequency_mean": baseline_paste_mean,
+            "uses_autofill_percentage": (uses_autofill_count / total_profiles) * 100 if total_profiles > 0 else 0,
+            "uses_shortcuts_percentage": (uses_shortcuts_count / total_profiles) * 100 if total_profiles > 0 else 0
+        }
+
+        # Detect behavioral deviations
+        deviations = []
+        deviation_threshold = 2.0  # Number of standard deviations
+
+        # Check typing speed deviation
+        if current_typing_speed and baseline_typing_mean and baseline_typing_std:
+            if baseline_typing_std > 0:
+                typing_deviation = abs(current_typing_speed - baseline_typing_mean) / baseline_typing_std
+                if typing_deviation > deviation_threshold:
+                    deviations.append({
+                        "metric": "typing_speed",
+                        "current": current_typing_speed,
+                        "baseline_mean": baseline_typing_mean,
+                        "std_deviations": typing_deviation,
+                        "severity": "high" if typing_deviation > 3.0 else "medium"
+                    })
+
+        # Check mouse speed deviation
+        if current_mouse_speed and baseline_mouse_speed_mean and baseline_mouse_speed_std:
+            if baseline_mouse_speed_std > 0:
+                mouse_deviation = abs(current_mouse_speed - baseline_mouse_speed_mean) / baseline_mouse_speed_std
+                if mouse_deviation > deviation_threshold:
+                    deviations.append({
+                        "metric": "mouse_speed",
+                        "current": current_mouse_speed,
+                        "baseline_mean": baseline_mouse_speed_mean,
+                        "std_deviations": mouse_deviation,
+                        "severity": "medium"
+                    })
+
+        # Check key hold time deviation
+        if current_key_hold_time and baseline_key_hold_mean and baseline_key_hold_std:
+            if baseline_key_hold_std > 0:
+                key_hold_deviation = abs(current_key_hold_time - baseline_key_hold_mean) / baseline_key_hold_std
+                if key_hold_deviation > deviation_threshold:
+                    deviations.append({
+                        "metric": "key_hold_time",
+                        "current": current_key_hold_time,
+                        "baseline_mean": baseline_key_hold_mean,
+                        "std_deviations": key_hold_deviation,
+                        "severity": "high" if key_hold_deviation > 3.0 else "medium"
+                    })
+
+        # Check key interval deviation
+        if current_key_interval and baseline_key_interval_mean and baseline_key_interval_std:
+            if baseline_key_interval_std > 0:
+                key_interval_deviation = abs(current_key_interval - baseline_key_interval_mean) / baseline_key_interval_std
+                if key_interval_deviation > deviation_threshold:
+                    deviations.append({
+                        "metric": "key_interval",
+                        "current": current_key_interval,
+                        "baseline_mean": baseline_key_interval_mean,
+                        "std_deviations": key_interval_deviation,
+                        "severity": "high" if key_interval_deviation > 3.0 else "medium"
+                    })
+
+        # Check mouse smoothness deviation
+        if current_mouse_smoothness and baseline_mouse_smooth_mean and baseline_mouse_smooth_std:
+            if baseline_mouse_smooth_std > 0:
+                smoothness_deviation = abs(current_mouse_smoothness - baseline_mouse_smooth_mean) / baseline_mouse_smooth_std
+                if smoothness_deviation > deviation_threshold:
+                    deviations.append({
+                        "metric": "mouse_smoothness",
+                        "current": current_mouse_smoothness,
+                        "baseline_mean": baseline_mouse_smooth_mean,
+                        "std_deviations": smoothness_deviation,
+                        "severity": "medium"
+                    })
+
+        # Check click accuracy deviation
+        if current_click_accuracy and baseline_click_acc_mean and baseline_click_acc_std:
+            if baseline_click_acc_std > 0:
+                accuracy_deviation = abs(current_click_accuracy - baseline_click_acc_mean) / baseline_click_acc_std
+                if accuracy_deviation > deviation_threshold:
+                    deviations.append({
+                        "metric": "click_accuracy",
+                        "current": current_click_accuracy,
+                        "baseline_mean": baseline_click_acc_mean,
+                        "std_deviations": accuracy_deviation,
+                        "severity": "medium"
+                    })
+
+        # Check autofill/shortcuts usage changes
+        autofill_percentage = context["behavioral_baseline"]["uses_autofill_percentage"]
+        shortcuts_percentage = context["behavioral_baseline"]["uses_shortcuts_percentage"]
+
+        # If user always uses autofill (80%+) but suddenly doesn't, flag it
+        if autofill_percentage >= 80 and not current_uses_autofill:
+            deviations.append({
+                "metric": "autofill_usage",
+                "current": False,
+                "baseline_percentage": autofill_percentage,
+                "severity": "medium"
+            })
+
+        # If user never uses autofill (< 20%) but suddenly does, flag it
+        if autofill_percentage <= 20 and current_uses_autofill:
+            deviations.append({
+                "metric": "autofill_usage",
+                "current": True,
+                "baseline_percentage": autofill_percentage,
+                "severity": "low"
+            })
+
+        # Similar for shortcuts
+        if shortcuts_percentage >= 80 and not current_uses_shortcuts:
+            deviations.append({
+                "metric": "keyboard_shortcuts",
+                "current": False,
+                "baseline_percentage": shortcuts_percentage,
+                "severity": "medium"
+            })
+
+        # Store deviation results
+        context["behavioral_deviations"] = deviations
+        context["behavioral_deviation_detected"] = len(deviations) > 0
+        context["behavioral_deviation_count"] = len(deviations)
+
+        if deviations:
+            # Calculate overall anomaly score
+            severity_scores = {"low": 0.3, "medium": 0.6, "high": 0.9}
+            anomaly_scores = [severity_scores.get(d.get("severity", "medium"), 0.5) for d in deviations]
+            overall_anomaly_score = sum(anomaly_scores) / len(anomaly_scores) if anomaly_scores else 0
+            context["behavioral_anomaly_score"] = overall_anomaly_score
+
+            # Get max severity
+            severity_order = {"low": 1, "medium": 2, "high": 3}
+            max_severity = max(
+                (d.get("severity", "medium") for d in deviations),
+                key=lambda s: severity_order.get(s, 0)
+            )
+            context["behavioral_max_severity"] = max_severity
+
+            # Flag high-risk behavioral changes
+            high_severity_count = sum(1 for d in deviations if d.get("severity") == "high")
+            context["behavioral_high_risk"] = high_severity_count >= 2  # 2+ high severity deviations
+        else:
+            context["behavioral_anomaly_score"] = 0.0
+            context["behavioral_high_risk"] = False

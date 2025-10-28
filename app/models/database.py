@@ -380,6 +380,80 @@ class HighRiskLocation(Base):
     notes = Column(Text, nullable=True)
     external_reference = Column(String, nullable=True)
 
+class BehavioralBiometric(Base):
+    """
+    Tracks user behavioral biometrics for fraud detection.
+    Monitors interaction patterns like typing speed, mouse movement, click patterns.
+    Used to detect account takeover through behavioral deviations.
+    """
+    __tablename__ = "behavioral_biometrics"
+
+    biometric_id = Column(String, primary_key=True, index=True)
+    account_id = Column(String, ForeignKey("accounts.account_id"), index=True)
+    session_id = Column(String, ForeignKey("device_sessions.session_id"), nullable=True, index=True)
+    timestamp = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
+
+    # Session context
+    session_type = Column(String, default="transaction")  # "login", "transaction", "form_fill"
+    transaction_id = Column(String, ForeignKey("transactions.transaction_id"), nullable=True, index=True)
+
+    # Typing behavior metrics
+    avg_typing_speed_wpm = Column(Float, nullable=True)  # Words per minute
+    avg_key_hold_time_ms = Column(Float, nullable=True)  # Average time key is held down
+    avg_key_interval_ms = Column(Float, nullable=True)  # Time between key presses
+    typing_rhythm_variance = Column(Float, nullable=True)  # Variance in typing rhythm
+    backspace_frequency = Column(Float, nullable=True)  # Backspace usage rate
+    typing_errors_count = Column(Integer, default=0)  # Number of typing errors
+
+    # Mouse/pointer behavior
+    avg_mouse_speed_px_sec = Column(Float, nullable=True)  # Average mouse movement speed
+    mouse_movement_smoothness = Column(Float, nullable=True)  # How smooth/jerky movements are (0-1)
+    click_accuracy = Column(Float, nullable=True)  # How accurately user clicks targets (0-1)
+    double_click_speed_ms = Column(Float, nullable=True)  # Average double-click timing
+    mouse_idle_time_sec = Column(Float, nullable=True)  # Time mouse is idle
+    mouse_distance_traveled_px = Column(Float, nullable=True)  # Total mouse movement
+
+    # Touch behavior (mobile)
+    avg_touch_pressure = Column(Float, nullable=True)  # Touch pressure (0-1)
+    avg_touch_size = Column(Float, nullable=True)  # Touch contact size
+    swipe_speed = Column(Float, nullable=True)  # Average swipe speed
+    pinch_zoom_frequency = Column(Float, nullable=True)  # How often user pinches to zoom
+
+    # Interaction timing patterns
+    session_duration_sec = Column(Float, nullable=True)  # How long the session lasted
+    time_to_first_action_sec = Column(Float, nullable=True)  # Time from load to first action
+    action_count = Column(Integer, default=0)  # Number of actions in session
+    actions_per_minute = Column(Float, nullable=True)  # Activity rate
+
+    # Navigation patterns
+    page_sequence = Column(Text, nullable=True)  # JSON array of pages visited
+    navigation_method = Column(String, nullable=True)  # "keyboard", "mouse", "touch", "mixed"
+    uses_shortcuts = Column(Boolean, default=False)  # Uses keyboard shortcuts
+    uses_autofill = Column(Boolean, default=False)  # Uses browser autofill
+
+    # Copy-paste behavior
+    paste_frequency = Column(Float, nullable=True)  # How often user pastes
+    paste_fields = Column(Text, nullable=True)  # JSON array of fields with pasted content
+
+    # Device orientation (mobile)
+    device_orientation = Column(String, nullable=True)  # "portrait", "landscape"
+    orientation_changes = Column(Integer, default=0)  # Number of orientation changes
+
+    # Behavioral profile metadata
+    is_baseline = Column(Boolean, default=False)  # Is this a baseline/normal behavior
+    confidence_score = Column(Float, default=0.5)  # Confidence in measurement (0.0-1.0)
+    sample_size = Column(Integer, default=1)  # Number of interactions sampled
+
+    # Anomaly detection
+    is_anomalous = Column(Boolean, default=False)
+    anomaly_score = Column(Float, nullable=True)  # How anomalous (0.0-1.0)
+    anomaly_reasons = Column(Text, nullable=True)  # JSON array of reasons
+
+    # Relationships
+    account = relationship("Account")
+    session = relationship("DeviceSession")
+    transaction = relationship("Transaction")
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
