@@ -100,6 +100,9 @@ class ContextProvider:
         # Add account age fraud detection context
         self._add_account_age_context(context, account_id, transaction)
 
+        # Add high-risk transaction times fraud detection context
+        self._add_high_risk_transaction_times_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -2723,3 +2726,465 @@ class ContextProvider:
                 context["account_warming_detected"] = False
         else:
             context["account_warming_detected"] = False
+
+    def _add_high_risk_transaction_times_context(self, context: Dict[str, Any],
+                                                   account_id: str,
+                                                   transaction: Dict[str, Any]) -> None:
+        """
+        Add high-risk transaction times detection for fraud analysis.
+
+        Flags transactions occurring during non-business hours, unusual times,
+        weekends, holidays, and detects timing pattern anomalies that may
+        indicate account takeover or fraudulent activity.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account identifier
+            transaction: Current transaction data
+        """
+        import calendar
+        from typing import List, Tuple
+
+        now = datetime.datetime.utcnow()
+
+        # Get transaction timestamp
+        tx_timestamp_str = transaction.get("timestamp", now.isoformat())
+        tx_timestamp = datetime.datetime.fromisoformat(tx_timestamp_str)
+        tx_amount = abs(float(transaction.get("amount", 0)))
+
+        # Extract time components
+        tx_hour = tx_timestamp.hour
+        tx_minute = tx_timestamp.minute
+        tx_weekday = tx_timestamp.weekday()  # Monday=0, Sunday=6
+        tx_day = tx_timestamp.day
+
+        context["transaction_hour"] = tx_hour
+        context["transaction_minute"] = tx_minute
+        context["transaction_weekday"] = tx_weekday
+        context["transaction_day_of_month"] = tx_day
+
+        # Define time risk windows
+        time_windows = {
+            "deep_night": (0, 5),      # 12 AM - 5 AM (highest risk)
+            "early_morning": (5, 7),   # 5 AM - 7 AM
+            "morning": (7, 9),         # 7 AM - 9 AM
+            "business_hours": (9, 17), # 9 AM - 5 PM (lowest risk)
+            "evening": (17, 22),       # 5 PM - 10 PM
+            "late_night": (22, 24)     # 10 PM - 12 AM (high risk)
+        }
+
+        # Determine current time window
+        current_window = None
+        for window_name, (start_hour, end_hour) in time_windows.items():
+            if start_hour <= tx_hour < end_hour:
+                current_window = window_name
+                break
+
+        context["time_window"] = current_window
+
+        # Calculate base time risk score (0-100)
+        # Deep night and late night have highest base risk
+        time_risk_scores = {
+            "deep_night": 85,
+            "early_morning": 60,
+            "morning": 30,
+            "business_hours": 10,
+            "evening": 25,
+            "late_night": 70
+        }
+
+        base_time_risk = time_risk_scores.get(current_window, 50)
+        context["base_time_risk_score"] = base_time_risk
+
+        # Check weekend
+        is_weekend = tx_weekday >= 5
+        context["is_weekend"] = is_weekend
+
+        # Check if holiday (US Federal Holidays for 2024-2025)
+        def is_holiday(dt: datetime.datetime) -> Tuple[bool, str]:
+            """Check if date is a US federal holiday"""
+            year = dt.year
+            month = dt.month
+            day = dt.day
+
+            # Fixed holidays
+            fixed_holidays = {
+                (1, 1): "New Year's Day",
+                (7, 4): "Independence Day",
+                (11, 11): "Veterans Day",
+                (12, 25): "Christmas Day"
+            }
+
+            if (month, day) in fixed_holidays:
+                return True, fixed_holidays[(month, day)]
+
+            # MLK Day - 3rd Monday in January
+            if month == 1 and tx_weekday == 0:
+                if 15 <= day <= 21:
+                    return True, "Martin Luther King Jr. Day"
+
+            # Presidents Day - 3rd Monday in February
+            if month == 2 and tx_weekday == 0:
+                if 15 <= day <= 21:
+                    return True, "Presidents Day"
+
+            # Memorial Day - Last Monday in May
+            if month == 5 and tx_weekday == 0:
+                last_day = calendar.monthrange(year, 5)[1]
+                if day > last_day - 7:
+                    return True, "Memorial Day"
+
+            # Labor Day - 1st Monday in September
+            if month == 9 and tx_weekday == 0:
+                if day <= 7:
+                    return True, "Labor Day"
+
+            # Columbus Day - 2nd Monday in October
+            if month == 10 and tx_weekday == 0:
+                if 8 <= day <= 14:
+                    return True, "Columbus Day"
+
+            # Thanksgiving - 4th Thursday in November
+            if month == 11 and tx_weekday == 3:
+                if 22 <= day <= 28:
+                    return True, "Thanksgiving Day"
+
+            return False, ""
+
+        is_holiday_flag, holiday_name = is_holiday(tx_timestamp)
+        context["is_holiday"] = is_holiday_flag
+        context["holiday_name"] = holiday_name if is_holiday_flag else None
+
+        # End of month pattern (fraudsters often target payroll dates)
+        is_end_of_month = day >= 28 or day <= 3
+        context["is_end_of_month"] = is_end_of_month
+
+        # Get historical transactions for pattern analysis
+        lookback_days = 90
+        lookback_date = (now - datetime.timedelta(days=lookback_days)).isoformat()
+
+        historical_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > lookback_date
+        ).all()
+
+        context["historical_transaction_count_90d"] = len(historical_txs)
+
+        if len(historical_txs) >= 5:  # Need minimum data
+            # Analyze hourly patterns
+            hour_distribution = [0] * 24
+            weekday_distribution = [0] * 7
+            weekend_tx_count = 0
+            business_hours_count = 0
+            non_business_hours_count = 0
+            deep_night_count = 0
+            holiday_count = 0
+
+            for hist_tx in historical_txs:
+                hist_time = datetime.datetime.fromisoformat(hist_tx.timestamp)
+                hist_hour = hist_time.hour
+                hist_weekday = hist_time.weekday()
+
+                hour_distribution[hist_hour] += 1
+                weekday_distribution[hist_weekday] += 1
+
+                # Count weekend transactions
+                if hist_weekday >= 5:
+                    weekend_tx_count += 1
+
+                # Count business hours vs non-business hours
+                if 9 <= hist_hour < 17:
+                    business_hours_count += 1
+                else:
+                    non_business_hours_count += 1
+
+                # Count deep night transactions
+                if 0 <= hist_hour < 5:
+                    deep_night_count += 1
+
+                # Count holiday transactions
+                if is_holiday(hist_time)[0]:
+                    holiday_count += 1
+
+            total_hist = len(historical_txs)
+
+            # Calculate pattern ratios
+            context["historical_weekend_ratio"] = weekend_tx_count / total_hist
+            context["historical_business_hours_ratio"] = business_hours_count / total_hist
+            context["historical_non_business_hours_ratio"] = non_business_hours_count / total_hist
+            context["historical_deep_night_ratio"] = deep_night_count / total_hist
+            context["historical_holiday_ratio"] = holiday_count / total_hist
+
+            # Calculate statistical metrics for timing
+            import statistics
+
+            # Convert hour distribution to percentage
+            hour_percentages = [(count / total_hist) * 100 for count in hour_distribution]
+            current_hour_percentage = hour_percentages[tx_hour]
+
+            context["current_hour_historical_percentage"] = current_hour_percentage
+            context["hour_distribution"] = hour_distribution
+
+            # Determine if current time deviates from pattern
+            avg_hour_percentage = 100 / 24  # ~4.17%
+
+            # Flag if this hour is historically uncommon (less than 25% of average)
+            hour_is_uncommon = current_hour_percentage < (avg_hour_percentage * 0.25)
+            context["hour_is_uncommon"] = hour_is_uncommon
+
+            # Flag if user typically transacts during business hours but this is off-hours
+            deviates_from_business_hours_pattern = (
+                context["historical_business_hours_ratio"] > 0.75 and
+                current_window != "business_hours"
+            )
+            context["deviates_from_business_hours_pattern"] = deviates_from_business_hours_pattern
+
+            # Flag if user rarely transacts on weekends but this is weekend
+            deviates_from_weekday_pattern = (
+                is_weekend and
+                context["historical_weekend_ratio"] < 0.15
+            )
+            context["deviates_from_weekday_pattern"] = deviates_from_weekday_pattern
+
+            # Detect sudden change in timing patterns (possible account takeover)
+            # Look at last 7 days vs prior 83 days
+            recent_cutoff = (now - datetime.timedelta(days=7)).isoformat()
+            recent_txs = [tx for tx in historical_txs
+                         if tx.timestamp > recent_cutoff]
+            older_txs = [tx for tx in historical_txs
+                        if tx.timestamp <= recent_cutoff]
+
+            if len(recent_txs) >= 3 and len(older_txs) >= 5:
+                # Compare timing patterns
+                recent_business_hours = sum(1 for tx in recent_txs
+                                          if 9 <= datetime.datetime.fromisoformat(tx.timestamp).hour < 17)
+                older_business_hours = sum(1 for tx in older_txs
+                                         if 9 <= datetime.datetime.fromisoformat(tx.timestamp).hour < 17)
+
+                recent_bh_ratio = recent_business_hours / len(recent_txs)
+                older_bh_ratio = older_business_hours / len(older_txs)
+
+                # Significant shift in timing pattern (>40% change)
+                timing_pattern_shift = abs(recent_bh_ratio - older_bh_ratio)
+                context["timing_pattern_shift"] = timing_pattern_shift
+                context["sudden_timing_change"] = timing_pattern_shift > 0.4
+
+                # If recently shifted to odd hours, high risk
+                context["shifted_to_odd_hours"] = (
+                    recent_bh_ratio < 0.3 and older_bh_ratio > 0.7
+                )
+            else:
+                context["timing_pattern_shift"] = 0
+                context["sudden_timing_change"] = False
+                context["shifted_to_odd_hours"] = False
+        else:
+            # Insufficient historical data
+            context["insufficient_timing_history"] = True
+            context["hour_is_uncommon"] = False
+            context["deviates_from_business_hours_pattern"] = False
+            context["deviates_from_weekday_pattern"] = False
+            context["timing_pattern_shift"] = 0
+            context["sudden_timing_change"] = False
+            context["shifted_to_odd_hours"] = False
+
+        # Analyze recent velocity at unusual times
+        recent_7d_cutoff = (now - datetime.timedelta(days=7)).isoformat()
+        recent_7d_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > recent_7d_cutoff
+        ).all()
+
+        recent_deep_night_txs = []
+        recent_weekend_txs = []
+        recent_holiday_txs = []
+
+        for tx in recent_7d_txs:
+            tx_time = datetime.datetime.fromisoformat(tx.timestamp)
+            tx_h = tx_time.hour
+            tx_wd = tx_time.weekday()
+
+            if 0 <= tx_h < 5:
+                recent_deep_night_txs.append(tx)
+
+            if tx_wd >= 5:
+                recent_weekend_txs.append(tx)
+
+            if is_holiday(tx_time)[0]:
+                recent_holiday_txs.append(tx)
+
+        context["recent_deep_night_transaction_count"] = len(recent_deep_night_txs)
+        context["recent_weekend_transaction_count"] = len(recent_weekend_txs)
+        context["recent_holiday_transaction_count"] = len(recent_holiday_txs)
+
+        # Calculate total amounts for unusual times
+        if recent_deep_night_txs:
+            context["recent_deep_night_total_amount"] = sum(abs(tx.amount) for tx in recent_deep_night_txs)
+
+        if recent_weekend_txs:
+            context["recent_weekend_total_amount"] = sum(abs(tx.amount) for tx in recent_weekend_txs)
+
+        if recent_holiday_txs:
+            context["recent_holiday_total_amount"] = sum(abs(tx.amount) for tx in recent_holiday_txs)
+
+        # Check for timezone anomalies (rapid location changes)
+        # Look for transactions from different time zones in short period
+        recent_24h_cutoff = (now - datetime.timedelta(hours=24)).isoformat()
+        recent_24h_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > recent_24h_cutoff
+        ).order_by(Transaction.timestamp).all()
+
+        if len(recent_24h_txs) >= 2:
+            # Check if transactions show rapid timezone changes
+            # (This is simplified - in production, you'd use actual location data)
+            transaction_hours = [datetime.datetime.fromisoformat(tx.timestamp).hour
+                               for tx in recent_24h_txs]
+
+            # Look for unusual hour jumping (possible VPN/location spoofing)
+            hour_jumps = []
+            for i in range(1, len(transaction_hours)):
+                jump = abs(transaction_hours[i] - transaction_hours[i-1])
+                # Normalize for 24-hour wrap
+                if jump > 12:
+                    jump = 24 - jump
+                hour_jumps.append(jump)
+
+            if hour_jumps:
+                max_hour_jump = max(hour_jumps)
+                context["max_hour_jump_24h"] = max_hour_jump
+
+                # Significant timezone jump (>6 hours) in 24h period
+                context["rapid_timezone_change"] = max_hour_jump > 6
+            else:
+                context["max_hour_jump_24h"] = 0
+                context["rapid_timezone_change"] = False
+        else:
+            context["max_hour_jump_24h"] = 0
+            context["rapid_timezone_change"] = False
+
+        # Generate risk flags
+        risk_flags = []
+
+        # Deep night transaction (12 AM - 5 AM)
+        if current_window == "deep_night":
+            risk_flags.append("deep_night_transaction")
+
+            # Extra flag for midnight hour (12 AM - 1 AM)
+            if tx_hour == 0:
+                risk_flags.append("midnight_transaction")
+
+        # Late night transaction (10 PM - 12 AM)
+        if current_window == "late_night":
+            risk_flags.append("late_night_transaction")
+
+        # Weekend large transaction
+        if is_weekend and tx_amount > 5000:
+            risk_flags.append("weekend_large_transaction")
+
+        # Weekend unusual (if user rarely transacts on weekends)
+        if is_weekend and context.get("deviates_from_weekday_pattern", False):
+            risk_flags.append("weekend_unusual_for_user")
+
+        # Holiday transaction
+        if is_holiday_flag:
+            risk_flags.append("holiday_transaction")
+
+            if tx_amount > 5000:
+                risk_flags.append("holiday_large_transaction")
+
+        # Outside business hours high value
+        if current_window != "business_hours" and tx_amount > 10000:
+            risk_flags.append("outside_business_hours_high_value")
+
+        # Unusual time for user
+        if context.get("hour_is_uncommon", False):
+            risk_flags.append("unusual_time_for_user")
+
+        # Deviates from business hours pattern
+        if context.get("deviates_from_business_hours_pattern", False):
+            risk_flags.append("deviates_from_typical_hours")
+
+        # Rapid timezone change
+        if context.get("rapid_timezone_change", False):
+            risk_flags.append("rapid_timezone_change")
+
+        # Sudden timing pattern change (possible account takeover)
+        if context.get("sudden_timing_change", False):
+            risk_flags.append("sudden_timing_pattern_change")
+
+        # Shifted to odd hours recently
+        if context.get("shifted_to_odd_hours", False):
+            risk_flags.append("recently_shifted_to_odd_hours")
+
+        # Consistent deep night activity (multiple in recent period)
+        if context.get("recent_deep_night_transaction_count", 0) >= 3:
+            risk_flags.append("consistent_deep_night_activity")
+
+        # Multiple weekend transactions recently
+        if context.get("recent_weekend_transaction_count", 0) >= 3:
+            if context.get("historical_weekend_ratio", 1) < 0.2:
+                risk_flags.append("unusual_weekend_activity_spike")
+
+        # Early morning high value (5 AM - 7 AM with large amount)
+        if current_window == "early_morning" and tx_amount > 7500:
+            risk_flags.append("early_morning_high_value")
+
+        context["high_risk_time_flags"] = risk_flags
+        context["high_risk_time_flag_count"] = len(risk_flags)
+
+        # Calculate comprehensive time-based risk score (0-100)
+        risk_score = base_time_risk
+
+        # Adjust for amount
+        if tx_amount > 10000:
+            risk_score += 15
+        elif tx_amount > 5000:
+            risk_score += 10
+        elif tx_amount > 2000:
+            risk_score += 5
+
+        # Adjust for weekend
+        if is_weekend:
+            risk_score += 10
+
+        # Adjust for holiday
+        if is_holiday_flag:
+            risk_score += 15
+
+        # Adjust for pattern deviation
+        if context.get("deviates_from_business_hours_pattern", False):
+            risk_score += 20
+
+        if context.get("hour_is_uncommon", False):
+            risk_score += 15
+
+        # Adjust for timezone anomaly
+        if context.get("rapid_timezone_change", False):
+            risk_score += 25
+
+        # Adjust for sudden timing change (major red flag)
+        if context.get("sudden_timing_change", False):
+            risk_score += 30
+
+        # Adjust for shifted to odd hours
+        if context.get("shifted_to_odd_hours", False):
+            risk_score += 35
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["high_risk_time_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            time_risk_level = "critical"
+        elif risk_score >= 60:
+            time_risk_level = "high"
+        elif risk_score >= 40:
+            time_risk_level = "medium"
+        elif risk_score >= 20:
+            time_risk_level = "low"
+        else:
+            time_risk_level = "minimal"
+
+        context["time_risk_level"] = time_risk_level
