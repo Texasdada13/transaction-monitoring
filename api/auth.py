@@ -43,40 +43,16 @@ class UserInDB(User):
 # ==================== User Database (Mock) ====================
 # In production, this would be a real database
 
-USERS_DB = {
-    "analyst": {
-        "user_id": "analyst_001",
-        "username": "analyst",
-        "full_name": "Fraud Analyst",
-        "role": "analyst",
-        # Password: "analyst123"
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
-    },
-    "manager": {
-        "user_id": "manager_001",
-        "username": "manager",
-        "full_name": "Risk Manager",
-        "role": "manager",
-        # Password: "manager123"
-        "hashed_password": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5iSy.k4TCu.ey"
-    },
-    "investigator": {
-        "user_id": "investigator_001",
-        "username": "investigator",
-        "full_name": "Fraud Investigator",
-        "role": "investigator",
-        # Password: "investigator123"
-        "hashed_password": "$2b$12$8RVNKXWeZm4VG8VBLw8cceQVLZ5R7z5Hg5VVVq5VVq5VVq5VVq5VV"
-    },
-    "admin": {
-        "user_id": "admin_001",
-        "username": "admin",
-        "full_name": "System Administrator",
-        "role": "admin",
-        # Password: "admin123"
-        "hashed_password": "$2b$12$gPXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-    }
+# Simple password storage for demo (in production, use proper bcrypt hashing)
+SIMPLE_USERS = {
+    "analyst": {"password": "analyst123", "role": "analyst", "user_id": "analyst_001", "full_name": "Fraud Analyst"},
+    "manager": {"password": "manager123", "role": "manager", "user_id": "manager_001", "full_name": "Risk Manager"},
+    "investigator": {"password": "investigator123", "role": "investigator", "user_id": "investigator_001", "full_name": "Fraud Investigator"},
+    "admin": {"password": "admin123", "role": "admin", "user_id": "admin_001", "full_name": "System Administrator"}
 }
+
+# Legacy USERS_DB for compatibility (not used with simple auth)
+USERS_DB = {}
 
 # ==================== Helper Functions ====================
 
@@ -95,19 +71,31 @@ def get_user(username: str) -> Optional[UserInDB]:
         return UserInDB(**user_dict)
     return None
 
-def authenticate_user(username: str, password: str) -> Optional[UserInDB]:
+def authenticate_user(username: str, password: str) -> Optional[User]:
     """
     Authenticate a user by username and password.
+
+    DEMO VERSION: Uses simple password comparison.
+    In production, use bcrypt password hashing.
 
     Returns:
         User object if authentication successful, None otherwise
     """
-    user = get_user(username)
-    if not user:
+    # Simple authentication for demo
+    user_data = SIMPLE_USERS.get(username)
+    if not user_data:
         return None
-    if not verify_password(password, user.hashed_password):
+
+    if user_data["password"] != password:
         return None
-    return user
+
+    # Return User object
+    return User(
+        user_id=user_data["user_id"],
+        username=username,
+        role=user_data["role"],
+        full_name=user_data["full_name"]
+    )
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
