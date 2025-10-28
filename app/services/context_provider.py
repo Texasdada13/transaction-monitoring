@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric, FraudFlag, FraudComplaint
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric, FraudFlag, FraudComplaint, MerchantProfile
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -117,6 +117,9 @@ class ContextProvider:
 
         # Add fraud complaints count detection context
         self._add_fraud_complaints_count_context(context, account_id, transaction)
+
+        # Add merchant category mismatch detection context
+        self._add_merchant_category_mismatch_context(context, account_id, transaction)
 
         return context
     
@@ -5573,3 +5576,377 @@ class ContextProvider:
             complaint_risk_level = "minimal"
 
         context["fraud_complaint_risk_level"] = complaint_risk_level
+
+    def _add_merchant_category_mismatch_context(self, context: Dict[str, Any],
+                                                 account_id: str,
+                                                 transaction: Dict[str, Any]) -> None:
+        """
+        Add merchant category mismatch detection context to transaction.
+
+        Detects:
+        - Transactions where merchant processes payments outside their registered category
+        - Merchants with frequent category mismatches
+        - MCC hopping (frequent category changes)
+        - High-risk merchant indicators
+        - Category-based fraud patterns
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        # Get merchant identifier from transaction
+        merchant_id = transaction.get("counterparty_id") or transaction.get("merchant_id")
+
+        if not merchant_id:
+            context["merchant_category_mismatch_check_possible"] = False
+            context["merchant_category_mismatch_reason"] = "no_merchant_id"
+            return
+
+        # Get merchant profile
+        merchant = self.db.query(MerchantProfile).filter(
+            MerchantProfile.merchant_id == merchant_id
+        ).first()
+
+        if not merchant:
+            context["merchant_category_mismatch_check_possible"] = False
+            context["merchant_category_mismatch_reason"] = "merchant_not_found"
+            context["merchant_unknown"] = True
+            context["merchant_unknown_is_suspicious"] = True  # Unknown merchants are suspicious
+            return
+
+        context["merchant_category_mismatch_check_possible"] = True
+
+        # Extract transaction MCC from metadata
+        tx_metadata = transaction.get("tx_metadata", "{}")
+        if isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except:
+                tx_metadata = {}
+
+        tx_mcc = tx_metadata.get("mcc") or tx_metadata.get("merchant_category_code")
+        tx_category = tx_metadata.get("category") or tx_metadata.get("transaction_category")
+
+        # Merchant basic information
+        context["merchant_id"] = merchant.merchant_id
+        context["merchant_name"] = merchant.merchant_name
+        context["merchant_registered_mcc"] = merchant.registered_mcc
+        context["merchant_registered_category"] = merchant.registered_category
+        context["merchant_business_type"] = merchant.business_type
+        context["merchant_industry"] = merchant.industry
+        context["merchant_status"] = merchant.status
+        context["merchant_risk_level"] = merchant.risk_level
+        context["merchant_verified"] = merchant.verified
+
+        # Transaction MCC information
+        context["transaction_mcc"] = tx_mcc
+        context["transaction_category"] = tx_category
+
+        # Calculate merchant age
+        if merchant.registration_date:
+            merchant_age_days = (datetime.datetime.utcnow() - merchant.registration_date).days
+            context["merchant_age_days"] = merchant_age_days
+            context["merchant_is_new"] = merchant_age_days < 90  # Less than 3 months
+            context["merchant_is_very_new"] = merchant_age_days < 30  # Less than 1 month
+
+        # High-risk merchant indicators
+        context["merchant_is_high_risk"] = merchant.is_high_risk_merchant
+        context["merchant_is_flagged_for_fraud"] = merchant.is_flagged_for_fraud
+        if merchant.is_flagged_for_fraud:
+            context["merchant_fraud_flag_reason"] = merchant.fraud_flag_reason
+
+        # Category mismatch detection
+        mismatch_detected = False
+        mismatch_severity = "none"
+
+        if tx_mcc:
+            # Direct MCC comparison
+            if tx_mcc != merchant.registered_mcc:
+                mismatch_detected = True
+                context["mcc_mismatch_detected"] = True
+                context["expected_mcc"] = merchant.registered_mcc
+                context["actual_mcc"] = tx_mcc
+
+                # Check if MCC is in allowed secondary categories
+                allowed_mccs = []
+                if merchant.allowed_secondary_mccs:
+                    try:
+                        allowed_mccs = json.loads(merchant.allowed_secondary_mccs)
+                    except:
+                        allowed_mccs = []
+
+                if tx_mcc in allowed_mccs:
+                    context["mcc_mismatch_is_allowed"] = True
+                    context["mismatch_in_allowed_secondary_categories"] = True
+                    mismatch_severity = "low"
+                else:
+                    context["mcc_mismatch_is_allowed"] = False
+                    mismatch_severity = "high"
+
+                    # Determine if categories are completely unrelated
+                    # MCC groups: 0-999 (Airlines), 1000-1999 (Car Rental), 3000-3999 (Hotels),
+                    # 4000-4999 (Transportation), 5000-5999 (Retail), 7000-7999 (Services), etc.
+                    try:
+                        registered_mcc_int = int(merchant.registered_mcc)
+                        tx_mcc_int = int(tx_mcc)
+
+                        # Get MCC group (thousands digit)
+                        registered_group = registered_mcc_int // 1000
+                        tx_group = tx_mcc_int // 1000
+
+                        if registered_group == tx_group:
+                            context["mcc_mismatch_same_group"] = True
+                            mismatch_severity = "medium"
+                        else:
+                            context["mcc_mismatch_different_group"] = True
+                            mismatch_severity = "high"
+                    except:
+                        pass
+
+        elif tx_category and merchant.registered_category:
+            # Category-based comparison (less precise)
+            if tx_category.lower() != merchant.registered_category.lower():
+                mismatch_detected = True
+                context["category_mismatch_detected"] = True
+                context["expected_category"] = merchant.registered_category
+                context["actual_category"] = tx_category
+                mismatch_severity = "medium"
+
+        context["merchant_category_mismatch_detected"] = mismatch_detected
+        context["mismatch_severity"] = mismatch_severity
+
+        # Historical mismatch patterns
+        context["merchant_total_mismatch_count"] = merchant.category_mismatch_count
+        context["merchant_mismatch_rate"] = merchant.category_mismatch_rate
+
+        # High mismatch rate flags
+        if merchant.category_mismatch_rate > 0.5:  # More than 50% mismatches
+            context["merchant_has_high_mismatch_rate"] = True
+            context["merchant_mismatch_rate_critical"] = True
+        elif merchant.category_mismatch_rate > 0.3:  # More than 30% mismatches
+            context["merchant_has_high_mismatch_rate"] = True
+            context["merchant_mismatch_rate_high"] = True
+        elif merchant.category_mismatch_rate > 0.15:  # More than 15% mismatches
+            context["merchant_has_elevated_mismatch_rate"] = True
+
+        # Recent mismatch activity
+        if merchant.last_mismatch_date:
+            days_since_last_mismatch = (datetime.datetime.utcnow() - merchant.last_mismatch_date).days
+            context["merchant_days_since_last_mismatch"] = days_since_last_mismatch
+            context["merchant_had_recent_mismatch"] = days_since_last_mismatch < 30
+            context["merchant_had_very_recent_mismatch"] = days_since_last_mismatch < 7
+
+        # MCC change history (category hopping)
+        context["merchant_mcc_change_count"] = merchant.mcc_change_count
+
+        if merchant.mcc_change_count > 0:
+            context["merchant_has_changed_mcc"] = True
+
+            # Parse previous MCCs
+            if merchant.previous_mccs:
+                try:
+                    previous_mccs = json.loads(merchant.previous_mccs)
+                    context["merchant_previous_mcc_count"] = len(previous_mccs)
+
+                    if len(previous_mccs) > 3:
+                        context["merchant_frequent_mcc_changes"] = True
+
+                    # Check recency of last change
+                    if merchant.last_mcc_change_date:
+                        days_since_mcc_change = (datetime.datetime.utcnow() - merchant.last_mcc_change_date).days
+                        context["merchant_days_since_mcc_change"] = days_since_mcc_change
+                        context["merchant_recent_mcc_change"] = days_since_mcc_change < 90
+                        context["merchant_very_recent_mcc_change"] = days_since_mcc_change < 30
+                except:
+                    pass
+
+        # Transaction amount analysis relative to merchant patterns
+        tx_amount = transaction.get("amount", 0)
+
+        if merchant.avg_transaction_amount:
+            amount_ratio = tx_amount / merchant.avg_transaction_amount if merchant.avg_transaction_amount > 0 else 0
+            context["merchant_tx_amount_vs_avg_ratio"] = round(amount_ratio, 2)
+
+            if amount_ratio > 10:
+                context["merchant_tx_significantly_above_avg"] = True
+                context["merchant_tx_amount_anomaly"] = "critical"
+            elif amount_ratio > 5:
+                context["merchant_tx_above_avg"] = True
+                context["merchant_tx_amount_anomaly"] = "high"
+            elif amount_ratio > 3:
+                context["merchant_tx_moderately_above_avg"] = True
+                context["merchant_tx_amount_anomaly"] = "medium"
+
+        if merchant.max_transaction_amount:
+            if tx_amount > merchant.max_transaction_amount:
+                context["merchant_tx_exceeds_historical_max"] = True
+                context["merchant_new_maximum_transaction"] = True
+                exceed_ratio = tx_amount / merchant.max_transaction_amount
+                context["merchant_tx_vs_max_ratio"] = round(exceed_ratio, 2)
+
+        # Merchant transaction volume and patterns
+        context["merchant_total_transactions"] = merchant.total_transactions
+        context["merchant_total_volume"] = merchant.total_volume
+
+        if merchant.total_transactions < 10:
+            context["merchant_has_few_transactions"] = True
+            context["merchant_insufficient_history"] = True
+
+        # Merchant status checks
+        if merchant.status != "active":
+            context["merchant_not_active"] = True
+            context["merchant_status_suspicious"] = True
+
+            if merchant.status == "suspended":
+                context["merchant_is_suspended"] = True
+            elif merchant.status == "terminated":
+                context["merchant_is_terminated"] = True
+            elif merchant.status == "under_review":
+                context["merchant_under_review"] = True
+
+        # Verification status
+        if not merchant.verified:
+            context["merchant_not_verified"] = True
+            context["merchant_unverified_is_risk"] = True
+
+        # Geographic risk (if available)
+        if merchant.registration_country:
+            context["merchant_country"] = merchant.registration_country
+
+            # High-risk countries for merchant fraud (example list)
+            high_risk_countries = ["XX", "YY", "ZZ"]  # Placeholder codes
+            if merchant.registration_country in high_risk_countries:
+                context["merchant_from_high_risk_country"] = True
+
+        # Query recent transactions from this merchant to detect patterns
+        recent_merchant_txs = self.db.query(Transaction).filter(
+            Transaction.counterparty_id == merchant_id,
+            Transaction.timestamp >= (datetime.datetime.utcnow() - datetime.timedelta(days=30)).isoformat()
+        ).order_by(Transaction.timestamp.desc()).limit(100).all()
+
+        if recent_merchant_txs:
+            context["merchant_recent_transaction_count_30d"] = len(recent_merchant_txs)
+
+            # Analyze velocity
+            if len(recent_merchant_txs) > 50:
+                context["merchant_high_transaction_velocity"] = True
+
+            # Check for amount patterns
+            recent_amounts = [float(tx.amount) for tx in recent_merchant_txs if tx.amount]
+            if recent_amounts:
+                avg_recent_amount = sum(recent_amounts) / len(recent_amounts)
+                max_recent_amount = max(recent_amounts)
+                min_recent_amount = min(recent_amounts)
+
+                context["merchant_avg_amount_30d"] = round(avg_recent_amount, 2)
+                context["merchant_max_amount_30d"] = round(max_recent_amount, 2)
+                context["merchant_min_amount_30d"] = round(min_recent_amount, 2)
+
+                # Check for structured transactions (consistent amounts)
+                if len(set([round(amt, 2) for amt in recent_amounts])) < len(recent_amounts) * 0.3:
+                    context["merchant_structured_transaction_pattern"] = True
+
+                # Check current transaction against recent patterns
+                if tx_amount > avg_recent_amount * 5:
+                    context["tx_significantly_above_merchant_recent_avg"] = True
+
+                if tx_amount > max_recent_amount:
+                    context["tx_exceeds_merchant_recent_max"] = True
+
+        # Risk score calculation (0-100)
+        risk_score = 0
+
+        # Base score from merchant risk level
+        if merchant.risk_level == "critical":
+            risk_score += 30
+        elif merchant.risk_level == "high":
+            risk_score += 20
+        elif merchant.risk_level == "medium":
+            risk_score += 10
+
+        # Category mismatch scoring
+        if mismatch_detected:
+            if mismatch_severity == "high":
+                risk_score += 25
+            elif mismatch_severity == "medium":
+                risk_score += 15
+            elif mismatch_severity == "low":
+                risk_score += 5
+
+        # Historical mismatch rate
+        if merchant.category_mismatch_rate > 0.5:
+            risk_score += 20
+        elif merchant.category_mismatch_rate > 0.3:
+            risk_score += 15
+        elif merchant.category_mismatch_rate > 0.15:
+            risk_score += 10
+
+        # MCC change frequency
+        if merchant.mcc_change_count > 5:
+            risk_score += 15
+        elif merchant.mcc_change_count > 3:
+            risk_score += 10
+        elif merchant.mcc_change_count > 0:
+            risk_score += 5
+
+        # Recent MCC change
+        if context.get("merchant_very_recent_mcc_change"):
+            risk_score += 10
+        elif context.get("merchant_recent_mcc_change"):
+            risk_score += 5
+
+        # Fraud flags
+        if merchant.is_flagged_for_fraud:
+            risk_score += 25
+        if merchant.is_high_risk_merchant:
+            risk_score += 15
+
+        # Merchant status
+        if merchant.status == "suspended":
+            risk_score += 20
+        elif merchant.status == "terminated":
+            risk_score += 30
+        elif merchant.status == "under_review":
+            risk_score += 10
+
+        # Verification
+        if not merchant.verified:
+            risk_score += 10
+
+        # New merchant
+        if context.get("merchant_is_very_new"):
+            risk_score += 10
+        elif context.get("merchant_is_new"):
+            risk_score += 5
+
+        # Insufficient transaction history
+        if context.get("merchant_insufficient_history"):
+            risk_score += 8
+
+        # Amount anomalies
+        if context.get("merchant_tx_amount_anomaly") == "critical":
+            risk_score += 15
+        elif context.get("merchant_tx_amount_anomaly") == "high":
+            risk_score += 10
+        elif context.get("merchant_tx_amount_anomaly") == "medium":
+            risk_score += 5
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["merchant_category_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            category_risk_level = "critical"
+        elif risk_score >= 60:
+            category_risk_level = "high"
+        elif risk_score >= 40:
+            category_risk_level = "medium"
+        elif risk_score >= 20:
+            category_risk_level = "low"
+        else:
+            category_risk_level = "minimal"
+
+        context["merchant_category_risk_level"] = category_risk_level

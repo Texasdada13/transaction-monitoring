@@ -589,6 +589,77 @@ class FraudComplaint(Base):
     channel = Column(String(50), nullable=True)  # "app", "web", "phone", "email", "branch"
     additional_data = Column(Text, nullable=True)  # JSON for extra fields
 
+class MerchantProfile(Base):
+    """Model for tracking merchant profiles and their registered business categories"""
+    __tablename__ = "merchant_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    merchant_id = Column(String(255), unique=True, nullable=False, index=True)
+    merchant_name = Column(String(255), nullable=False)
+
+    # Merchant Category Code (MCC) - Primary business category
+    registered_mcc = Column(String(10), nullable=False, index=True)  # 4-digit MCC code
+    registered_category = Column(String(100), nullable=False, index=True)  # Human-readable category name
+
+    # Business type and industry
+    business_type = Column(String(100), nullable=True)  # "retail", "restaurant", "online", "service", "wholesale", "healthcare"
+    industry = Column(String(100), nullable=True)  # "food_beverage", "clothing", "electronics", "travel", "entertainment"
+    sub_industry = Column(String(100), nullable=True)
+
+    # Registration information
+    registration_date = Column(DateTime, nullable=False, default=datetime.datetime.utcnow, index=True)
+    registration_country = Column(String(10), nullable=True)  # ISO country code
+    business_license_number = Column(String(255), nullable=True)
+    tax_id = Column(String(100), nullable=True)
+
+    # Status
+    status = Column(String(50), nullable=False, default="active", index=True)  # "active", "suspended", "terminated", "under_review"
+    risk_level = Column(String(20), nullable=False, default="low")  # "low", "medium", "high", "critical"
+
+    # Transaction patterns
+    avg_transaction_amount = Column(Float, nullable=True)
+    max_transaction_amount = Column(Float, nullable=True)
+    total_transactions = Column(Integer, default=0)
+    total_volume = Column(Float, default=0.0)
+
+    # Category compliance tracking
+    category_mismatch_count = Column(Integer, default=0)  # Number of out-of-category transactions
+    category_mismatch_rate = Column(Float, default=0.0)  # Percentage of mismatched transactions
+    last_mismatch_date = Column(DateTime, nullable=True)
+
+    # Historical MCCs - Track if merchant has changed categories
+    previous_mccs = Column(Text, nullable=True)  # JSON array of previous MCC codes with dates
+    mcc_change_count = Column(Integer, default=0)
+    last_mcc_change_date = Column(DateTime, nullable=True)
+
+    # Fraud indicators
+    is_high_risk_merchant = Column(Boolean, default=False)
+    is_flagged_for_fraud = Column(Boolean, default=False)
+    fraud_flag_reason = Column(Text, nullable=True)
+    fraud_flag_date = Column(DateTime, nullable=True)
+
+    # Verification
+    verified = Column(Boolean, default=False)
+    verification_date = Column(DateTime, nullable=True)
+    verification_method = Column(String(100), nullable=True)  # "manual_review", "document_verification", "third_party_check"
+
+    # Contact information
+    contact_email = Column(String(255), nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+    business_address = Column(Text, nullable=True)
+
+    # Allowed secondary categories (some merchants legitimately operate in multiple categories)
+    allowed_secondary_mccs = Column(Text, nullable=True)  # JSON array of allowed MCC codes
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    last_transaction_date = Column(DateTime, nullable=True, index=True)
+
+    # Additional metadata
+    notes = Column(Text, nullable=True)
+    additional_data = Column(Text, nullable=True)  # JSON for extra fields
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
