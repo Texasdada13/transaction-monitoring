@@ -91,6 +91,9 @@ class ContextProvider:
         # Add behavioral biometrics fraud detection context
         self._add_behavioral_biometric_context(context, account_id, transaction)
 
+        # Add recipient relationship analysis context
+        self._add_recipient_relationship_context(context, account_id, transaction)
+
         return context
     
     def _add_transaction_history(self, context: Dict[str, Any],
@@ -1970,3 +1973,219 @@ class ContextProvider:
         else:
             context["behavioral_anomaly_score"] = 0.0
             context["behavioral_high_risk"] = False
+
+    def _add_recipient_relationship_context(self, context: Dict[str, Any],
+                                             account_id: str,
+                                             transaction: Dict[str, Any]) -> None:
+        """
+        Add recipient relationship analysis for fraud detection.
+
+        Evaluates:
+        - If recipient is a new contact (first time transacting)
+        - Time since last transaction with this recipient
+        - Transaction frequency with recipient
+        - Dormant relationship activation (e.g., no contact for 12 months, suddenly active)
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        counterparty_id = transaction.get("counterparty_id")
+
+        if not counterparty_id:
+            context["recipient_relationship_check_available"] = False
+            return
+
+        context["recipient_relationship_check_available"] = True
+        context["recipient_id"] = counterparty_id
+
+        now = datetime.datetime.utcnow()
+        current_tx_time = datetime.datetime.fromisoformat(
+            transaction.get("timestamp", now.isoformat())
+        )
+
+        # Get all previous transactions with this counterparty
+        previous_txs = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.counterparty_id == counterparty_id,
+            Transaction.timestamp < current_tx_time.isoformat()
+        ).order_by(Transaction.timestamp.desc()).all()
+
+        # Check if this is a new recipient
+        is_new_recipient = len(previous_txs) == 0
+        context["is_new_recipient"] = is_new_recipient
+        context["previous_transaction_count"] = len(previous_txs)
+
+        if is_new_recipient:
+            # New recipient - no historical relationship
+            context["days_since_last_transaction"] = None
+            context["is_dormant_relationship"] = False
+            context["relationship_status"] = "new"
+            return
+
+        # Calculate time since last transaction with this recipient
+        last_tx = previous_txs[0]  # Most recent
+        last_tx_time = datetime.datetime.fromisoformat(last_tx.timestamp)
+        time_since_last = current_tx_time - last_tx_time
+
+        days_since_last = time_since_last.days
+        hours_since_last = time_since_last.total_seconds() / 3600
+
+        context["days_since_last_transaction"] = days_since_last
+        context["hours_since_last_transaction"] = hours_since_last
+        context["last_transaction_date"] = last_tx.timestamp
+        context["last_transaction_amount"] = last_tx.amount
+
+        # Analyze transaction frequency with this recipient
+        if len(previous_txs) > 1:
+            # Calculate average time between transactions
+            time_gaps = []
+            for i in range(len(previous_txs) - 1):
+                tx1_time = datetime.datetime.fromisoformat(previous_txs[i].timestamp)
+                tx2_time = datetime.datetime.fromisoformat(previous_txs[i + 1].timestamp)
+                gap_days = (tx1_time - tx2_time).days
+                time_gaps.append(gap_days)
+
+            if time_gaps:
+                avg_gap_days = sum(time_gaps) / len(time_gaps)
+                context["avg_days_between_transactions"] = avg_gap_days
+                context["transaction_frequency"] = "regular" if avg_gap_days <= 30 else "irregular"
+
+                # Calculate standard deviation of gaps
+                import math
+                if len(time_gaps) > 1:
+                    variance = sum((x - avg_gap_days) ** 2 for x in time_gaps) / len(time_gaps)
+                    std_dev = math.sqrt(variance)
+                    context["transaction_gap_std_dev"] = std_dev
+
+                    # Check if current gap is anomalous
+                    if std_dev > 0:
+                        gap_deviation = abs(days_since_last - avg_gap_days) / std_dev
+                        context["current_gap_deviation"] = gap_deviation
+
+                        # Flag if gap is significantly longer than normal
+                        if gap_deviation > 2.0 and days_since_last > avg_gap_days:
+                            context["unusually_long_gap"] = True
+                            context["gap_deviation_std"] = gap_deviation
+                        else:
+                            context["unusually_long_gap"] = False
+                    else:
+                        context["unusually_long_gap"] = False
+                else:
+                    context["unusually_long_gap"] = False
+        else:
+            # Only one previous transaction
+            context["avg_days_between_transactions"] = days_since_last
+            context["transaction_frequency"] = "first_repeat"
+
+        # Classify relationship based on transaction history
+        total_txs_with_recipient = len(previous_txs) + 1  # Include current
+
+        if total_txs_with_recipient == 2:
+            relationship_status = "new_repeat"  # Second transaction ever
+        elif days_since_last <= 30:
+            relationship_status = "active"  # Active relationship (< 30 days)
+        elif days_since_last <= 90:
+            relationship_status = "recent"  # Recent contact (30-90 days)
+        elif days_since_last <= 180:
+            relationship_status = "inactive"  # Inactive (3-6 months)
+        else:
+            relationship_status = "dormant"  # Dormant (6+ months)
+
+        context["relationship_status"] = relationship_status
+
+        # Flag dormant relationships (high fraud risk)
+        # Dormant = no contact for 6+ months (180 days)
+        is_dormant = days_since_last >= 180
+        context["is_dormant_relationship"] = is_dormant
+
+        if is_dormant:
+            context["dormant_days"] = days_since_last
+            context["dormant_risk_level"] = "critical" if days_since_last >= 365 else "high"
+
+        # Analyze amount patterns with this recipient
+        previous_amounts = [tx.amount for tx in previous_txs]
+        if previous_amounts:
+            avg_amount = sum(previous_amounts) / len(previous_amounts)
+            max_amount = max(previous_amounts)
+            min_amount = min(previous_amounts)
+
+            context["avg_transaction_amount_with_recipient"] = avg_amount
+            context["max_transaction_amount_with_recipient"] = max_amount
+            context["min_transaction_amount_with_recipient"] = min_amount
+
+            # Check if current amount is unusual for this recipient
+            current_amount = transaction.get("amount", 0)
+
+            if len(previous_amounts) > 1:
+                import math
+                variance = sum((x - avg_amount) ** 2 for x in previous_amounts) / len(previous_amounts)
+                std_dev = math.sqrt(variance)
+
+                if std_dev > 0:
+                    amount_deviation = abs(current_amount - avg_amount) / std_dev
+                    context["amount_deviation_with_recipient"] = amount_deviation
+
+                    # Flag if amount is significantly different
+                    if amount_deviation > 2.0:
+                        context["unusual_amount_for_recipient"] = True
+                        if current_amount > avg_amount:
+                            context["unusual_amount_direction"] = "higher_than_normal"
+                        else:
+                            context["unusual_amount_direction"] = "lower_than_normal"
+                    else:
+                        context["unusual_amount_for_recipient"] = False
+                else:
+                    context["unusual_amount_for_recipient"] = False
+
+            # Check if current amount exceeds previous maximum
+            if current_amount > max_amount:
+                context["exceeds_previous_max"] = True
+                context["max_amount_exceeded_by"] = current_amount - max_amount
+                context["max_amount_increase_percentage"] = ((current_amount - max_amount) / max_amount * 100) if max_amount > 0 else 0
+            else:
+                context["exceeds_previous_max"] = False
+
+        # Calculate relationship metrics
+        # Get first transaction with this recipient
+        first_tx = previous_txs[-1] if previous_txs else None
+        if first_tx:
+            first_tx_time = datetime.datetime.fromisoformat(first_tx.timestamp)
+            relationship_age_days = (current_tx_time - first_tx_time).days
+            context["relationship_age_days"] = relationship_age_days
+
+            # Calculate transaction frequency (transactions per month)
+            if relationship_age_days > 0:
+                txs_per_month = (total_txs_with_recipient / relationship_age_days) * 30
+                context["transactions_per_month_with_recipient"] = txs_per_month
+            else:
+                context["transactions_per_month_with_recipient"] = 0
+
+        # Flag high-risk scenarios
+        risk_flags = []
+
+        # 1. Dormant relationship suddenly active
+        if is_dormant:
+            risk_flags.append("dormant_relationship_reactivated")
+
+        # 2. New recipient with large transaction
+        if is_new_recipient and transaction.get("amount", 0) > 10000:
+            risk_flags.append("new_recipient_large_amount")
+
+        # 3. Unusual amount for this recipient
+        if context.get("unusual_amount_for_recipient"):
+            risk_flags.append("unusual_amount_for_recipient")
+
+        # 4. Exceeds previous maximum by significant margin
+        if context.get("exceeds_previous_max"):
+            if context.get("max_amount_increase_percentage", 0) > 50:  # 50% increase
+                risk_flags.append("significant_amount_increase")
+
+        # 5. Very long gap (unusually long)
+        if context.get("unusually_long_gap"):
+            risk_flags.append("unusually_long_transaction_gap")
+
+        context["recipient_relationship_risk_flags"] = risk_flags
+        context["recipient_relationship_risk_count"] = len(risk_flags)
+        context["recipient_relationship_high_risk"] = len(risk_flags) >= 2
