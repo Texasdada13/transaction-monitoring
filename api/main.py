@@ -548,6 +548,229 @@ async def get_module_performance(
         "total_modules": len(module_stats)
     }
 
+@app.get("/api/v1/investigation/search-transactions")
+async def search_transactions(
+    transaction_id: Optional[str] = None,
+    account_id: Optional[str] = None,
+    min_amount: Optional[float] = None,
+    max_amount: Optional[float] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    risk_level: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Search transactions with multiple filters.
+
+    Args:
+        transaction_id: Specific transaction ID
+        account_id: Filter by account
+        min_amount: Minimum transaction amount
+        max_amount: Maximum transaction amount
+        start_date: Start date (ISO format)
+        end_date: End date (ISO format)
+        risk_level: Filter by risk level (low/medium/high)
+        limit: Max results to return
+
+    Returns:
+        List of matching transactions with risk assessments
+    """
+    from app.models.database import Transaction, RiskAssessment
+    import json
+
+    query = db.query(Transaction).join(
+        RiskAssessment,
+        Transaction.transaction_id == RiskAssessment.transaction_id,
+        isouter=True
+    )
+
+    # Apply filters
+    if transaction_id:
+        query = query.filter(Transaction.transaction_id.contains(transaction_id))
+    if account_id:
+        query = query.filter(Transaction.account_id == account_id)
+    if min_amount is not None:
+        query = query.filter(Transaction.amount >= min_amount)
+    if max_amount is not None:
+        query = query.filter(Transaction.amount <= max_amount)
+    if start_date:
+        query = query.filter(Transaction.timestamp >= start_date)
+    if end_date:
+        query = query.filter(Transaction.timestamp <= end_date)
+    if risk_level:
+        risk_map = {"low": (0, 0.3), "medium": (0.3, 0.6), "high": (0.6, 1.0)}
+        if risk_level in risk_map:
+            min_risk, max_risk = risk_map[risk_level]
+            query = query.filter(
+                RiskAssessment.risk_score >= min_risk,
+                RiskAssessment.risk_score < max_risk
+            )
+
+    # Execute query
+    results = query.limit(limit).all()
+
+    transactions = []
+    for tx in results:
+        assessment = db.query(RiskAssessment).filter(
+            RiskAssessment.transaction_id == tx.transaction_id
+        ).first()
+
+        tx_data = {
+            "transaction_id": tx.transaction_id,
+            "account_id": tx.account_id,
+            "amount": tx.amount,
+            "direction": tx.direction,
+            "transaction_type": tx.transaction_type,
+            "description": tx.description,
+            "timestamp": tx.timestamp,
+            "counterparty_id": tx.counterparty_id
+        }
+
+        if assessment:
+            triggered_rules = json.loads(assessment.triggered_rules) if assessment.triggered_rules else {}
+            tx_data["risk_score"] = assessment.risk_score
+            tx_data["decision"] = assessment.decision
+            tx_data["review_status"] = assessment.review_status
+            tx_data["triggered_rules_count"] = len(triggered_rules)
+
+        transactions.append(tx_data)
+
+    return {
+        "transactions": transactions,
+        "count": len(transactions),
+        "limit": limit
+    }
+
+@app.get("/api/v1/investigation/account/{account_id}")
+async def get_account_investigation(
+    account_id: str,
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get comprehensive account information for investigation.
+
+    Returns:
+        Account details, transaction history, risk profile, employee info
+    """
+    from app.models.database import Account, Transaction, RiskAssessment, Employee
+    import json
+
+    # Get account
+    account = db.query(Account).filter(Account.account_id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+
+    # Get all transactions
+    transactions = db.query(Transaction).filter(
+        Transaction.account_id == account_id
+    ).order_by(Transaction.timestamp.desc()).limit(100).all()
+
+    # Get risk assessments
+    risk_assessments = db.query(RiskAssessment).join(
+        Transaction,
+        RiskAssessment.transaction_id == Transaction.transaction_id
+    ).filter(Transaction.account_id == account_id).all()
+
+    # Calculate stats
+    total_transactions = len(transactions)
+    total_value = sum(tx.amount for tx in transactions)
+    avg_risk = sum(a.risk_score for a in risk_assessments) / len(risk_assessments) if risk_assessments else 0
+    high_risk_count = sum(1 for a in risk_assessments if a.risk_score >= 0.6)
+
+    # Get employees (if applicable)
+    employees = db.query(Employee).filter(Employee.account_id == account_id).all()
+
+    employee_data = [{
+        "employee_id": emp.employee_id,
+        "name": emp.name,
+        "email": emp.email,
+        "department": emp.department,
+        "employment_status": emp.employment_status
+    } for emp in employees]
+
+    return {
+        "account_id": account_id,
+        "creation_date": account.creation_date,
+        "risk_tier": account.risk_tier,
+        "status": account.status,
+        "statistics": {
+            "total_transactions": total_transactions,
+            "total_value": total_value,
+            "average_risk_score": avg_risk,
+            "high_risk_count": high_risk_count,
+            "high_risk_rate": high_risk_count / total_transactions if total_transactions > 0 else 0
+        },
+        "employees": employee_data,
+        "recent_transactions": [
+            {
+                "transaction_id": tx.transaction_id,
+                "amount": tx.amount,
+                "timestamp": tx.timestamp,
+                "transaction_type": tx.transaction_type
+            } for tx in transactions[:10]
+        ]
+    }
+
+@app.get("/api/v1/investigation/transaction/{transaction_id}/modules")
+async def get_transaction_module_breakdown(
+    transaction_id: str,
+    db: Session = Depends(get_db),
+    user: dict = Depends(verify_token)
+):
+    """
+    Get detailed breakdown of all fraud detection modules for a transaction.
+
+    Shows which of the 25 modules triggered and why.
+    """
+    from app.models.database import Transaction, RiskAssessment
+    import json
+
+    # Get transaction
+    tx = db.query(Transaction).filter(Transaction.transaction_id == transaction_id).first()
+    if not tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Get risk assessment
+    assessment = db.query(RiskAssessment).filter(
+        RiskAssessment.transaction_id == transaction_id
+    ).first()
+
+    if not assessment:
+        return {
+            "transaction_id": transaction_id,
+            "modules_triggered": [],
+            "total_modules": 0,
+            "risk_score": 0
+        }
+
+    triggered_rules = json.loads(assessment.triggered_rules) if assessment.triggered_rules else {}
+
+    modules = []
+    for rule_name, rule_info in triggered_rules.items():
+        modules.append({
+            "name": rule_name,
+            "description": rule_info.get("description", ""),
+            "weight": rule_info.get("weight", 0),
+            "category": rule_info.get("category", "general"),
+            "severity": "high" if rule_info.get("weight", 0) >= 0.3 else "medium" if rule_info.get("weight", 0) >= 0.15 else "low"
+        })
+
+    # Sort by weight
+    modules.sort(key=lambda x: x["weight"], reverse=True)
+
+    return {
+        "transaction_id": transaction_id,
+        "risk_score": assessment.risk_score,
+        "decision": assessment.decision,
+        "review_status": assessment.review_status,
+        "modules_triggered": modules,
+        "total_modules_triggered": len(modules),
+        "total_modules_available": 25
+    }
+
 # ==================== Run Application ====================
 
 if __name__ == "__main__":

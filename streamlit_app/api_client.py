@@ -278,6 +278,59 @@ class FraudAPIClient:
         return response.json()
 
 
+    def search_transactions(
+        self,
+        transaction_id: Optional[str] = None,
+        account_id: Optional[str] = None,
+        min_amount: Optional[float] = None,
+        max_amount: Optional[float] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        risk_level: Optional[str] = None,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """Search transactions with filters."""
+        params = {"limit": limit}
+        if transaction_id:
+            params["transaction_id"] = transaction_id
+        if account_id:
+            params["account_id"] = account_id
+        if min_amount is not None:
+            params["min_amount"] = min_amount
+        if max_amount is not None:
+            params["max_amount"] = max_amount
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        if risk_level:
+            params["risk_level"] = risk_level
+        response = requests.get(
+            f"{self.base_url}/api/v1/investigation/search-transactions",
+            headers=self._get_headers(),
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_account_investigation(self, account_id: str) -> Dict[str, Any]:
+        """Get comprehensive account investigation data."""
+        response = requests.get(
+            f"{self.base_url}/api/v1/investigation/account/{account_id}",
+            headers=self._get_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_transaction_module_breakdown(self, transaction_id: str) -> Dict[str, Any]:
+        """Get fraud module breakdown for a transaction."""
+        response = requests.get(
+            f"{self.base_url}/api/v1/investigation/transaction/{transaction_id}/modules",
+            headers=self._get_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
 # ==================== Streamlit Session State Management ====================
 
 def get_api_client() -> FraudAPIClient:
