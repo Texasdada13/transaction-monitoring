@@ -270,3 +270,7 @@ def render_module_compact(module):
                 st.markdown(f"• **{example}**")
 
     st.markdown("---")
+
+
+if __name__ == "__main__" or True:
+    render()

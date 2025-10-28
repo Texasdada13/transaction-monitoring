@@ -422,3 +422,7 @@ def render():
     except Exception as e:
         st.error(f"❌ Error loading analytics: {str(e)}")
         st.exception(e)
+
+
+if __name__ == "__main__" or True:
+    render()

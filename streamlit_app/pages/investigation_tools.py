@@ -501,3 +501,7 @@ def render():
                 st.rerun()
             else:
                 st.warning("Please enter an account ID")
+
+
+if __name__ == "__main__" or True:
+    render()
