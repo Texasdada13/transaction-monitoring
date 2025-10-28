@@ -15,6 +15,10 @@ FRAUD_MODULES_CATALOG = {
             "Frequency anomalies",
             "Deviations from normal patterns"
         ],
+        "examples": [
+            "Unusually large transfer from a low-activity account",
+            "Tiny test deposits used to validate accounts before fraud"
+        ],
         "severity": "medium",
         "icon": "📊"
     },
@@ -40,6 +44,11 @@ FRAUD_MODULES_CATALOG = {
             "Layering behavior",
             "Structuring attempts"
         ],
+        "examples": [
+            "Accounts used as money mules (funds in, immediately out)",
+            "Multiple small transactions followed by a large withdrawal",
+            "Tiny test deposits followed by large fraudulent transfers"
+        ],
         "severity": "high",
         "icon": "💰"
     },
@@ -52,6 +61,11 @@ FRAUD_MODULES_CATALOG = {
             "Compromised admin account patterns",
             "Bulk beneficiary uploads",
             "Suspicious payment to new beneficiaries"
+        ],
+        "examples": [
+            "Payment to a newly added beneficiary immediately after a change request",
+            "Rapid addition of many new beneficiaries followed by payments",
+            "Social-engineering push payment (P2P/Zelle-style fraud)"
         ],
         "severity": "high",
         "icon": "👥"
@@ -66,6 +80,10 @@ FRAUD_MODULES_CATALOG = {
             "Unverified vendor changes",
             "Rapid account modifications"
         ],
+        "examples": [
+            "Social-engineering push payment (fraudster impersonates CEO/vendor)",
+            "Payment after suspicious banking detail change"
+        ],
         "severity": "critical",
         "icon": "🎭"
     },
@@ -78,6 +96,10 @@ FRAUD_MODULES_CATALOG = {
             "Multi-hop money movement",
             "Rapid sequential transactions",
             "Suspicious transaction chains"
+        ],
+        "examples": [
+            "Complex refund and transfer chains to hide origin",
+            "Multiple small transactions followed by a large withdrawal"
         ],
         "severity": "high",
         "icon": "🔗"
@@ -92,6 +114,10 @@ FRAUD_MODULES_CATALOG = {
             "Unusual login patterns",
             "Behavioral anomalies"
         ],
+        "examples": [
+            "Account takeover accompanied by phone/SIM swap changes",
+            "Payroll/direct deposit rerouting after account compromise"
+        ],
         "severity": "critical",
         "icon": "🔐"
     },
@@ -104,6 +130,9 @@ FRAUD_MODULES_CATALOG = {
             "Weekend activity",
             "Deviations from normal timing patterns",
             "Large transactions during odd hours"
+        ],
+        "examples": [
+            "Large transactions initiated at odd hours (2 AM wire transfer)"
         ],
         "severity": "medium",
         "icon": "🌙"
@@ -118,6 +147,10 @@ FRAUD_MODULES_CATALOG = {
             "Timing pattern deviations",
             "Non-business hours activity"
         ],
+        "examples": [
+            "Large transactions initiated at odd hours (holiday fraud)",
+            "Weekend wire transfers when business is closed"
+        ],
         "severity": "medium",
         "icon": "⏰"
     },
@@ -130,6 +163,10 @@ FRAUD_MODULES_CATALOG = {
             "Geographic inconsistencies",
             "Deviations from vendor locations",
             "Routing anomalies"
+        ],
+        "examples": [
+            "Payments routed to unexpected or high-risk countries",
+            "Wire transfer to jurisdiction inconsistent with business activity"
         ],
         "severity": "medium",
         "icon": "🌍"
@@ -196,6 +233,9 @@ FRAUD_MODULES_CATALOG = {
             "Geographic fraud hotspots",
             "Sanctioned region activity"
         ],
+        "examples": [
+            "Payments routed to unexpected or high-risk countries"
+        ],
         "severity": "high",
         "icon": "🗺️"
     },
@@ -248,6 +288,10 @@ FRAUD_MODULES_CATALOG = {
             "New account velocity abuse",
             "Account age inconsistencies"
         ],
+        "examples": [
+            "Unusually large transfer from a low-activity account",
+            "New account immediately used for large wire transfer"
+        ],
         "severity": "medium",
         "icon": "🆕"
     },
@@ -287,6 +331,10 @@ FRAUD_MODULES_CATALOG = {
             "Rapid account changes",
             "Employee account takeover"
         ],
+        "examples": [
+            "Payroll/direct deposit rerouting (employee account details changed)",
+            "Account takeover followed by immediate payroll redirect"
+        ],
         "severity": "high",
         "icon": "💼"
     },
@@ -299,6 +347,9 @@ FRAUD_MODULES_CATALOG = {
             "Out-of-sequence checks",
             "Unusual check amounts",
             "Check kiting patterns"
+        ],
+        "examples": [
+            "Same check deposited more than once (duplicate deposit fraud)"
         ],
         "severity": "medium",
         "icon": "📝"

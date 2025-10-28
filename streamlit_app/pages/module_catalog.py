@@ -227,10 +227,18 @@ def render_module_card(module):
     </div>
     """, unsafe_allow_html=True)
 
+    # Detection capabilities
     if detects:
         with st.expander("🔍 Detection Capabilities", expanded=False):
             for detection in detects:
                 st.markdown(f"- {detection}")
+
+    # Real-world examples
+    examples = module.get("examples", [])
+    if examples:
+        with st.expander("💡 Real-World Fraud Examples", expanded=False):
+            for example in examples:
+                st.markdown(f"- **{example}**")
 
 
 def render_module_compact(module):
@@ -249,8 +257,16 @@ def render_module_compact(module):
     st.markdown(f"**{icon} {name}** - *{severity.upper()}*")
     st.markdown(f"_{description}_")
 
-    with st.expander("Show detection capabilities"):
+    with st.expander("Show detection capabilities & examples"):
+        st.markdown("**What it detects:**")
         for detection in detects:
             st.markdown(f"• {detection}")
+
+        examples = module.get("examples", [])
+        if examples:
+            st.markdown("")
+            st.markdown("**💡 Real-World Examples:**")
+            for example in examples:
+                st.markdown(f"• **{example}**")
 
     st.markdown("---")
