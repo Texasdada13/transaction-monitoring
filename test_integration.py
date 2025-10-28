@@ -129,6 +129,7 @@ def test_api_endpoints(base_url="http://localhost:8000", token=None):
         ("/api/v1/alerts/live", "Live alerts"),
         ("/api/v1/rules/top", "Top rules"),
         ("/api/v1/scenarios/breakdown", "Scenario breakdown"),
+        ("/api/v1/modules/catalog", "Modules catalog"),
     ]
 
     all_passed = True
