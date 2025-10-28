@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric, FraudFlag
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric, FraudFlag, FraudComplaint
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -114,6 +114,9 @@ class ContextProvider:
 
         # Add transaction context anomalies detection context
         self._add_transaction_context_anomalies_context(context, account_id, transaction)
+
+        # Add fraud complaints count detection context
+        self._add_fraud_complaints_count_context(context, account_id, transaction)
 
         return context
     
@@ -5099,3 +5102,474 @@ class ContextProvider:
             context_risk_level = "minimal"
 
         context["context_anomaly_risk_level"] = context_risk_level
+
+    def _add_fraud_complaints_count_context(self, context: Dict[str, Any],
+                                             account_id: str,
+                                             transaction: Dict[str, Any]) -> None:
+        """
+        Add fraud complaints count analysis for fraud detection.
+
+        Analyzes frequency of fraud complaints linked to UPI ID, device, or account
+        including complaint types, severity, recency, and resolution patterns.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account identifier
+            transaction: Current transaction data
+        """
+        from collections import Counter
+
+        now = datetime.datetime.utcnow()
+
+        # Extract transaction identifiers
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            tx_metadata = {}
+
+        # Extract UPI ID and device ID from transaction
+        upi_id = tx_metadata.get("upi_id") or transaction.get("upi_id")
+        device_id = tx_metadata.get("device_id") or transaction.get("device_id")
+        beneficiary_id = transaction.get("beneficiary_id")
+
+        context["fraud_complaints_check_available"] = True
+
+        # 1. ACCOUNT-LEVEL COMPLAINTS
+        account_complaints = self.db.query(FraudComplaint).filter(
+            FraudComplaint.entity_type == "account",
+            FraudComplaint.entity_id == account_id
+        ).order_by(FraudComplaint.complaint_date.desc()).all()
+
+        context["account_complaint_count"] = len(account_complaints)
+
+        if account_complaints:
+            # Categorize by status
+            status_counts = Counter([c.status for c in account_complaints])
+            context["account_complaints_by_status"] = dict(status_counts)
+
+            # Active complaints (not resolved/closed)
+            active_complaints = [c for c in account_complaints
+                               if c.status not in ["resolved", "closed", "rejected"]]
+            context["account_active_complaint_count"] = len(active_complaints)
+
+            # Confirmed fraud complaints
+            confirmed_complaints = [c for c in account_complaints
+                                  if c.resolution == "confirmed_fraud"]
+            context["account_confirmed_fraud_complaint_count"] = len(confirmed_complaints)
+
+            # Categorize by severity
+            severity_counts = Counter([c.severity for c in account_complaints])
+            context["account_complaints_by_severity"] = dict(severity_counts)
+
+            critical_complaints = [c for c in account_complaints if c.severity == "critical"]
+            high_complaints = [c for c in account_complaints if c.severity == "high"]
+
+            context["account_critical_complaint_count"] = len(critical_complaints)
+            context["account_high_complaint_count"] = len(high_complaints)
+
+            # Categorize by type
+            type_counts = Counter([c.complaint_type for c in account_complaints])
+            context["account_complaints_by_type"] = dict(type_counts)
+
+            # Most recent complaint
+            most_recent = account_complaints[0]
+            days_since_last_complaint = (now - most_recent.complaint_date).days
+
+            context["account_days_since_last_complaint"] = days_since_last_complaint
+            context["account_most_recent_complaint_type"] = most_recent.complaint_type
+            context["account_most_recent_complaint_severity"] = most_recent.severity
+            context["account_most_recent_complaint_status"] = most_recent.status
+
+            # Recency analysis
+            complaints_last_30d = [c for c in account_complaints
+                                  if (now - c.complaint_date).days <= 30]
+            complaints_last_90d = [c for c in account_complaints
+                                  if (now - c.complaint_date).days <= 90]
+            complaints_last_365d = [c for c in account_complaints
+                                   if (now - c.complaint_date).days <= 365]
+
+            context["account_complaints_last_30d"] = len(complaints_last_30d)
+            context["account_complaints_last_90d"] = len(complaints_last_90d)
+            context["account_complaints_last_365d"] = len(complaints_last_365d)
+
+            # Total amount involved in complaints
+            total_complaint_amount = sum(float(c.amount_involved or 0)
+                                       for c in account_complaints if c.amount_involved)
+            context["account_total_complaint_amount"] = total_complaint_amount
+
+            # Fraud ring detection
+            in_fraud_ring = any(c.is_part_of_fraud_ring for c in account_complaints)
+            context["account_in_fraud_ring"] = in_fraud_ring
+
+            if in_fraud_ring:
+                fraud_ring_ids = list(set([c.fraud_ring_id for c in account_complaints
+                                         if c.fraud_ring_id]))
+                context["account_fraud_ring_ids"] = fraud_ring_ids
+        else:
+            context["account_active_complaint_count"] = 0
+            context["account_confirmed_fraud_complaint_count"] = 0
+            context["account_critical_complaint_count"] = 0
+            context["account_in_fraud_ring"] = False
+
+        # 2. UPI ID-LEVEL COMPLAINTS
+        if upi_id:
+            upi_complaints = self.db.query(FraudComplaint).filter(
+                FraudComplaint.upi_id == upi_id
+            ).order_by(FraudComplaint.complaint_date.desc()).all()
+
+            context["upi_complaint_count"] = len(upi_complaints)
+
+            if upi_complaints:
+                # Active and confirmed
+                upi_active = [c for c in upi_complaints
+                            if c.status not in ["resolved", "closed", "rejected"]]
+                upi_confirmed = [c for c in upi_complaints
+                               if c.resolution == "confirmed_fraud"]
+
+                context["upi_active_complaint_count"] = len(upi_active)
+                context["upi_confirmed_fraud_complaint_count"] = len(upi_confirmed)
+
+                # Severity
+                upi_critical = [c for c in upi_complaints if c.severity == "critical"]
+                upi_high = [c for c in upi_complaints if c.severity == "high"]
+
+                context["upi_critical_complaint_count"] = len(upi_critical)
+                context["upi_high_complaint_count"] = len(upi_high)
+
+                # Recency
+                upi_recent = upi_complaints[0]
+                upi_days_since = (now - upi_recent.complaint_date).days
+
+                context["upi_days_since_last_complaint"] = upi_days_since
+                context["upi_most_recent_complaint_type"] = upi_recent.complaint_type
+
+                # Recent complaints
+                upi_last_90d = [c for c in upi_complaints
+                              if (now - c.complaint_date).days <= 90]
+                context["upi_complaints_last_90d"] = len(upi_last_90d)
+
+                # Fraud ring
+                upi_in_fraud_ring = any(c.is_part_of_fraud_ring for c in upi_complaints)
+                context["upi_in_fraud_ring"] = upi_in_fraud_ring
+            else:
+                context["upi_active_complaint_count"] = 0
+                context["upi_confirmed_fraud_complaint_count"] = 0
+                context["upi_in_fraud_ring"] = False
+        else:
+            context["upi_id_not_available"] = True
+            context["upi_complaint_count"] = 0
+
+        # 3. DEVICE-LEVEL COMPLAINTS
+        if device_id:
+            device_complaints = self.db.query(FraudComplaint).filter(
+                FraudComplaint.device_id == device_id
+            ).order_by(FraudComplaint.complaint_date.desc()).all()
+
+            context["device_complaint_count"] = len(device_complaints)
+
+            if device_complaints:
+                # Active and confirmed
+                device_active = [c for c in device_complaints
+                               if c.status not in ["resolved", "closed", "rejected"]]
+                device_confirmed = [c for c in device_complaints
+                                  if c.resolution == "confirmed_fraud"]
+
+                context["device_active_complaint_count"] = len(device_active)
+                context["device_confirmed_fraud_complaint_count"] = len(device_confirmed)
+
+                # Severity
+                device_critical = [c for c in device_complaints if c.severity == "critical"]
+                device_high = [c for c in device_complaints if c.severity == "high"]
+
+                context["device_critical_complaint_count"] = len(device_critical)
+                context["device_high_complaint_count"] = len(device_high)
+
+                # Recency
+                device_recent = device_complaints[0]
+                device_days_since = (now - device_recent.complaint_date).days
+
+                context["device_days_since_last_complaint"] = device_days_since
+                context["device_most_recent_complaint_type"] = device_recent.complaint_type
+
+                # Recent complaints
+                device_last_90d = [c for c in device_complaints
+                                 if (now - c.complaint_date).days <= 90]
+                context["device_complaints_last_90d"] = len(device_last_90d)
+
+                # Fraud ring
+                device_in_fraud_ring = any(c.is_part_of_fraud_ring for c in device_complaints)
+                context["device_in_fraud_ring"] = device_in_fraud_ring
+
+                # Check for device reuse across multiple accounts
+                device_entity_ids = list(set([c.entity_id for c in device_complaints
+                                            if c.entity_type == "account"]))
+                context["device_linked_account_count"] = len(device_entity_ids)
+
+                if len(device_entity_ids) >= 3:
+                    context["device_used_across_multiple_accounts"] = True
+                else:
+                    context["device_used_across_multiple_accounts"] = False
+            else:
+                context["device_active_complaint_count"] = 0
+                context["device_confirmed_fraud_complaint_count"] = 0
+                context["device_in_fraud_ring"] = False
+        else:
+            context["device_id_not_available"] = True
+            context["device_complaint_count"] = 0
+
+        # 4. BENEFICIARY-LEVEL COMPLAINTS
+        if beneficiary_id:
+            beneficiary_complaints = self.db.query(FraudComplaint).filter(
+                FraudComplaint.entity_type == "beneficiary",
+                FraudComplaint.entity_id == beneficiary_id
+            ).order_by(FraudComplaint.complaint_date.desc()).all()
+
+            context["beneficiary_complaint_count"] = len(beneficiary_complaints)
+
+            if beneficiary_complaints:
+                # Active and confirmed
+                ben_active = [c for c in beneficiary_complaints
+                            if c.status not in ["resolved", "closed", "rejected"]]
+                ben_confirmed = [c for c in beneficiary_complaints
+                               if c.resolution == "confirmed_fraud"]
+
+                context["beneficiary_active_complaint_count"] = len(ben_active)
+                context["beneficiary_confirmed_fraud_complaint_count"] = len(ben_confirmed)
+
+                # Severity
+                ben_critical = [c for c in beneficiary_complaints if c.severity == "critical"]
+                context["beneficiary_critical_complaint_count"] = len(ben_critical)
+
+                # Recency
+                ben_recent = beneficiary_complaints[0]
+                ben_days_since = (now - ben_recent.complaint_date).days
+
+                context["beneficiary_days_since_last_complaint"] = ben_days_since
+
+                # Recent complaints
+                ben_last_90d = [c for c in beneficiary_complaints
+                              if (now - c.complaint_date).days <= 90]
+                context["beneficiary_complaints_last_90d"] = len(ben_last_90d)
+            else:
+                context["beneficiary_active_complaint_count"] = 0
+                context["beneficiary_confirmed_fraud_complaint_count"] = 0
+        else:
+            context["beneficiary_complaint_count"] = 0
+
+        # 5. COMPLAINT VELOCITY ANALYSIS
+        # Check if complaints are increasing over time
+        if len(account_complaints) >= 3:
+            # Compare recent vs older complaints
+            recent_complaints = [c for c in account_complaints
+                               if (now - c.complaint_date).days <= 30]
+            older_complaints = [c for c in account_complaints
+                              if 30 < (now - c.complaint_date).days <= 90]
+
+            if older_complaints:
+                recent_rate = len(recent_complaints) / 30  # per day
+                older_rate = len(older_complaints) / 60  # per day
+
+                if recent_rate > older_rate * 2:
+                    context["complaint_velocity_increasing"] = True
+                else:
+                    context["complaint_velocity_increasing"] = False
+            else:
+                context["complaint_velocity_increasing"] = False
+        else:
+            context["complaint_velocity_increasing"] = False
+
+        # 6. GENERATE FRAUD COMPLAINT RISK FLAGS
+        risk_flags = []
+
+        # Account flags
+        if context.get("account_active_complaint_count", 0) > 0:
+            risk_flags.append("account_has_active_complaints")
+
+        if context.get("account_confirmed_fraud_complaint_count", 0) > 0:
+            risk_flags.append("account_has_confirmed_fraud_complaints")
+
+        if context.get("account_critical_complaint_count", 0) > 0:
+            risk_flags.append("account_has_critical_complaints")
+
+        if context.get("account_complaints_last_30d", 0) >= 2:
+            risk_flags.append("account_multiple_recent_complaints")
+
+        if context.get("account_complaint_count", 0) >= 5:
+            risk_flags.append("account_repeat_complaint_target")
+
+        if context.get("account_in_fraud_ring", False):
+            risk_flags.append("account_in_known_fraud_ring")
+
+        # UPI flags
+        if context.get("upi_active_complaint_count", 0) > 0:
+            risk_flags.append("upi_has_active_complaints")
+
+        if context.get("upi_confirmed_fraud_complaint_count", 0) > 0:
+            risk_flags.append("upi_has_confirmed_fraud_complaints")
+
+        if context.get("upi_critical_complaint_count", 0) > 0:
+            risk_flags.append("upi_has_critical_complaints")
+
+        if context.get("upi_complaint_count", 0) >= 3:
+            risk_flags.append("upi_multiple_complaints")
+
+        if context.get("upi_in_fraud_ring", False):
+            risk_flags.append("upi_in_known_fraud_ring")
+
+        # Device flags
+        if context.get("device_active_complaint_count", 0) > 0:
+            risk_flags.append("device_has_active_complaints")
+
+        if context.get("device_confirmed_fraud_complaint_count", 0) > 0:
+            risk_flags.append("device_has_confirmed_fraud_complaints")
+
+        if context.get("device_critical_complaint_count", 0) > 0:
+            risk_flags.append("device_has_critical_complaints")
+
+        if context.get("device_complaint_count", 0) >= 3:
+            risk_flags.append("device_multiple_complaints")
+
+        if context.get("device_used_across_multiple_accounts", False):
+            risk_flags.append("device_shared_across_accounts")
+
+        if context.get("device_in_fraud_ring", False):
+            risk_flags.append("device_in_known_fraud_ring")
+
+        # Beneficiary flags
+        if context.get("beneficiary_active_complaint_count", 0) > 0:
+            risk_flags.append("beneficiary_has_active_complaints")
+
+        if context.get("beneficiary_confirmed_fraud_complaint_count", 0) > 0:
+            risk_flags.append("beneficiary_has_confirmed_fraud_complaints")
+
+        if context.get("beneficiary_complaint_count", 0) >= 3:
+            risk_flags.append("beneficiary_multiple_complaints")
+
+        # Velocity flag
+        if context.get("complaint_velocity_increasing", False):
+            risk_flags.append("complaint_frequency_increasing")
+
+        # Multiple entity types with complaints
+        entities_with_complaints = 0
+        if context.get("account_complaint_count", 0) > 0:
+            entities_with_complaints += 1
+        if context.get("upi_complaint_count", 0) > 0:
+            entities_with_complaints += 1
+        if context.get("device_complaint_count", 0) > 0:
+            entities_with_complaints += 1
+        if context.get("beneficiary_complaint_count", 0) > 0:
+            entities_with_complaints += 1
+
+        if entities_with_complaints >= 3:
+            risk_flags.append("multiple_entities_with_complaints")
+
+        context["fraud_complaint_risk_flags"] = risk_flags
+        context["fraud_complaint_risk_flag_count"] = len(risk_flags)
+
+        # 7. CALCULATE FRAUD COMPLAINT RISK SCORE (0-100)
+        risk_score = 0
+
+        # Account complaint scoring
+        account_count = context.get("account_complaint_count", 0)
+        if account_count >= 10:
+            risk_score += 40
+        elif account_count >= 5:
+            risk_score += 30
+        elif account_count >= 3:
+            risk_score += 20
+        elif account_count >= 1:
+            risk_score += 10
+
+        # Active complaints
+        risk_score += min(context.get("account_active_complaint_count", 0) * 10, 30)
+
+        # Confirmed fraud
+        risk_score += min(context.get("account_confirmed_fraud_complaint_count", 0) * 15, 45)
+
+        # Critical/high severity
+        risk_score += context.get("account_critical_complaint_count", 0) * 20
+        risk_score += context.get("account_high_complaint_count", 0) * 10
+
+        # Recent complaints
+        if context.get("account_complaints_last_30d", 0) >= 3:
+            risk_score += 30
+        elif context.get("account_complaints_last_30d", 0) >= 2:
+            risk_score += 20
+        elif context.get("account_complaints_last_30d", 0) >= 1:
+            risk_score += 10
+
+        # UPI complaint scoring
+        upi_count = context.get("upi_complaint_count", 0)
+        if upi_count >= 5:
+            risk_score += 30
+        elif upi_count >= 3:
+            risk_score += 20
+        elif upi_count >= 1:
+            risk_score += 10
+
+        risk_score += min(context.get("upi_confirmed_fraud_complaint_count", 0) * 12, 36)
+
+        # Device complaint scoring
+        device_count = context.get("device_complaint_count", 0)
+        if device_count >= 5:
+            risk_score += 30
+        elif device_count >= 3:
+            risk_score += 20
+        elif device_count >= 1:
+            risk_score += 10
+
+        risk_score += min(context.get("device_confirmed_fraud_complaint_count", 0) * 12, 36)
+
+        if context.get("device_used_across_multiple_accounts", False):
+            risk_score += 25
+
+        # Beneficiary complaint scoring
+        ben_count = context.get("beneficiary_complaint_count", 0)
+        if ben_count >= 3:
+            risk_score += 20
+        elif ben_count >= 1:
+            risk_score += 10
+
+        risk_score += min(context.get("beneficiary_confirmed_fraud_complaint_count", 0) * 10, 30)
+
+        # Fraud ring membership
+        if context.get("account_in_fraud_ring", False):
+            risk_score += 40
+
+        if context.get("upi_in_fraud_ring", False):
+            risk_score += 35
+
+        if context.get("device_in_fraud_ring", False):
+            risk_score += 35
+
+        # Complaint velocity
+        if context.get("complaint_velocity_increasing", False):
+            risk_score += 20
+
+        # Multiple entities
+        if entities_with_complaints >= 3:
+            risk_score += 25
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["fraud_complaint_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 75:
+            complaint_risk_level = "critical"
+        elif risk_score >= 60:
+            complaint_risk_level = "high"
+        elif risk_score >= 40:
+            complaint_risk_level = "medium"
+        elif risk_score >= 20:
+            complaint_risk_level = "low"
+        else:
+            complaint_risk_level = "minimal"
+
+        context["fraud_complaint_risk_level"] = complaint_risk_level

@@ -511,6 +511,84 @@ class FraudFlag(Base):
                               primaryjoin="and_(FraudFlag.entity_id==Beneficiary.beneficiary_id, FraudFlag.entity_type=='beneficiary')",
                               overlaps="fraud_flags,account")
 
+class FraudComplaint(Base):
+    """
+    Model for tracking fraud complaints and reports.
+
+    Stores complaints linked to UPI IDs, devices, accounts, and beneficiaries
+    to enable repeat offender detection and fraud network analysis.
+    """
+    __tablename__ = "fraud_complaints"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Complaint identifier
+    complaint_id = Column(String(255), unique=True, nullable=False, index=True)
+
+    # Entity information (what the complaint is about)
+    entity_type = Column(String(50), nullable=False, index=True)  # "account", "beneficiary", "device", "upi_id", "transaction"
+    entity_id = Column(String(255), nullable=False, index=True)  # Corresponding ID
+
+    # Complainant information
+    complainant_account_id = Column(String(255), nullable=True, index=True)
+    complainant_name = Column(String(255), nullable=True)
+    complainant_contact = Column(String(100), nullable=True)
+
+    # Complaint details
+    complaint_type = Column(String(100), nullable=False, index=True)  # "unauthorized_transaction", "account_takeover", "phishing", "scam", etc.
+    complaint_category = Column(String(50), nullable=False, index=True)  # "financial_fraud", "identity_theft", "scam", "technical_fraud"
+    severity = Column(String(20), nullable=False, index=True)  # "low", "medium", "high", "critical"
+
+    # Description and evidence
+    description = Column(Text, nullable=True)
+    evidence_provided = Column(Boolean, default=False)
+    evidence_details = Column(Text, nullable=True)  # JSON for file references, screenshots, etc.
+
+    # Related transaction information
+    related_transaction_id = Column(String(255), nullable=True, index=True)
+    amount_involved = Column(Numeric(precision=15, scale=2), nullable=True)
+    transaction_date = Column(DateTime, nullable=True)
+
+    # Device and UPI information
+    device_id = Column(String(255), nullable=True, index=True)
+    device_fingerprint = Column(Text, nullable=True)
+    upi_id = Column(String(255), nullable=True, index=True)
+
+    # Status and resolution
+    status = Column(String(50), nullable=False, index=True)  # "submitted", "under_review", "investigating", "resolved", "closed", "rejected"
+    resolution = Column(String(100), nullable=True)  # "confirmed_fraud", "false_positive", "no_evidence", "resolved_with_refund"
+    resolution_notes = Column(Text, nullable=True)
+
+    # Investigation details
+    assigned_investigator = Column(String(255), nullable=True)
+    investigation_priority = Column(String(20), nullable=True)  # "low", "medium", "high", "urgent"
+
+    # Action taken
+    action_taken = Column(String(100), nullable=True)  # "account_suspended", "funds_frozen", "refund_issued", "no_action"
+    refund_amount = Column(Numeric(precision=15, scale=2), nullable=True)
+
+    # Timestamps
+    complaint_date = Column(DateTime, nullable=False, index=True)
+    review_date = Column(DateTime, nullable=True)
+    resolution_date = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Fraud network analysis
+    is_part_of_fraud_ring = Column(Boolean, default=False)
+    fraud_ring_id = Column(String(255), nullable=True, index=True)
+    related_complaints = Column(Text, nullable=True)  # JSON array of related complaint IDs
+
+    # Verification
+    verified = Column(Boolean, default=False)
+    verification_date = Column(DateTime, nullable=True)
+    verification_method = Column(String(100), nullable=True)
+
+    # Additional metadata
+    source = Column(String(100), nullable=True)  # "customer_service", "automated_system", "bank_report", "user_report"
+    channel = Column(String(50), nullable=True)  # "app", "web", "phone", "email", "branch"
+    additional_data = Column(Text, nullable=True)  # JSON for extra fields
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
