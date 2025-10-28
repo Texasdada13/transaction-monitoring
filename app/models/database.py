@@ -454,6 +454,63 @@ class BehavioralBiometric(Base):
     session = relationship("DeviceSession")
     transaction = relationship("Transaction")
 
+class FraudFlag(Base):
+    """
+    Model for tracking fraudulent behavior flags and fraud history.
+
+    Stores historical fraud incidents, flags, and dispositions for accounts
+    and beneficiaries to enable repeat fraud detection and risk assessment.
+    """
+    __tablename__ = "fraud_flags"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    # Entity information
+    entity_type = Column(String(50), nullable=False, index=True)  # "account" or "beneficiary"
+    entity_id = Column(String(255), nullable=False, index=True)  # account_id or beneficiary_id
+
+    # Fraud details
+    fraud_type = Column(String(100), nullable=False, index=True)  # Type of fraud detected
+    fraud_category = Column(String(50), nullable=False, index=True)  # Category classification
+    severity = Column(String(20), nullable=False)  # "low", "medium", "high", "critical"
+
+    # Incident details
+    incident_date = Column(DateTime, nullable=False, index=True)
+    detection_date = Column(DateTime, nullable=False)
+    reported_date = Column(DateTime, nullable=True)
+
+    # Status and disposition
+    status = Column(String(50), nullable=False, index=True)  # "active", "resolved", "disputed", "confirmed"
+    disposition = Column(String(50), nullable=True)  # "confirmed_fraud", "false_positive", "pending_investigation"
+
+    # Associated data
+    related_transaction_id = Column(String(255), nullable=True, index=True)
+    amount_involved = Column(Numeric(precision=15, scale=2), nullable=True)
+
+    # Investigation details
+    investigator_id = Column(String(255), nullable=True)
+    investigation_notes = Column(Text, nullable=True)
+
+    # Resolution
+    resolution_date = Column(DateTime, nullable=True)
+    resolution_action = Column(String(100), nullable=True)  # "account_closed", "funds_recovered", "warning_issued", etc.
+
+    # Additional metadata
+    risk_score_at_time = Column(Integer, nullable=True)  # Risk score when fraud occurred
+    additional_data = Column(Text, nullable=True)  # JSON for additional context
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Relationships
+    account = relationship("Account", foreign_keys=[entity_id],
+                          primaryjoin="and_(FraudFlag.entity_id==Account.account_id, FraudFlag.entity_type=='account')",
+                          overlaps="fraud_flags")
+    beneficiary = relationship("Beneficiary", foreign_keys=[entity_id],
+                              primaryjoin="and_(FraudFlag.entity_id==Beneficiary.beneficiary_id, FraudFlag.entity_type=='beneficiary')",
+                              overlaps="fraud_flags,account")
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)

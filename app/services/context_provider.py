@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation, BehavioralBiometric, FraudFlag
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -102,6 +102,9 @@ class ContextProvider:
 
         # Add high-risk transaction times fraud detection context
         self._add_high_risk_transaction_times_context(context, account_id, transaction)
+
+        # Add past fraudulent behavior flags detection context
+        self._add_past_fraud_flags_context(context, account_id, transaction)
 
         return context
     
@@ -3188,3 +3191,419 @@ class ContextProvider:
             time_risk_level = "minimal"
 
         context["time_risk_level"] = time_risk_level
+
+    def _add_past_fraud_flags_context(self, context: Dict[str, Any],
+                                       account_id: str,
+                                       transaction: Dict[str, Any]) -> None:
+        """
+        Add past fraudulent behavior flags detection for fraud analysis.
+
+        Checks if the user or recipient has been flagged for prior fraudulent
+        activity, including fraud type, severity, recency, and patterns of
+        repeat offenses.
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account identifier
+            transaction: Current transaction data
+        """
+        now = datetime.datetime.utcnow()
+        tx_amount = abs(float(transaction.get("amount", 0)))
+
+        # Get beneficiary/recipient ID
+        beneficiary_id = transaction.get("beneficiary_id") or transaction.get("recipient_id")
+
+        # Initialize fraud history containers
+        context["account_has_fraud_history"] = False
+        context["beneficiary_has_fraud_history"] = False
+        context["combined_fraud_risk_score"] = 0
+
+        # Query account fraud flags
+        account_fraud_flags = self.db.query(FraudFlag).filter(
+            FraudFlag.entity_type == "account",
+            FraudFlag.entity_id == account_id
+        ).order_by(FraudFlag.incident_date.desc()).all()
+
+        if account_fraud_flags:
+            context["account_has_fraud_history"] = True
+            context["account_total_fraud_flags"] = len(account_fraud_flags)
+
+            # Categorize by status
+            active_flags = [f for f in account_fraud_flags if f.status == "active"]
+            confirmed_flags = [f for f in account_fraud_flags if f.disposition == "confirmed_fraud"]
+            resolved_flags = [f for f in account_fraud_flags if f.status == "resolved"]
+            disputed_flags = [f for f in account_fraud_flags if f.status == "disputed"]
+
+            context["account_active_fraud_flags"] = len(active_flags)
+            context["account_confirmed_fraud_flags"] = len(confirmed_flags)
+            context["account_resolved_fraud_flags"] = len(resolved_flags)
+            context["account_disputed_fraud_flags"] = len(disputed_flags)
+
+            # Categorize by severity
+            critical_flags = [f for f in account_fraud_flags if f.severity == "critical"]
+            high_flags = [f for f in account_fraud_flags if f.severity == "high"]
+            medium_flags = [f for f in account_fraud_flags if f.severity == "medium"]
+            low_flags = [f for f in account_fraud_flags if f.severity == "low"]
+
+            context["account_critical_fraud_flags"] = len(critical_flags)
+            context["account_high_fraud_flags"] = len(high_flags)
+            context["account_medium_fraud_flags"] = len(medium_flags)
+            context["account_low_fraud_flags"] = len(low_flags)
+
+            # Get fraud types and categories
+            fraud_types = list(set([f.fraud_type for f in account_fraud_flags]))
+            fraud_categories = list(set([f.fraud_category for f in account_fraud_flags]))
+
+            context["account_fraud_types"] = fraud_types
+            context["account_fraud_categories"] = fraud_categories
+            context["account_unique_fraud_types"] = len(fraud_types)
+
+            # Analyze recency of most recent fraud
+            most_recent_flag = account_fraud_flags[0]  # Already sorted by incident_date desc
+            days_since_last_fraud = (now - most_recent_flag.incident_date).days
+
+            context["account_days_since_last_fraud"] = days_since_last_fraud
+            context["account_most_recent_fraud_type"] = most_recent_flag.fraud_type
+            context["account_most_recent_fraud_severity"] = most_recent_flag.severity
+            context["account_most_recent_fraud_status"] = most_recent_flag.status
+
+            # Recency classification
+            if days_since_last_fraud <= 7:
+                recency_category = "very_recent"
+            elif days_since_last_fraud <= 30:
+                recency_category = "recent"
+            elif days_since_last_fraud <= 90:
+                recency_category = "moderately_recent"
+            elif days_since_last_fraud <= 180:
+                recency_category = "somewhat_recent"
+            elif days_since_last_fraud <= 365:
+                recency_category = "past_year"
+            else:
+                recency_category = "historical"
+
+            context["account_fraud_recency_category"] = recency_category
+
+            # Calculate total amount involved in past fraud
+            total_fraud_amount = sum(float(f.amount_involved or 0) for f in account_fraud_flags
+                                    if f.amount_involved is not None)
+            context["account_total_fraud_amount"] = total_fraud_amount
+
+            # Analyze fraud patterns
+            # Check for repeat fraud (multiple incidents within time windows)
+            fraud_last_30d = [f for f in account_fraud_flags
+                             if (now - f.incident_date).days <= 30]
+            fraud_last_90d = [f for f in account_fraud_flags
+                             if (now - f.incident_date).days <= 90]
+            fraud_last_365d = [f for f in account_fraud_flags
+                              if (now - f.incident_date).days <= 365]
+
+            context["account_fraud_flags_last_30d"] = len(fraud_last_30d)
+            context["account_fraud_flags_last_90d"] = len(fraud_last_90d)
+            context["account_fraud_flags_last_365d"] = len(fraud_last_365d)
+
+            # Check for escalating pattern (increasing severity over time)
+            severity_scores = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
+            if len(account_fraud_flags) >= 2:
+                # Compare recent vs older incidents
+                recent_avg_severity = sum(severity_scores.get(f.severity, 0)
+                                        for f in fraud_last_90d) / len(fraud_last_90d) if fraud_last_90d else 0
+
+                older_flags = [f for f in account_fraud_flags
+                              if (now - f.incident_date).days > 90]
+                older_avg_severity = sum(severity_scores.get(f.severity, 0)
+                                       for f in older_flags) / len(older_flags) if older_flags else 0
+
+                escalating_pattern = recent_avg_severity > older_avg_severity and recent_avg_severity >= 2.5
+                context["account_fraud_escalating_pattern"] = escalating_pattern
+            else:
+                context["account_fraud_escalating_pattern"] = False
+
+            # Check if account was previously closed for fraud and reopened
+            account_closed_flags = [f for f in account_fraud_flags
+                                   if f.resolution_action == "account_closed"]
+            context["account_previously_closed_for_fraud"] = len(account_closed_flags) > 0
+
+            # Check for specific high-risk fraud types
+            high_risk_fraud_types = [
+                "identity_theft",
+                "account_takeover",
+                "money_laundering",
+                "terrorist_financing",
+                "synthetic_identity",
+                "credit_card_fraud"
+            ]
+
+            has_high_risk_type = any(f.fraud_type.lower() in [t.lower() for t in high_risk_fraud_types]
+                                    for f in account_fraud_flags)
+            context["account_has_high_risk_fraud_type"] = has_high_risk_type
+
+        else:
+            # No fraud history for account
+            context["account_total_fraud_flags"] = 0
+            context["account_active_fraud_flags"] = 0
+            context["account_confirmed_fraud_flags"] = 0
+            context["account_fraud_types"] = []
+            context["account_fraud_categories"] = []
+            context["account_days_since_last_fraud"] = None
+            context["account_fraud_recency_category"] = "none"
+            context["account_total_fraud_amount"] = 0
+            context["account_fraud_flags_last_30d"] = 0
+            context["account_fraud_flags_last_90d"] = 0
+            context["account_fraud_flags_last_365d"] = 0
+            context["account_fraud_escalating_pattern"] = False
+            context["account_previously_closed_for_fraud"] = False
+            context["account_has_high_risk_fraud_type"] = False
+
+        # Query beneficiary/recipient fraud flags
+        if beneficiary_id:
+            beneficiary_fraud_flags = self.db.query(FraudFlag).filter(
+                FraudFlag.entity_type == "beneficiary",
+                FraudFlag.entity_id == beneficiary_id
+            ).order_by(FraudFlag.incident_date.desc()).all()
+
+            if beneficiary_fraud_flags:
+                context["beneficiary_has_fraud_history"] = True
+                context["beneficiary_total_fraud_flags"] = len(beneficiary_fraud_flags)
+
+                # Categorize by status
+                ben_active_flags = [f for f in beneficiary_fraud_flags if f.status == "active"]
+                ben_confirmed_flags = [f for f in beneficiary_fraud_flags if f.disposition == "confirmed_fraud"]
+
+                context["beneficiary_active_fraud_flags"] = len(ben_active_flags)
+                context["beneficiary_confirmed_fraud_flags"] = len(ben_confirmed_flags)
+
+                # Categorize by severity
+                ben_critical_flags = [f for f in beneficiary_fraud_flags if f.severity == "critical"]
+                ben_high_flags = [f for f in beneficiary_fraud_flags if f.severity == "high"]
+
+                context["beneficiary_critical_fraud_flags"] = len(ben_critical_flags)
+                context["beneficiary_high_fraud_flags"] = len(ben_high_flags)
+
+                # Get fraud types
+                ben_fraud_types = list(set([f.fraud_type for f in beneficiary_fraud_flags]))
+                context["beneficiary_fraud_types"] = ben_fraud_types
+
+                # Recency of most recent fraud
+                ben_most_recent = beneficiary_fraud_flags[0]
+                ben_days_since_last = (now - ben_most_recent.incident_date).days
+
+                context["beneficiary_days_since_last_fraud"] = ben_days_since_last
+                context["beneficiary_most_recent_fraud_type"] = ben_most_recent.fraud_type
+                context["beneficiary_most_recent_fraud_severity"] = ben_most_recent.severity
+
+                # Recency classification
+                if ben_days_since_last <= 30:
+                    ben_recency = "recent"
+                elif ben_days_since_last <= 90:
+                    ben_recency = "moderately_recent"
+                elif ben_days_since_last <= 365:
+                    ben_recency = "past_year"
+                else:
+                    ben_recency = "historical"
+
+                context["beneficiary_fraud_recency_category"] = ben_recency
+
+                # Total amount
+                ben_total_amount = sum(float(f.amount_involved or 0) for f in beneficiary_fraud_flags
+                                      if f.amount_involved is not None)
+                context["beneficiary_total_fraud_amount"] = ben_total_amount
+
+                # Recent activity
+                ben_fraud_last_90d = [f for f in beneficiary_fraud_flags
+                                     if (now - f.incident_date).days <= 90]
+                context["beneficiary_fraud_flags_last_90d"] = len(ben_fraud_last_90d)
+
+            else:
+                # No fraud history for beneficiary
+                context["beneficiary_total_fraud_flags"] = 0
+                context["beneficiary_active_fraud_flags"] = 0
+                context["beneficiary_confirmed_fraud_flags"] = 0
+                context["beneficiary_fraud_types"] = []
+                context["beneficiary_days_since_last_fraud"] = None
+                context["beneficiary_fraud_recency_category"] = "none"
+                context["beneficiary_total_fraud_amount"] = 0
+                context["beneficiary_fraud_flags_last_90d"] = 0
+        else:
+            # No beneficiary in transaction
+            context["beneficiary_total_fraud_flags"] = 0
+            context["beneficiary_active_fraud_flags"] = 0
+            context["beneficiary_fraud_types"] = []
+            context["beneficiary_fraud_recency_category"] = "none"
+
+        # Generate combined risk flags
+        risk_flags = []
+
+        # Account has active fraud flags
+        if context.get("account_active_fraud_flags", 0) > 0:
+            risk_flags.append("account_has_active_fraud_flags")
+
+        # Account has confirmed fraud
+        if context.get("account_confirmed_fraud_flags", 0) > 0:
+            risk_flags.append("account_has_confirmed_fraud")
+
+        # Account has critical severity fraud
+        if context.get("account_critical_fraud_flags", 0) > 0:
+            risk_flags.append("account_has_critical_fraud")
+
+        # Recent fraud (within 30 days)
+        if context.get("account_fraud_recency_category") in ["very_recent", "recent"]:
+            risk_flags.append("account_very_recent_fraud")
+
+        # Multiple fraud incidents
+        if context.get("account_total_fraud_flags", 0) >= 3:
+            risk_flags.append("account_repeat_fraud_offender")
+
+        # Escalating fraud pattern
+        if context.get("account_fraud_escalating_pattern", False):
+            risk_flags.append("account_fraud_escalating")
+
+        # Previously closed for fraud
+        if context.get("account_previously_closed_for_fraud", False):
+            risk_flags.append("account_previously_closed_for_fraud")
+
+        # High-risk fraud type
+        if context.get("account_has_high_risk_fraud_type", False):
+            risk_flags.append("account_high_risk_fraud_type")
+
+        # Recent fraud activity (multiple in 90 days)
+        if context.get("account_fraud_flags_last_90d", 0) >= 2:
+            risk_flags.append("account_recent_fraud_activity")
+
+        # Beneficiary has active fraud
+        if context.get("beneficiary_active_fraud_flags", 0) > 0:
+            risk_flags.append("beneficiary_has_active_fraud_flags")
+
+        # Beneficiary has confirmed fraud
+        if context.get("beneficiary_confirmed_fraud_flags", 0) > 0:
+            risk_flags.append("beneficiary_has_confirmed_fraud")
+
+        # Beneficiary has critical fraud
+        if context.get("beneficiary_critical_fraud_flags", 0) > 0:
+            risk_flags.append("beneficiary_has_critical_fraud")
+
+        # Beneficiary recent fraud
+        if context.get("beneficiary_fraud_recency_category") in ["recent", "moderately_recent"]:
+            risk_flags.append("beneficiary_recent_fraud")
+
+        # Both parties have fraud history
+        if context.get("account_has_fraud_history") and context.get("beneficiary_has_fraud_history"):
+            risk_flags.append("both_parties_have_fraud_history")
+
+        # Large transaction from account with fraud history
+        if context.get("account_has_fraud_history") and tx_amount > 5000:
+            risk_flags.append("large_transaction_fraud_history_account")
+
+        # Transaction to beneficiary with fraud history
+        if context.get("beneficiary_has_fraud_history") and tx_amount > 2000:
+            risk_flags.append("transaction_to_fraud_history_beneficiary")
+
+        # Fraud history with similar transaction patterns
+        if context.get("account_has_fraud_history"):
+            # Check if past fraud involved similar amounts
+            account_fraud_amounts = [float(f.amount_involved) for f in account_fraud_flags
+                                    if f.amount_involved is not None and float(f.amount_involved) > 0]
+
+            if account_fraud_amounts:
+                import statistics
+                avg_fraud_amount = statistics.mean(account_fraud_amounts)
+
+                # If current transaction is within 20% of average fraud amount
+                if avg_fraud_amount > 0:
+                    similarity_ratio = abs(tx_amount - avg_fraud_amount) / avg_fraud_amount
+                    if similarity_ratio < 0.2:
+                        risk_flags.append("transaction_similar_to_past_fraud_amount")
+
+        context["past_fraud_risk_flags"] = risk_flags
+        context["past_fraud_risk_flag_count"] = len(risk_flags)
+
+        # Calculate comprehensive past fraud risk score (0-100)
+        risk_score = 0
+
+        # Account fraud history scoring
+        if context.get("account_has_fraud_history"):
+            # Base score for having fraud history
+            risk_score += 20
+
+            # Add for active flags
+            risk_score += min(context.get("account_active_fraud_flags", 0) * 15, 45)
+
+            # Add for confirmed fraud
+            risk_score += min(context.get("account_confirmed_fraud_flags", 0) * 10, 30)
+
+            # Add for severity
+            risk_score += context.get("account_critical_fraud_flags", 0) * 20
+            risk_score += context.get("account_high_fraud_flags", 0) * 10
+
+            # Add for recency
+            recency_scores = {
+                "very_recent": 35,
+                "recent": 25,
+                "moderately_recent": 15,
+                "somewhat_recent": 10,
+                "past_year": 5,
+                "historical": 2
+            }
+            risk_score += recency_scores.get(context.get("account_fraud_recency_category"), 0)
+
+            # Add for repeat offenses
+            if context.get("account_total_fraud_flags", 0) >= 5:
+                risk_score += 25
+            elif context.get("account_total_fraud_flags", 0) >= 3:
+                risk_score += 15
+
+            # Add for escalating pattern
+            if context.get("account_fraud_escalating_pattern", False):
+                risk_score += 20
+
+            # Add for previously closed
+            if context.get("account_previously_closed_for_fraud", False):
+                risk_score += 30
+
+            # Add for high-risk type
+            if context.get("account_has_high_risk_fraud_type", False):
+                risk_score += 25
+
+        # Beneficiary fraud history scoring
+        if context.get("beneficiary_has_fraud_history"):
+            # Base score for beneficiary fraud
+            risk_score += 15
+
+            # Add for active/confirmed
+            risk_score += min(context.get("beneficiary_active_fraud_flags", 0) * 10, 30)
+            risk_score += min(context.get("beneficiary_confirmed_fraud_flags", 0) * 8, 24)
+
+            # Add for severity
+            risk_score += context.get("beneficiary_critical_fraud_flags", 0) * 15
+
+            # Add for recency
+            ben_recency_scores = {
+                "recent": 20,
+                "moderately_recent": 12,
+                "past_year": 6,
+                "historical": 2
+            }
+            risk_score += ben_recency_scores.get(context.get("beneficiary_fraud_recency_category"), 0)
+
+        # Add for both parties having fraud history
+        if context.get("account_has_fraud_history") and context.get("beneficiary_has_fraud_history"):
+            risk_score += 30
+
+        # Cap at 100
+        risk_score = min(risk_score, 100)
+
+        context["past_fraud_risk_score"] = risk_score
+
+        # Risk classification
+        if risk_score >= 80:
+            fraud_risk_level = "critical"
+        elif risk_score >= 60:
+            fraud_risk_level = "high"
+        elif risk_score >= 40:
+            fraud_risk_level = "medium"
+        elif risk_score >= 20:
+            fraud_risk_level = "low"
+        else:
+            fraud_risk_level = "minimal"
+
+        context["past_fraud_risk_level"] = fraud_risk_level
