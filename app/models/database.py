@@ -327,6 +327,59 @@ class VPNProxyIP(Base):
     notes = Column(Text, nullable=True)
     external_reference = Column(String, nullable=True)
 
+class HighRiskLocation(Base):
+    """
+    Tracks high-risk countries, cities, and regions for fraud detection.
+    Used to flag transactions from unusual or high-risk geolocations.
+    """
+    __tablename__ = "high_risk_locations"
+
+    location_id = Column(String, primary_key=True, index=True)
+
+    # Location identifiers
+    country_code = Column(String, index=True, nullable=True)  # ISO 2-letter code (e.g., "NG", "RU")
+    country_name = Column(String, nullable=True)
+    region = Column(String, nullable=True)  # State/province
+    city = Column(String, index=True, nullable=True)
+
+    # Continent/geographic grouping
+    continent = Column(String, nullable=True)  # "Africa", "Asia", "Europe", etc.
+
+    # Risk assessment
+    risk_level = Column(String, default="medium", index=True)  # "low", "medium", "high", "critical"
+    risk_category = Column(String, nullable=True)  # "fraud_hotspot", "sanctioned", "high_crime", "data_breach_origin"
+    risk_score = Column(Float, default=0.5)  # 0.0 (safe) to 1.0 (very risky)
+
+    # Risk reasons
+    fraud_rate = Column(Float, nullable=True)  # Percentage of fraud from this location
+    reason = Column(Text, nullable=True)  # Why this location is flagged
+
+    # Specific risk types
+    is_sanctioned = Column(Boolean, default=False)  # Under economic sanctions
+    is_embargoed = Column(Boolean, default=False)  # Trade embargo
+    has_high_fraud_rate = Column(Boolean, default=False)
+    has_high_cybercrime_rate = Column(Boolean, default=False)
+    is_tax_haven = Column(Boolean, default=False)
+    lacks_kyc_regulations = Column(Boolean, default=False)  # Weak KYC/AML regulations
+
+    # Metadata
+    added_date = Column(String, default=lambda: datetime.datetime.utcnow().isoformat(), index=True)
+    added_by = Column(String, nullable=True)
+    source = Column(String, nullable=True)  # "ofac", "fincen", "interpol", "manual", "threat_intelligence"
+    last_updated = Column(String, nullable=True)
+
+    # Status
+    status = Column(String, default="active", index=True)  # "active", "removed", "under_review"
+
+    # Action recommendations
+    requires_manual_review = Column(Boolean, default=False)
+    requires_enhanced_verification = Column(Boolean, default=False)
+    block_by_default = Column(Boolean, default=False)
+
+    # Additional context
+    notes = Column(Text, nullable=True)
+    external_reference = Column(String, nullable=True)
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)

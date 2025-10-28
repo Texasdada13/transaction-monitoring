@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 import json
 import datetime
-from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP
+from app.models.database import Transaction, Account, Employee, AccountChangeHistory, Beneficiary, Blacklist, DeviceSession, VPNProxyIP, HighRiskLocation
 from app.services.chain_analyzer import ChainAnalyzer
 
 class ContextProvider:
@@ -84,6 +84,9 @@ class ContextProvider:
 
         # Add VPN/proxy detection context
         self._add_vpn_proxy_context(context, transaction)
+
+        # Add geo-location fraud detection context
+        self._add_geolocation_context(context, account_id, transaction)
 
         return context
     
@@ -1456,3 +1459,236 @@ class ContextProvider:
                 context["vpn_proxy_detection_source"] = "datacenter_isp"
                 context["vpn_proxy_service_types"] = ["datacenter"]
                 context["vpn_proxy_max_risk_level"] = "medium"
+
+    def _add_geolocation_context(self, context: Dict[str, Any],
+                                  account_id: str,
+                                  transaction: Dict[str, Any]) -> None:
+        """
+        Add geo-location fraud detection context.
+
+        Identifies transactions from unusual or high-risk geolocations by:
+        - Checking against high-risk countries/cities database
+        - Analyzing user's historical location patterns
+        - Detecting impossible travel (e.g., US then China in 1 hour)
+
+        Args:
+            context: Context dictionary to update
+            account_id: Account ID
+            transaction: Transaction data
+        """
+        # Extract location from transaction metadata
+        tx_metadata = transaction.get("tx_metadata") or transaction.get("metadata")
+        if tx_metadata and isinstance(tx_metadata, str):
+            try:
+                tx_metadata = json.loads(tx_metadata)
+            except json.JSONDecodeError:
+                tx_metadata = {}
+
+        if not tx_metadata:
+            context["geolocation_check_available"] = False
+            return
+
+        # Get current location info
+        current_country = tx_metadata.get("country") or tx_metadata.get("country_code")
+        current_city = tx_metadata.get("city")
+        current_region = tx_metadata.get("region") or tx_metadata.get("state")
+        current_continent = tx_metadata.get("continent")
+        current_ip = tx_metadata.get("ip_address")
+        current_lat = tx_metadata.get("latitude")
+        current_lon = tx_metadata.get("longitude")
+
+        if not current_country:
+            context["geolocation_check_available"] = False
+            return
+
+        context["geolocation_check_available"] = True
+        context["transaction_country"] = current_country
+        context["transaction_city"] = current_city
+        context["transaction_region"] = current_region
+
+        # Initialize flags
+        context["is_high_risk_location"] = False
+        context["high_risk_location_matches"] = []
+
+        # 1. Check against high-risk locations database
+        # Check country-level match
+        country_matches = self.db.query(HighRiskLocation).filter(
+            HighRiskLocation.status == "active",
+            HighRiskLocation.country_code == current_country.upper()[:2]
+        ).all()
+
+        # Check city-level match (more specific)
+        city_matches = []
+        if current_city:
+            city_matches = self.db.query(HighRiskLocation).filter(
+                HighRiskLocation.status == "active",
+                HighRiskLocation.city == current_city
+            ).all()
+
+        all_location_matches = country_matches + city_matches
+
+        if all_location_matches:
+            context["is_high_risk_location"] = True
+            context["high_risk_location_matches"] = [
+                {
+                    "location_type": "city" if match.city else "country",
+                    "country_code": match.country_code,
+                    "country_name": match.country_name,
+                    "city": match.city,
+                    "risk_level": match.risk_level,
+                    "risk_category": match.risk_category,
+                    "risk_score": match.risk_score,
+                    "is_sanctioned": match.is_sanctioned,
+                    "is_embargoed": match.is_embargoed,
+                    "has_high_fraud_rate": match.has_high_fraud_rate,
+                    "has_high_cybercrime_rate": match.has_high_cybercrime_rate,
+                    "requires_manual_review": match.requires_manual_review,
+                    "requires_enhanced_verification": match.requires_enhanced_verification,
+                    "block_by_default": match.block_by_default,
+                    "reason": match.reason
+                }
+                for match in all_location_matches
+            ]
+
+            # Get highest risk level
+            risk_order = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+            max_risk = max(
+                (match.risk_level for match in all_location_matches),
+                key=lambda r: risk_order.get(r, 0)
+            )
+            context["location_max_risk_level"] = max_risk
+
+            # Get highest risk score
+            max_risk_score = max(match.risk_score for match in all_location_matches)
+            context["location_max_risk_score"] = max_risk_score
+
+            # Check for specific risk types
+            context["location_is_sanctioned"] = any(m.is_sanctioned for m in all_location_matches)
+            context["location_is_embargoed"] = any(m.is_embargoed for m in all_location_matches)
+            context["location_has_high_fraud_rate"] = any(m.has_high_fraud_rate for m in all_location_matches)
+
+            # Action recommendations
+            context["location_requires_manual_review"] = any(m.requires_manual_review for m in all_location_matches)
+            context["location_requires_enhanced_verification"] = any(m.requires_enhanced_verification for m in all_location_matches)
+            context["location_block_by_default"] = any(m.block_by_default for m in all_location_matches)
+
+        # 2. Analyze historical location patterns
+        now = datetime.datetime.utcnow()
+        ninety_days_ago = (now - datetime.timedelta(days=90)).isoformat()
+
+        # Get historical device sessions with location data (last 90 days)
+        historical_sessions = self.db.query(DeviceSession).filter(
+            DeviceSession.account_id == account_id,
+            DeviceSession.timestamp > ninety_days_ago,
+            DeviceSession.ip_country.isnot(None)
+        ).order_by(DeviceSession.timestamp.desc()).all()
+
+        if historical_sessions:
+            # Get unique countries from history
+            historical_countries = [s.ip_country for s in historical_sessions if s.ip_country]
+            unique_countries = list(set(historical_countries))
+
+            context["historical_countries_count"] = len(unique_countries)
+            context["historical_countries"] = unique_countries
+
+            # Check if current country is new
+            is_new_country = current_country.upper()[:2] not in [c.upper()[:2] for c in unique_countries]
+            context["is_new_country"] = is_new_country
+
+            # If mostly from one country, flag deviation
+            if historical_countries:
+                from collections import Counter
+                country_counts = Counter(historical_countries)
+                most_common_country, count = country_counts.most_common(1)[0]
+                primary_country_percentage = (count / len(historical_countries)) * 100
+
+                context["primary_country"] = most_common_country
+                context["primary_country_percentage"] = primary_country_percentage
+
+                # If 80%+ transactions from one country, current location elsewhere is suspicious
+                if primary_country_percentage >= 80:
+                    if current_country.upper()[:2] != most_common_country.upper()[:2]:
+                        context["deviates_from_primary_country"] = True
+                    else:
+                        context["deviates_from_primary_country"] = False
+                else:
+                    context["deviates_from_primary_country"] = False
+
+            # 3. Impossible travel detection
+            # Check if there's a recent transaction from a different location
+            recent_sessions = [s for s in historical_sessions if s.ip_country and s.ip_city]
+
+            if recent_sessions and current_lat and current_lon:
+                # Get most recent session
+                last_session = recent_sessions[0]
+
+                # Extract last location coordinates from metadata if available
+                try:
+                    last_session_metadata = json.loads(last_session.user_agent) if last_session.user_agent else {}
+                    last_lat = last_session_metadata.get("latitude")
+                    last_lon = last_session_metadata.get("longitude")
+                    last_country = last_session.ip_country
+                    last_city = last_session.ip_city
+
+                    if last_lat and last_lon:
+                        # Calculate time difference
+                        last_time = datetime.datetime.fromisoformat(last_session.timestamp)
+                        current_time = datetime.datetime.fromisoformat(
+                            transaction.get("timestamp", now.isoformat())
+                        )
+                        time_diff_hours = (current_time - last_time).total_seconds() / 3600
+
+                        # Calculate distance (simple Haversine formula)
+                        import math
+                        lat1, lon1 = float(last_lat), float(last_lon)
+                        lat2, lon2 = float(current_lat), float(current_lon)
+
+                        # Radius of Earth in km
+                        R = 6371
+
+                        # Convert to radians
+                        lat1_rad = math.radians(lat1)
+                        lat2_rad = math.radians(lat2)
+                        delta_lat = math.radians(lat2 - lat1)
+                        delta_lon = math.radians(lon2 - lon1)
+
+                        # Haversine formula
+                        a = math.sin(delta_lat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon/2)**2
+                        c = 2 * math.asin(math.sqrt(a))
+                        distance_km = R * c
+
+                        context["distance_from_last_transaction_km"] = distance_km
+                        context["hours_since_last_transaction"] = time_diff_hours
+
+                        # Check for impossible travel
+                        # Average commercial flight speed ~800 km/h
+                        # Allow for 900 km/h to account for time zones, etc.
+                        max_possible_speed = 900  # km/h
+
+                        if time_diff_hours > 0:
+                            required_speed = distance_km / time_diff_hours
+                            context["required_travel_speed_kmh"] = required_speed
+
+                            # Flag if speed would need to exceed max possible
+                            if required_speed > max_possible_speed and distance_km > 100:
+                                context["impossible_travel_detected"] = True
+                                context["impossible_travel_details"] = {
+                                    "from_location": f"{last_city}, {last_country}",
+                                    "to_location": f"{current_city}, {current_country}",
+                                    "distance_km": distance_km,
+                                    "time_hours": time_diff_hours,
+                                    "required_speed_kmh": required_speed,
+                                    "max_possible_speed_kmh": max_possible_speed
+                                }
+                            else:
+                                context["impossible_travel_detected"] = False
+                        else:
+                            context["impossible_travel_detected"] = False
+
+                except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
+                    # If we can't parse metadata or calculate distance, skip impossible travel check
+                    pass
+        else:
+            # No historical location data
+            context["is_new_country"] = True
+            context["historical_countries_count"] = 0
