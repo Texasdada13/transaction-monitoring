@@ -423,7 +423,7 @@ def render():
             render_amount_distribution(hv_data)
 
         with col2:
-            st.markdown("### Instrument Classification & Flow Segmentation")
+            st.markdown("### Transaction Channel Risks")
             render_transaction_type_breakdown(hv_data)
 
         st.divider()

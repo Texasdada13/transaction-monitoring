@@ -17,8 +17,8 @@ apply_theme()
 
 def render():
     """Render the Module Catalog page"""
-    st.title("Fraud Detection Module Catalog")
-    st.markdown("### Complete overview of all 25+ fraud detection modules")
+    st.title("AI Powered Threat Detection Suite")
+    st.markdown("### Comprehensive Index of 25+ Modules for Financial fraud detection")
 
     # Get API client
     client = get_api_client()

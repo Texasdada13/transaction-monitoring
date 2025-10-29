@@ -40,9 +40,9 @@ st.markdown("""
 <style>
             
     section[data-testid="stSidebarNav"] .css-1v3fvcr, 
-    section[data-testid="stSidebarNav"] .css-17ziqus {
-        display: none;
-    }
+        section[data-testid="stSidebarNav"] .css-17ziqus {
+            display: none;
+        }
             
     /* ===== MASTER THEME: DARK BLUE ===== */
     
@@ -313,7 +313,7 @@ def main_dashboard():
 
         page = st.radio(
             "Select Page",
-            ["Real Time Monitoring", "Predicitve Insights", "Investigation Tools", "Model AI", "System Health"],
+            ["Real_Time_Monitoring", "Risk Intelligence", "Investigation Tools", "QuantShield AI Modules", "System Health"],
             label_visibility="collapsed"
         )
 
@@ -326,17 +326,17 @@ def main_dashboard():
             st.rerun()
 
     # Main content
-    if page == "Real Time Monitoring":
+    if page == "Real_Time_Monitoring":
         from streamlit_app.pages import Real_Time_Monitoring as real_time_monitoring
         real_time_monitoring.render()
-    if page == "Risk Analytics":
-        from streamlit_app.pages import Predictive_Insights as risk_analytics
+    if page == "Risk Intelligence":
+        from streamlit_app.pages import Risk_Intelligence as risk_analytics
         risk_analytics.render()
     elif page == "Investigation Tools":
-        from streamlit_app.pages import investigation_tools
+        from streamlit_app.pages import Case_Investigation_Center as investigation_tools
         investigation_tools.render()
-    elif page == "Model AI":
-        from streamlit_app.pages import Model_AI as model_ai
+    elif page == "QuantShield AI Modules":
+        from streamlit_app.pages import QuantShield_AI_Modules as model_ai
         model_ai.render()
     elif page == "System Health":
         st.info("System Health page - Coming soon!")

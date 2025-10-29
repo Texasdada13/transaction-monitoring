@@ -313,8 +313,8 @@ def render():
     """Render the Risk Analytics page"""
 
     # Header
-    st.markdown("# 📊 Risk Analytics")
-    st.markdown("Comprehensive fraud detection analytics and trends")
+    st.markdown("# Enterprise Risk Analytics")
+    st.markdown("AI driven Fraud Detection Insights and Risk Performance Metrics")
 
     # Time range selector
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -362,7 +362,7 @@ def render():
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # KPI Cards
-        st.markdown("### 💰 Key Performance Indicators")
+        st.markdown("### Core Risk KPIs")
         render_kpi_cards(money_saved, overview)
 
         st.divider()
@@ -371,11 +371,11 @@ def render():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("### 📈 Fraud Trends")
+            st.markdown("### Fraud Velocity & Emerging Patterns")
             render_time_series_chart(time_series)
 
         with col2:
-            st.markdown("### 📊 Risk Distribution")
+            st.markdown("### Risk Dispersion")
             render_risk_distribution(risk_dist)
 
         st.divider()
@@ -384,23 +384,23 @@ def render():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("### ⚖️ Decision Breakdown")
+            st.markdown("### Decision Pathways")
             render_decision_breakdown(time_series)
 
         with col2:
-            st.markdown("### 🎯 Scenario Breakdown")
+            st.markdown("### Scenario Profiling")
             render_scenario_breakdown(scenarios)
 
         st.divider()
 
         # Module performance
-        st.markdown("### 🔍 Fraud Detection Module Performance")
-        st.markdown("**Analysis of your 25 fraud detection modules**")
+        st.markdown("### QuantShield Module Performance")
+        st.markdown("**Analysis of 25+ fraud detection modules**")
         render_module_performance(module_perf)
 
         # Additional insights
         st.divider()
-        st.markdown("### 💡 Insights")
+        st.markdown("### 💡 AI Powered Intelligence")
 
         insight_col1, insight_col2, insight_col3 = st.columns(3)
 
