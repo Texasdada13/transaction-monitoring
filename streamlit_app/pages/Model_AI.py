@@ -8,6 +8,11 @@ information about what each module detects, how it works, and its severity.
 import streamlit as st
 from streamlit_app.api_client import get_api_client
 import plotly.graph_objects as go
+from styles.theme import apply_theme, COLORS
+
+
+# Apply theme
+apply_theme()
 
 
 def render():

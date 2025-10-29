@@ -12,7 +12,10 @@ from datetime import datetime
 import time
 
 from streamlit_app.api_client import get_api_client
+from styles.theme import apply_theme, COLORS
 
+# Apply theme
+apply_theme()
 
 def format_currency(amount):
     """Format amount as currency"""
@@ -248,14 +251,17 @@ def render_scenario_breakdown(scenarios):
 def render():
     """Render the Real-Time Monitoring page"""
 
+    from PIL import Image
+
+   
     # Header
-    st.markdown("# 🚨 Real-Time Fraud Monitoring")
+    st.markdown("# Arriba Advisors")
 
     # Control bar
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
     with col1:
-        st.markdown("### Live Alert Dashboard")
+        st.markdown("### Live Dashboard")
 
     with col2:
         auto_refresh = st.toggle("Auto-refresh", value=False, key="auto_refresh_toggle")
@@ -309,7 +315,7 @@ def render_dashboard_content(time_window):
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Overview stats
-        st.markdown("### 📊 Overview Statistics")
+        st.markdown("### Overview Statistics")
         render_overview_stats(stats)
 
         st.divider()

@@ -12,7 +12,10 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 from streamlit_app.api_client import get_api_client
+from styles.theme import apply_theme, COLORS
 
+# Apply theme
+apply_theme()
 
 def format_currency(amount):
     """Format amount as currency"""
@@ -349,7 +352,7 @@ def render():
     """Render the High-Value Transaction Monitoring page"""
 
     # Header
-    st.markdown("# 💰 High-Value Transaction Monitoring")
+    st.markdown("# Capital Intelligence Hub")
     st.markdown("Enhanced monitoring and risk analysis for large transactions")
 
     # Configuration
@@ -407,7 +410,7 @@ def render():
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Overview statistics
-        st.markdown("### 📊 High-Value Transaction Overview")
+        st.markdown("### Capital Flow Performance")
         render_high_value_stats(hv_data)
 
         st.divider()
@@ -416,23 +419,23 @@ def render():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("### 📈 Amount Distribution")
+            st.markdown("### Exposure Distribution")
             render_amount_distribution(hv_data)
 
         with col2:
-            st.markdown("### 🎯 Transaction Type Breakdown")
+            st.markdown("### Instrument Classification & Flow Segmentation")
             render_transaction_type_breakdown(hv_data)
 
         st.divider()
 
         # Risk analysis
-        st.markdown("### 🔍 Risk Analysis")
+        st.markdown("### Predictive Risk Intelligence")
         render_risk_vs_amount_scatter(hv_data)
 
         st.divider()
 
         # Time series
-        st.markdown("### ⏱️ Transaction Timeline")
+        st.markdown("### Capital Velocity")
         render_time_series(hv_data)
 
         st.divider()
@@ -442,7 +445,7 @@ def render():
 
         # Insights
         st.divider()
-        st.markdown("### 💡 Monitoring Insights")
+        st.markdown("### Intelligence Insights")
 
         transactions = hv_data.get("transactions", [])
         if transactions:

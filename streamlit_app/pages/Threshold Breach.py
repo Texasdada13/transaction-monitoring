@@ -12,7 +12,10 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 from streamlit_app.api_client import get_api_client
+from styles.theme import apply_theme, COLORS
 
+# Apply theme
+apply_theme()
 
 def format_currency(amount):
     """Format amount as currency"""
