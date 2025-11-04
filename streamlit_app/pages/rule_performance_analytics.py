@@ -53,8 +53,107 @@ rule_correlation_pairs = [
 def render():
     """Render the Rule Performance Analytics page"""
 
-    st.header("📈 Rule Performance & Optimization")
-    st.caption("Advanced analytics for fraud detection rule effectiveness")
+    st.markdown("# Rule Performance Analytics")
+    st.markdown("### Fraud Detection Rule Effectiveness & Optimization Metrics")
+    st.caption(f"Last Updated: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}")
+
+    st.markdown("---")
+
+    # Rule Performance Heatmap (from summary dashboard)
+    st.subheader("🔥 Rule Performance Matrix")
+    st.caption("Comprehensive view of rule effectiveness across multiple metrics")
+
+    # Prepare heatmap data
+    heatmap_data = rule_performance_df[['rule_name', 'trigger_frequency', 'precision',
+                                         'false_positive_rate', 'avg_contribution']].copy()
+
+    # Normalize for better visualization
+    heatmap_data['trigger_frequency_norm'] = (heatmap_data['trigger_frequency'] - heatmap_data['trigger_frequency'].min()) / (heatmap_data['trigger_frequency'].max() - heatmap_data['trigger_frequency'].min())
+    heatmap_data['precision_norm'] = heatmap_data['precision']
+    heatmap_data['fpr_norm'] = 1 - heatmap_data['false_positive_rate']  # Inverted so green is good
+    heatmap_data['contribution_norm'] = (heatmap_data['avg_contribution'] - heatmap_data['avg_contribution'].min()) / (heatmap_data['avg_contribution'].max() - heatmap_data['avg_contribution'].min())
+
+    heatmap_matrix = heatmap_data[['rule_name', 'trigger_frequency_norm', 'precision_norm',
+                                     'fpr_norm', 'contribution_norm']].set_index('rule_name')
+
+    fig_heatmap = go.Figure(data=go.Heatmap(
+        z=heatmap_matrix.values,
+        x=['Trigger Frequency', 'Precision', 'False Positive Rate (Inv)', 'Avg Contribution'],
+        y=heatmap_matrix.index,
+        colorscale='RdYlGn',
+        text=np.round(heatmap_matrix.values, 2),
+        texttemplate='%{text}',
+        textfont={"size": 10},
+        colorbar=dict(title="Performance Score")
+    ))
+
+    fig_heatmap.update_layout(
+        height=600,
+        xaxis_title="Performance Metrics",
+        yaxis_title="Detection Rules",
+        yaxis=dict(autorange='reversed')
+    )
+
+    st.plotly_chart(fig_heatmap, use_container_width=True)
+
+    st.markdown("---")
+
+    # Rule Contribution Treemap and Bubble Chart
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.subheader("🌳 Fraud Detection Impact Analysis")
+        st.caption("Treemap showing confirmed fraud catches by rule")
+
+        fig_treemap = go.Figure(go.Treemap(
+            labels=rule_performance_df['rule_name'],
+            parents=[''] * len(rule_performance_df),
+            values=rule_performance_df['confirmed_fraud_count'],
+            textinfo='label+value+percent parent',
+            marker=dict(
+                colorscale='Reds',
+                cmid=rule_performance_df['confirmed_fraud_count'].mean()
+            ),
+            hovertemplate='<b>%{label}</b><br>Fraud Caught: %{value}<br>Percentage: %{percentParent}<extra></extra>'
+        ))
+
+        fig_treemap.update_layout(height=500)
+        st.plotly_chart(fig_treemap, use_container_width=True)
+
+    with col2:
+        st.subheader("🎯 Rule Effectiveness Matrix")
+        st.caption("Bubble chart: Trigger Frequency vs Precision (size = weight)")
+
+        fig_bubble = go.Figure()
+
+        fig_bubble.add_trace(go.Scatter(
+            x=rule_performance_df['trigger_frequency'],
+            y=rule_performance_df['precision'] * 100,
+            mode='markers',
+            marker=dict(
+                size=rule_performance_df['rule_weight'],
+                sizemode='diameter',
+                sizeref=2,
+                color=rule_performance_df['precision'],
+                colorscale='Viridis',
+                showscale=True,
+                colorbar=dict(title="Precision"),
+                line=dict(width=1, color='white')
+            ),
+            text=rule_performance_df['rule_name'],
+            hovertemplate='<b>%{text}</b><br>Frequency: %{x}<br>Precision: %{y:.1f}%<br><extra></extra>'
+        ))
+
+        fig_bubble.update_layout(
+            xaxis_title="Trigger Frequency",
+            yaxis_title="Precision (%)",
+            height=500,
+            hovermode='closest'
+        )
+
+        st.plotly_chart(fig_bubble, use_container_width=True)
+
+    st.markdown("---")
 
     # Rule Correlation Network
     st.subheader("🔗 Rule Correlation Network")

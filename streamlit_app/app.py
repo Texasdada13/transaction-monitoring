@@ -74,7 +74,7 @@ st.markdown("""
 
 def login_page():
     """Display login page"""
-    st.markdown('<div class="main-header">🛡️ Fraud Detection System</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🛡️ Arriba Advisors Real-Time Detection System</div>', unsafe_allow_html=True)
     st.markdown("### Login to Dashboard")
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -122,7 +122,8 @@ def main_dashboard():
 
     # Sidebar
     with st.sidebar:
-        st.markdown("### 🛡️ Fraud Detection")
+        st.markdown("### 🛡️ Arriba Advisors")
+        st.markdown("**Real-Time Detection System**")
 
         # User info
         user_info = get_user_info()
@@ -134,27 +135,19 @@ def main_dashboard():
         # Navigation
         st.markdown("### 📍 Navigation")
 
-        # Use selectbox for cleaner navigation
+        # Professional navigation structure
         page = st.selectbox(
-            "Select Dashboard Page",
+            "Select Page",
             [
-                "--- Core Monitoring ---",
-                "📊 Summary Dashboard",
-                "🚨 Real-Time Monitoring",
-                "📈 Risk Analytics",
-                "🔍 Investigation Tools",
-                "--- Advanced Analytics ---",
-                "🎯 Scenario Analysis",
-                "⚙️ Rule Performance",
-                "⏱️ Operational Analytics",
-                "🗺️ Behavioral Analytics",
-                "--- Specialized Monitoring ---",
-                "🌍 Geographic Fraud",
-                "💰 High-Value Monitoring",
-                "🚫 Limit Violations",
-                "📚 Module Catalog"
+                "🏠 Homepage",
+                "📊 Transaction Monitoring System",
+                "📈 Rule Performance Analytics",
+                "🔍 Fraud Scenario Analysis",
+                "⚙️ Operational Analytics",
+                "💼 Transaction Analytics",
+                "🌍 Geographic Fraud Analysis"
             ],
-            index=1,  # Default to Summary Dashboard
+            index=0,  # Default to Homepage
             label_visibility="visible"
         )
 
@@ -167,46 +160,27 @@ def main_dashboard():
             st.rerun()
 
     # Route to the selected page
-    if page == "📊 Summary Dashboard":
-        from streamlit_app.pages import summary_dashboard
-        summary_dashboard.render()
-    elif page == "🚨 Real-Time Monitoring":
-        from streamlit_app.pages import real_time_monitoring
-        real_time_monitoring.render()
-    elif page == "📈 Risk Analytics":
-        from streamlit_app.pages import risk_analytics
-        risk_analytics.render()
-    elif page == "🔍 Investigation Tools":
-        from streamlit_app.pages import investigation_tools
-        investigation_tools.render()
-    elif page == "🎯 Scenario Analysis":
-        from streamlit_app.pages import scenario_analysis
-        scenario_analysis.render()
-    elif page == "⚙️ Rule Performance":
+    if page == "🏠 Homepage":
+        from streamlit_app.pages import homepage
+        homepage.render()
+    elif page == "📊 Transaction Monitoring System":
+        from streamlit_app.pages import transaction_monitoring_system
+        transaction_monitoring_system.render()
+    elif page == "📈 Rule Performance Analytics":
         from streamlit_app.pages import rule_performance_analytics
         rule_performance_analytics.render()
-    elif page == "⏱️ Operational Analytics":
+    elif page == "🔍 Fraud Scenario Analysis":
+        from streamlit_app.pages import scenario_analysis
+        scenario_analysis.render()
+    elif page == "⚙️ Operational Analytics":
         from streamlit_app.pages import operational_analytics
         operational_analytics.render()
-    elif page == "🗺️ Behavioral Analytics":
-        from streamlit_app.pages import behavioral_analytics
-        behavioral_analytics.render()
-    elif page == "🌍 Geographic Fraud":
+    elif page == "💼 Transaction Analytics":
+        from streamlit_app.pages import transaction_analytics
+        transaction_analytics.render()
+    elif page == "🌍 Geographic Fraud Analysis":
         from streamlit_app.pages import geographic_fraud
         geographic_fraud.render()
-    elif page == "💰 High-Value Monitoring":
-        from streamlit_app.pages import high_value_monitoring
-        high_value_monitoring.render()
-    elif page == "🚫 Limit Violations":
-        from streamlit_app.pages import limit_violations
-        limit_violations.render()
-    elif page == "📚 Module Catalog":
-        from streamlit_app.pages import module_catalog
-        module_catalog.render()
-    else:
-        # For separator options, default to Summary Dashboard
-        from streamlit_app.pages import summary_dashboard
-        summary_dashboard.render()
 
 
 def main():

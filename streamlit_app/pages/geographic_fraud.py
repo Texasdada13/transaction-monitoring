@@ -1,11 +1,12 @@
 """
-Geographic Fraud Heatmap Page
+Geographic Fraud Analysis
 
-Visualizes fraud activity geographically with interactive maps and charts.
+Comprehensive geographic fraud monitoring with heatmaps, merchant locations, and high-risk country tracking.
 """
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
@@ -263,11 +264,14 @@ def render_fraud_rate_scatter(geo_data: Dict[str, Any]):
 
 
 def render():
-    """Render the Geographic Fraud Heatmap page"""
+    """Render the Geographic Fraud Analysis page"""
 
     # Header
-    st.markdown("# 🗺️ Geographic Fraud Heatmap")
-    st.markdown("Global fraud activity visualization and geographic risk analysis")
+    st.markdown("# Geographic Fraud Analysis")
+    st.markdown("### Global Fraud Activity, Merchant Locations & High-Risk Country Monitoring")
+    st.caption(f"Last Updated: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}")
+
+    st.markdown("---")
 
     # Time range selector
     col1, col2, col3 = st.columns([2, 1, 1])
