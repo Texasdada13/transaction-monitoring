@@ -34,6 +34,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # Complete fraud scenarios dataset (all 13 scenarios)
 fraud_scenarios = {
     "1. Large Transfer - Low Activity": {
@@ -556,6 +557,17 @@ def render():
 
     st.markdown("---")
 
+        # --- Top-of-page scenario selector (main area) ---
+    st.markdown("### 🔽 Scenario Selector")
+    scenario_key_top = st.selectbox(
+        "Select a fraud scenario to analyze:",
+        options=list(fraud_scenarios.keys()),
+        format_func=lambda x: fraud_scenarios[x]['title'],
+        key="scenario_key_top",
+    )
+    st.markdown("---")
+
+
     # Sidebar for scenario selection
     with st.sidebar:
         st.markdown("### 🔍 Select Fraud Scenario")
@@ -572,8 +584,15 @@ def render():
         show_metrics = st.checkbox("Show Detailed Metrics", value=True)
         show_timeline = st.checkbox("Show Timeline", value=True)
 
-    # Get selected scenario
-    scenario = fraud_scenarios[scenario_key]
+    # # Get selected scenario
+    # scenario = fraud_scenarios[scenario_key]
+
+    # Prefer the top dropdown selection if present; fall back to sidebar
+    # active_scenario_key = st.session_state.get("scenario_key_top", None) or scenario_key
+    # scenario = fraud_scenarios[active_scenario_key]
+
+    active_scenario_key = st.session_state.get("scenario_key_top", None) or scenario_key
+    scenario = fraud_scenarios[active_scenario_key]
 
     # Risk Score Header
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
@@ -587,15 +606,49 @@ def render():
         st.metric("Profile", scenario['customer_profile'].split(' - ')[0])
     with col4:
         st.metric("Outcome", scenario['outcome'])
-
-    st.markdown("---")
-
-    # Key Information Row
+            # Key Information Row
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"**Transaction Type:** {scenario['transaction_type']}")
     with col2:
         st.markdown(f"**Customer Profile:** {scenario['customer_profile']}")
+
+    st.markdown("---")
+
+    st.markdown("### 🎯 Analyst Decision & Recommendation")
+
+    decision_col1, decision_col2 = st.columns([2, 1])
+
+    with decision_col1:
+        st.markdown(f"**Recommendation:** `{scenario['decision']['recommendation']}`")
+        st.markdown(f"**Confidence Level:** {scenario['decision']['confidence']}%")
+        
+        # Confidence bar
+        fig_conf = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=scenario['decision']['confidence'],
+            domain={'x': [0, 1], 'y': [0, 1]},
+            gauge={
+                'axis': {'range': [0, 100]},
+                'bar': {'color': "#10b981" if scenario['decision']['confidence'] >= 90 else "#f97316"},
+                'steps': [
+                    {'range': [0, 60], 'color': "#fee2e2"},
+                    {'range': [60, 80], 'color': "#fef3c7"},
+                    {'range': [80, 100], 'color': "#d1fae5"}
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 90
+                }
+            }
+        ))
+        
+        fig_conf.update_layout(height=200, margin=dict(l=20, r=20, t=20, b=20))
+        st.plotly_chart(fig_conf, use_container_width=True)
+        
+        st.markdown(f"**Reasoning:** {scenario['decision']['reasoning']}")
+        st.markdown(f"**Recommended Action:** {scenario['decision']['action']}")
 
     # Timeline Section
     if show_timeline:
@@ -802,40 +855,7 @@ def render():
     st.markdown("---")
 
     # Decision Section
-    st.markdown("### 🎯 Analyst Decision & Recommendation")
-
-    decision_col1, decision_col2 = st.columns([2, 1])
-
-    with decision_col1:
-        st.markdown(f"**Recommendation:** `{scenario['decision']['recommendation']}`")
-        st.markdown(f"**Confidence Level:** {scenario['decision']['confidence']}%")
-        
-        # Confidence bar
-        fig_conf = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=scenario['decision']['confidence'],
-            domain={'x': [0, 1], 'y': [0, 1]},
-            gauge={
-                'axis': {'range': [0, 100]},
-                'bar': {'color': "#10b981" if scenario['decision']['confidence'] >= 90 else "#f97316"},
-                'steps': [
-                    {'range': [0, 60], 'color': "#fee2e2"},
-                    {'range': [60, 80], 'color': "#fef3c7"},
-                    {'range': [80, 100], 'color': "#d1fae5"}
-                ],
-                'threshold': {
-                    'line': {'color': "red", 'width': 4},
-                    'thickness': 0.75,
-                    'value': 90
-                }
-            }
-        ))
-        
-        fig_conf.update_layout(height=200, margin=dict(l=20, r=20, t=20, b=20))
-        st.plotly_chart(fig_conf, use_container_width=True)
-        
-        st.markdown(f"**Reasoning:** {scenario['decision']['reasoning']}")
-        st.markdown(f"**Recommended Action:** {scenario['decision']['action']}")
+ 
 
     with decision_col2:
         st.markdown("### Action Buttons")
@@ -873,3 +893,6 @@ def render():
     st.markdown("---")
     st.caption("💡 **Note:** All scenarios are based on real fraud patterns and detection methodologies used in financial institutions.")
     st.caption(f"**System Status:** 🟢 Active | **Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+if __name__ == "__main__" or True:
+    render()

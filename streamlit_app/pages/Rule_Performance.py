@@ -59,50 +59,11 @@ def render():
 
     st.markdown("---")
 
-    # Rule Performance Heatmap (from summary dashboard)
-    st.subheader("🔥 Rule Performance Matrix")
-    st.caption("Comprehensive view of rule effectiveness across multiple metrics")
-
-    # Prepare heatmap data
-    heatmap_data = rule_performance_df[['rule_name', 'trigger_frequency', 'precision',
-                                         'false_positive_rate', 'avg_contribution']].copy()
-
-    # Normalize for better visualization
-    heatmap_data['trigger_frequency_norm'] = (heatmap_data['trigger_frequency'] - heatmap_data['trigger_frequency'].min()) / (heatmap_data['trigger_frequency'].max() - heatmap_data['trigger_frequency'].min())
-    heatmap_data['precision_norm'] = heatmap_data['precision']
-    heatmap_data['fpr_norm'] = 1 - heatmap_data['false_positive_rate']  # Inverted so green is good
-    heatmap_data['contribution_norm'] = (heatmap_data['avg_contribution'] - heatmap_data['avg_contribution'].min()) / (heatmap_data['avg_contribution'].max() - heatmap_data['avg_contribution'].min())
-
-    heatmap_matrix = heatmap_data[['rule_name', 'trigger_frequency_norm', 'precision_norm',
-                                     'fpr_norm', 'contribution_norm']].set_index('rule_name')
-
-    fig_heatmap = go.Figure(data=go.Heatmap(
-        z=heatmap_matrix.values,
-        x=['Trigger Frequency', 'Precision', 'False Positive Rate (Inv)', 'Avg Contribution'],
-        y=heatmap_matrix.index,
-        colorscale='RdYlGn',
-        text=np.round(heatmap_matrix.values, 2),
-        texttemplate='%{text}',
-        textfont={"size": 10},
-        colorbar=dict(title="Performance Score")
-    ))
-
-    fig_heatmap.update_layout(
-        height=600,
-        xaxis_title="Performance Metrics",
-        yaxis_title="Detection Rules",
-        yaxis=dict(autorange='reversed')
-    )
-
-    st.plotly_chart(fig_heatmap, use_container_width=True)
-
-    st.markdown("---")
-
     # Rule Contribution Treemap and Bubble Chart
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("🌳 Fraud Detection Impact Analysis")
+        st.subheader("Fraud Detection Impact Analysis")
         st.caption("Treemap showing confirmed fraud catches by rule")
 
         fig_treemap = go.Figure(go.Treemap(
@@ -121,7 +82,7 @@ def render():
         st.plotly_chart(fig_treemap, use_container_width=True)
 
     with col2:
-        st.subheader("🎯 Rule Effectiveness Matrix")
+        st.subheader("Rule Effectiveness Matrix")
         st.caption("Bubble chart: Trigger Frequency vs Precision (size = weight)")
 
         fig_bubble = go.Figure()
@@ -156,7 +117,7 @@ def render():
     st.markdown("---")
 
     # Rule Correlation Network
-    st.subheader("🔗 Rule Correlation Network")
+    st.subheader("Rule Correlation Network")
     st.caption("Shows which rules commonly fire together (typical 5-8 rule patterns)")
 
     # Create network visualization using scatter plot with connecting lines
@@ -220,7 +181,7 @@ def render():
     st.markdown("---")
 
     # Rule Contribution Waterfall
-    st.subheader("💧 Rule Contribution Waterfall (Sample Transaction)")
+    st.subheader("Rule Contribution Waterfall")
     st.caption("Shows how each triggered rule contributes to final risk score")
 
     # Sample transaction with rules
@@ -284,3 +245,7 @@ def render():
 
     st.markdown("---")
     st.caption(f"💡 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Enhanced analytics with synthetic correlation data")
+
+if __name__ == "__main__" or True:
+    render()
+    

@@ -45,11 +45,11 @@ merchant_risk_df = pd.DataFrame({
 def render():
     """Render the Operational Analytics page"""
 
-    st.header("⚙️ Operational Efficiency Metrics")
+    st.header("Operational Efficiency Metrics")
     st.caption("Time-based patterns and operational performance analysis")
 
     # Real-Time Transaction Heatmap
-    st.subheader("🔥 Real-Time Transaction Heatmap")
+    st.subheader("Real-Time Transaction Heatmap")
     st.caption("Shows when suspicious transactions cluster throughout the week")
 
     fig_heatmap_time = go.Figure(data=go.Heatmap(
@@ -85,7 +85,7 @@ def render():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("⏱️ Time-to-Resolution Analysis")
+        st.subheader("Time-to-Resolution Analysis")
         st.caption("How quickly flagged transactions are reviewed by risk level")
 
         fig_resolution = go.Figure()
@@ -115,7 +115,7 @@ def render():
             st.markdown(f"- **{risk_level}:** {avg_time:.1f} minutes")
 
     with col2:
-        st.subheader("📊 Resolution Time Distribution")
+        st.subheader("Resolution Time Distribution")
 
         fig_dist = go.Figure()
 
@@ -144,7 +144,7 @@ def render():
     st.markdown("---")
 
     # Merchant Category Risk Profile
-    st.subheader("🏪 Merchant Category Risk Profile")
+    st.subheader("Merchant Category Risk Profile")
     st.caption("Risk scores and fraud rates across different merchant categories")
 
     col1, col2 = st.columns([1, 1])
@@ -214,4 +214,7 @@ def render():
     st.dataframe(merchant_display, use_container_width=True, hide_index=True)
 
     st.markdown("---")
-    st.caption(f"💡 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Operational metrics with synthetic data")
+    st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Operational metrics with synthetic data")
+
+if __name__ == "__main__" or True:
+    render()
