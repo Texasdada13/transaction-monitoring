@@ -54,6 +54,20 @@ st.markdown("""
         border-radius: 0.3rem;
         border-left: 4px solid #17a2b8;
     }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+        background-color: #f1f5f9;
+        border-radius: 5px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #3b82f6;
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -118,12 +132,30 @@ def main_dashboard():
         st.divider()
 
         # Navigation
-        st.markdown("### Navigation")
+        st.markdown("### 📍 Navigation")
 
-        page = st.radio(
-            "Select Page",
-            ["🚨 Real-Time Monitoring", "📊 Risk Analytics", "🔍 Investigation Tools", "📚 Module Catalog", "🏥 System Health"],
-            label_visibility="collapsed"
+        # Use selectbox for cleaner navigation
+        page = st.selectbox(
+            "Select Dashboard Page",
+            [
+                "--- Core Monitoring ---",
+                "📊 Summary Dashboard",
+                "🚨 Real-Time Monitoring",
+                "📈 Risk Analytics",
+                "🔍 Investigation Tools",
+                "--- Advanced Analytics ---",
+                "🎯 Scenario Analysis",
+                "⚙️ Rule Performance",
+                "⏱️ Operational Analytics",
+                "🗺️ Behavioral Analytics",
+                "--- Specialized Monitoring ---",
+                "🌍 Geographic Fraud",
+                "💰 High-Value Monitoring",
+                "🚫 Limit Violations",
+                "📚 Module Catalog"
+            ],
+            index=1,  # Default to Summary Dashboard
+            label_visibility="visible"
         )
 
         st.divider()
@@ -134,21 +166,47 @@ def main_dashboard():
             st.session_state.clear()
             st.rerun()
 
-    # Main content
-    if page == "🚨 Real-Time Monitoring":
+    # Route to the selected page
+    if page == "📊 Summary Dashboard":
+        from streamlit_app.pages import summary_dashboard
+        summary_dashboard.render()
+    elif page == "🚨 Real-Time Monitoring":
         from streamlit_app.pages import real_time_monitoring
         real_time_monitoring.render()
-    elif page == "📊 Risk Analytics":
+    elif page == "📈 Risk Analytics":
         from streamlit_app.pages import risk_analytics
         risk_analytics.render()
     elif page == "🔍 Investigation Tools":
         from streamlit_app.pages import investigation_tools
         investigation_tools.render()
+    elif page == "🎯 Scenario Analysis":
+        from streamlit_app.pages import scenario_analysis
+        scenario_analysis.render()
+    elif page == "⚙️ Rule Performance":
+        from streamlit_app.pages import rule_performance_analytics
+        rule_performance_analytics.render()
+    elif page == "⏱️ Operational Analytics":
+        from streamlit_app.pages import operational_analytics
+        operational_analytics.render()
+    elif page == "🗺️ Behavioral Analytics":
+        from streamlit_app.pages import behavioral_analytics
+        behavioral_analytics.render()
+    elif page == "🌍 Geographic Fraud":
+        from streamlit_app.pages import geographic_fraud
+        geographic_fraud.render()
+    elif page == "💰 High-Value Monitoring":
+        from streamlit_app.pages import high_value_monitoring
+        high_value_monitoring.render()
+    elif page == "🚫 Limit Violations":
+        from streamlit_app.pages import limit_violations
+        limit_violations.render()
     elif page == "📚 Module Catalog":
         from streamlit_app.pages import module_catalog
         module_catalog.render()
-    elif page == "🏥 System Health":
-        st.info("🏥 System Health page - Coming soon!")
+    else:
+        # For separator options, default to Summary Dashboard
+        from streamlit_app.pages import summary_dashboard
+        summary_dashboard.render()
 
 
 def main():
