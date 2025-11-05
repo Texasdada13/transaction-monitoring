@@ -180,15 +180,15 @@ def main_dashboard():
         page = st.selectbox(
             "Select Page",
             [
-                "🏠 Homepage",
-                "📊 Transaction Monitoring System",
+                "🏠 Analyst Dashboard",
+                "📊 Fraud Transaction Monitoring",
                 "📈 Rule Performance Analytics",
-                "🔍 Fraud Scenario Analysis",
+                "🔍 Scenario Analysis",
                 "⚙️ Operational Analytics",
-                "💼 Transaction Analytics",
-                "🌍 Geographic Fraud Analysis"
+                "🌍 Geo Analytics",
+                "💼 Executive Dashboard"
             ],
-            index=0,  # Default to Homepage
+            index=0,  # Default to Analyst Dashboard
             label_visibility="visible"
         )
 
@@ -201,27 +201,27 @@ def main_dashboard():
             st.rerun()
 
     # Route to the selected page
-    if page == "🏠 Homepage":
+    if page == "🏠 Analyst Dashboard":
         from streamlit_app.pages import Analyst_Dashboard
         Analyst_Dashboard.render()
-    elif page == "📊 Transaction Monitoring System":
+    elif page == "📊 Fraud Transaction Monitoring":
         from streamlit_app.pages import Fraud_Transaction_Monitoring
         Fraud_Transaction_Monitoring.render()
     elif page == "📈 Rule Performance Analytics":
         from streamlit_app.pages import Rule_Performance
         Rule_Performance.render()
-    elif page == "🔍 Fraud Scenario Analysis":
-        from streamlit_app.pages import Scenario_Analysis
-        Scenario_Analysis.render()
+    elif page == "🔍 Scenario Analysis":
+        from streamlit_app.pages import scenario_analysis
+        scenario_analysis.render()
     elif page == "⚙️ Operational Analytics":
         from streamlit_app.pages import operational_analytics
         operational_analytics.render()
-    elif page == "💼 Transaction Analytics":
-        from streamlit_app.pages import transaction_analytics
-        transaction_analytics.render()
-    elif page == "🌍 Geographic Fraud Analysis":
-        from streamlit_app.pages import geographic_fraud
-        geographic_fraud.render()
+    elif page == "🌍 Geo Analytics":
+        from streamlit_app.pages import Geo_Analytics
+        Geo_Analytics.render()
+    elif page == "💼 Executive Dashboard":
+        from streamlit_app.pages import Executive_Dashboard
+        Executive_Dashboard.render()
 
 
 def main():

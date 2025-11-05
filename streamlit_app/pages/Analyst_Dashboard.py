@@ -53,7 +53,7 @@ def render():
     """Render the Homepage"""
 
     # Header
-    st.markdown("# Arriba Advisors Real-Time Detection System")
+    st.markdown("# Arriba Advisors Transaction Screening System")
     # st.markdown("### Executive Dashboard - Transaction Fraud Monitoring & Prevention")
     st.caption(f"Last Updated: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}")
 
@@ -121,7 +121,7 @@ def render():
             y=funnel_data['Stage'],
             x=funnel_data['Count'],
             textinfo="value+percent initial",
-            marker=dict(color=['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#7f1d1d'])
+            marker=dict(color=['#0A5CAD', '#2E865F', '#F3B65B', '#F08736', '#E54848'])  # Arriba palette
         ))
 
         fig_funnel.update_layout(height=400, showlegend=False)
@@ -139,21 +139,21 @@ def render():
             x=analyst_decisions_df['date'],
             y=analyst_decisions_df['cleared'],
             name='Cleared',
-            marker_color='#10b981'
+            marker_color='#2E865F'  # Positive green
         ))
 
         fig_decisions.add_trace(go.Bar(
             x=analyst_decisions_df['date'],
             y=analyst_decisions_df['rejected'],
             name='Rejected',
-            marker_color='#ef4444'
+            marker_color='#E54848'  # Critical red
         ))
 
         fig_decisions.add_trace(go.Bar(
             x=analyst_decisions_df['date'],
             y=analyst_decisions_df['escalated'],
             name='Escalated',
-            marker_color='#f59e0b'
+            marker_color='#F08736'  # High orange
         ))
 
         fig_decisions.add_trace(go.Scatter(
@@ -161,7 +161,7 @@ def render():
             y=analyst_decisions_df['confidence'],
             name='Confidence %',
             yaxis='y2',
-            line=dict(color='#6366f1', width=3)
+            line=dict(color='#0A5CAD', width=3)  # Medium blue
         ))
 
         fig_decisions.update_layout(
@@ -248,7 +248,7 @@ def render():
         x=hours,
         y=transactions,
         name='Total Transactions',
-        line=dict(color='#3b82f6', width=2),
+        line=dict(color='#0A5CAD', width=2),  # Medium blue
         fill='tozeroy'
     ))
 
@@ -256,7 +256,7 @@ def render():
         x=hours,
         y=fraud_detected,
         name='Fraud Detected',
-        line=dict(color='#ef4444', width=2),
+        line=dict(color='#E54848', width=2),  # Critical red
         mode='lines+markers',
         yaxis='y2'
     ))
