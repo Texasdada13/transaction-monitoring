@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
 from streamlit_app.api_client import get_api_client
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 
 
 def format_currency(amount):
@@ -618,11 +619,18 @@ def render_account_investigation(account_id: str):
 def render():
     """Render the Investigation Tools page"""
 
-    # Header
-    st.markdown("# Transaction Monitoring System")
-    st.markdown("### Real-Time Fraud Detection & Alert Management")
+    # Apply theme
+    apply_master_theme()
 
-    st.divider()
+    # Header
+    render_page_header(
+        title="Transaction Monitoring System",
+        subtitle="Real-Time Fraud Detection & Alert Management",
+        show_logo=False
+    )
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # Check if we need to show specific views
     if "view_module_breakdown" in st.session_state:

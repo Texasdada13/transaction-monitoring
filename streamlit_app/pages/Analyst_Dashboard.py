@@ -1,5 +1,5 @@
 """
-Homepage - Arriba Advisors Real-Time Detection System
+Homepage - Arriba Advisors Transaction Screening System
 
 Executive dashboard with key performance indicators and system overview.
 """
@@ -12,6 +12,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 from streamlit_app.api_client import get_api_client
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 
  
     # Generate synthetic dataset for visualization
@@ -52,12 +53,18 @@ analyst_decisions_df['confidence'] = np.minimum(50 + np.arange(30) * 1.2 + np.ra
 def render():
     """Render the Homepage"""
 
-    # Header
-    st.markdown("# Arriba Advisors Transaction Screening System")
-    # st.markdown("### Executive Dashboard - Transaction Fraud Monitoring & Prevention")
-    st.caption(f"Last Updated: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}")
+    # Apply theme
+    apply_master_theme()
 
-    st.markdown("---")
+    # Header
+    render_page_header(
+        title="Arriba Advisors Transaction Screening System",
+        subtitle="Real-Time Fraud Detection & Prevention Analytics",
+        show_logo=False  # Logo is in sidebar
+    )
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # # Key Performance Indicators
     # st.markdown("## 📊 Key Performance Indicators")
@@ -121,7 +128,7 @@ def render():
             y=funnel_data['Stage'],
             x=funnel_data['Count'],
             textinfo="value+percent initial",
-            marker=dict(color=['#0A5CAD', '#2E865F', '#F3B65B', '#F08736', '#E54848'])  # Arriba palette
+            marker=dict(color=colors['funnel'])  # Standardized Arriba palette
         ))
 
         fig_funnel.update_layout(height=400, showlegend=False)
@@ -139,21 +146,21 @@ def render():
             x=analyst_decisions_df['date'],
             y=analyst_decisions_df['cleared'],
             name='Cleared',
-            marker_color='#2E865F'  # Positive green
+            marker_color=colors['success']
         ))
 
         fig_decisions.add_trace(go.Bar(
             x=analyst_decisions_df['date'],
             y=analyst_decisions_df['rejected'],
             name='Rejected',
-            marker_color='#E54848'  # Critical red
+            marker_color=colors['danger']
         ))
 
         fig_decisions.add_trace(go.Bar(
             x=analyst_decisions_df['date'],
             y=analyst_decisions_df['escalated'],
             name='Escalated',
-            marker_color='#F08736'  # High orange
+            marker_color=colors['warning']
         ))
 
         fig_decisions.add_trace(go.Scatter(
@@ -161,7 +168,7 @@ def render():
             y=analyst_decisions_df['confidence'],
             name='Confidence %',
             yaxis='y2',
-            line=dict(color='#0A5CAD', width=3)  # Medium blue
+            line=dict(color=colors['primary'], width=3)
         ))
 
         fig_decisions.update_layout(
@@ -248,7 +255,7 @@ def render():
         x=hours,
         y=transactions,
         name='Total Transactions',
-        line=dict(color='#0A5CAD', width=2),  # Medium blue
+        line=dict(color=colors['primary'], width=2),
         fill='tozeroy'
     ))
 
@@ -256,7 +263,7 @@ def render():
         x=hours,
         y=fraud_detected,
         name='Fraud Detected',
-        line=dict(color='#E54848', width=2),  # Critical red
+        line=dict(color=colors['danger'], width=2),
         mode='lines+markers',
         yaxis='y2'
     ))

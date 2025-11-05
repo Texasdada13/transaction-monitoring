@@ -10,6 +10,8 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
 
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+
 
 # Generate synthetic dataset for visualization
 np.random.seed(42)
@@ -53,11 +55,18 @@ rule_correlation_pairs = [
 def render():
     """Render the Rule Performance Analytics page"""
 
-    st.markdown("# Rule Performance Analytics")
-    st.markdown("### Fraud Detection Rule Effectiveness & Optimization Metrics")
-    st.caption(f"Last Updated: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}")
+    # Apply theme
+    apply_master_theme()
 
-    st.markdown("---")
+    # Header
+    render_page_header(
+        title="Rule Performance Analytics",
+        subtitle="Fraud Detection Rule Effectiveness & Optimization Metrics",
+        show_logo=False
+    )
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # Rule Contribution Treemap and Bubble Chart
     col1, col2 = st.columns([1, 1])

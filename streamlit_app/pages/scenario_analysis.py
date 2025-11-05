@@ -10,29 +10,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 
-# Custom CSS
-st.markdown("""
-<style>
-    .risk-critical {
-        background-color: #fee2e2;
-        border-left: 4px solid #ef4444;
-        padding: 1rem;
-        border-radius: 0.5rem;
-    }
-    .risk-high {
-        background-color: #fed7aa;
-        border-left: 4px solid #f97316;
-        padding: 1rem;
-        border-radius: 0.5rem;
-    }
-    .risk-medium {
-        background-color: #fef3c7;
-        border-left: 4px solid #eab308;
-        padding: 1rem;
-        border-radius: 0.5rem;
-    }
-</style>
-""", unsafe_allow_html=True)
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 
 
 # Complete fraud scenarios dataset (all 13 scenarios)
@@ -550,39 +528,48 @@ fraud_scenarios = {
 def render():
     """Render the Fraud Scenario Analysis page"""
 
-    # Header
-    st.markdown("# Fraud Scenario Analysis")
-    st.markdown("### Comprehensive Analysis of 13 Fraud Detection Scenarios")
-    st.caption(f"Last Updated: {datetime.now().strftime('%B %d, %Y at %H:%M:%S')}")
+    # Apply theme
+    apply_master_theme()
 
+    # Header
+    render_page_header(
+        title="Fraud Scenario Analysis",
+        subtitle="Comprehensive Analysis of 13 Fraud Detection Scenarios",
+        show_logo=False
+    )
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
+
+    # --- Top-of-page scenario selector (main area) ---
+    st.markdown("### 🔽 Scenario Selector")
+    scenario_key_top = st.selectbox(
+        "Select a fraud scenario to analyze:",
+        options=list(fraud_scenarios.keys()),
+        format_func=lambda x: fraud_scenarios[x]['title'],
+        key="scenario_key_top",
+    )
     st.markdown("---")
 
-    # Scenario selection dropdown on main page
-    st.markdown("## 🔍 Select Fraud Scenario to Analyze")
+    # Sidebar for scenario selection
+    with st.sidebar:
+        st.markdown("### 🔍 Select Fraud Scenario")
 
-    col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
-
-    with col1:
         scenario_key = st.selectbox(
-            "Choose a scenario:",
+            "Choose a scenario to analyze:",
             options=list(fraud_scenarios.keys()),
-            format_func=lambda x: fraud_scenarios[x]['title'],
-            label_visibility="collapsed"
+            format_func=lambda x: fraud_scenarios[x]['title']
         )
 
-    with col2:
-        show_visualizations = st.checkbox("Visualizations", value=True)
+        st.markdown("---")
+        st.markdown("### 📊 Display Options")
+        show_visualizations = st.checkbox("Show Advanced Visualizations", value=True)
+        show_metrics = st.checkbox("Show Detailed Metrics", value=True)
+        show_timeline = st.checkbox("Show Timeline", value=True)
 
-    with col3:
-        show_metrics = st.checkbox("Metrics", value=True)
-
-    with col4:
-        show_timeline = st.checkbox("Timeline", value=True)
-
-    st.markdown("---")
-
-    # Get selected scenario
-    scenario = fraud_scenarios[scenario_key]
+    # Prefer the top dropdown selection if present; fall back to sidebar
+    active_scenario_key = st.session_state.get("scenario_key_top", None) or scenario_key
+    scenario = fraud_scenarios[active_scenario_key]
 
     # Risk Score Header
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])

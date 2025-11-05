@@ -12,105 +12,18 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from streamlit_app.api_client import get_api_client, is_authenticated, get_user_info, logout
+from streamlit_app.theme import apply_master_theme, render_logo
 
 # Page configuration
 st.set_page_config(
-    page_title="Fraud Detection Dashboard",
+    page_title="Arriba Advisors - Transaction Screening",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with Arriba Advisors Color Palette
-st.markdown("""
-<style>
-    /* Primary Palette */
-    :root {
-        --dark-blue: #002B5B;
-        --medium-blue: #0A5CAD;
-        --light-blue: #E5F1FA;
-        --soft-grey: #F5F7FA;
-        --white: #FFFFFF;
-        --deep-grey: #4A586E;
-        --mid-grey: #A3B1C6;
-        --pale-blue: #BBD9F4;
-        --hover-white: #F0F4F8;
-        --positive-green: #2E865F;
-        --neutral-blue-grey: #6A7CA0;
-        --critical-red: #E54848;
-        --high-orange: #F08736;
-        --medium-amber: #F3B65B;
-        --low-green-blue: #51A5BA;
-    }
-
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: var(--dark-blue);
-        margin-bottom: 1rem;
-    }
-
-    .metric-card {
-        background-color: var(--light-blue);
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid var(--medium-blue);
-    }
-
-    .alert-high {
-        background-color: #fee2e2;
-        padding: 0.5rem;
-        border-radius: 0.3rem;
-        border-left: 4px solid var(--critical-red);
-    }
-
-    .alert-medium {
-        background-color: #fef3c7;
-        padding: 0.5rem;
-        border-radius: 0.3rem;
-        border-left: 4px solid var(--medium-amber);
-    }
-
-    .alert-low {
-        background-color: #d1fae5;
-        padding: 0.5rem;
-        border-radius: 0.3rem;
-        border-left: 4px solid var(--low-green-blue);
-    }
-
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        padding-left: 20px;
-        padding-right: 20px;
-        background-color: var(--soft-grey);
-        border-radius: 5px;
-        color: var(--deep-grey);
-    }
-
-    .stTabs [aria-selected="true"] {
-        background-color: var(--medium-blue);
-        color: var(--white);
-    }
-
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background-color: var(--dark-blue);
-    }
-
-    [data-testid="stSidebar"] .stMarkdown {
-        color: var(--white);
-    }
-
-    /* Page background */
-    .main .block-container {
-        background-color: var(--soft-grey);
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply master theme
+apply_master_theme()
 
 
 def login_page():
@@ -163,6 +76,9 @@ def main_dashboard():
 
     # Sidebar
     with st.sidebar:
+        # Logo
+        render_logo(location="sidebar")
+
         st.markdown("### 🛡️ Arriba Advisors")
         st.markdown("**Transaction Screening System**")
 

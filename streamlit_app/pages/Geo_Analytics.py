@@ -10,6 +10,8 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+
 
 # Generate synthetic dataset for visualization
 np.random.seed(42)
@@ -39,8 +41,18 @@ behavioral_timeline = pd.DataFrame({
 def render():
     """Render the Behavioral Analytics page"""
 
-    st.header("🗺️ Geographic & Behavioral Analysis")
-    st.caption("Location-based fraud patterns and behavioral anomaly detection")
+    # Apply theme
+    apply_master_theme()
+
+    # Header
+    render_page_header(
+        title="🗺️ Geographic & Behavioral Analysis",
+        subtitle="Location-based fraud patterns and behavioral anomaly detection",
+        show_logo=False
+    )
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # VPN/Proxy Fraud Locations (USA)
     st.subheader("🌐 VPN/Proxy Fraud Heatmap - USA")

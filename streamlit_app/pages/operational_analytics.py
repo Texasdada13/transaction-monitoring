@@ -11,6 +11,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime
 
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+
 
 # Generate synthetic dataset for visualization
 np.random.seed(42)
@@ -45,8 +47,18 @@ merchant_risk_df = pd.DataFrame({
 def render():
     """Render the Operational Analytics page"""
 
-    st.header("Operational Efficiency Metrics")
-    st.caption("Time-based patterns and operational performance analysis")
+    # Apply theme
+    apply_master_theme()
+
+    # Header
+    render_page_header(
+        title="Operational Efficiency Metrics",
+        subtitle="Time-based patterns and operational performance analysis",
+        show_logo=False
+    )
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # Real-Time Transaction Heatmap
     st.subheader("Real-Time Transaction Heatmap")

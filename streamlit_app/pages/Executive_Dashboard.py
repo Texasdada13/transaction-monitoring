@@ -12,6 +12,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 from streamlit_app.api_client import get_api_client
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 
 
 # Generate synthetic dataset for visualization
@@ -53,9 +54,18 @@ analyst_decisions_df['confidence'] = np.minimum(50 + np.arange(30) * 1.2 + np.ra
 def render():
     """Render the Summary Dashboard page"""
 
-    st.header("Executive Summary Dashboard")
-    # st.caption("High-level overview of fraud detection performance and trends")
-    st.markdown("### Executive Dashboard - Transaction Fraud Monitoring & Prevention")
+    # Apply theme
+    apply_master_theme()
+
+    # Header
+    render_page_header(
+        title="Executive Summary Dashboard",
+        subtitle="High-level overview of fraud detection performance and trends",
+        show_logo=False
+    )
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # Key metrics row
     col1, col2, col3, col4, col5 = st.columns(5)
