@@ -21,52 +21,93 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS with Arriba Advisors Color Palette
 st.markdown("""
 <style>
+    /* Primary Palette */
+    :root {
+        --dark-blue: #002B5B;
+        --medium-blue: #0A5CAD;
+        --light-blue: #E5F1FA;
+        --soft-grey: #F5F7FA;
+        --white: #FFFFFF;
+        --deep-grey: #4A586E;
+        --mid-grey: #A3B1C6;
+        --pale-blue: #BBD9F4;
+        --hover-white: #F0F4F8;
+        --positive-green: #2E865F;
+        --neutral-blue-grey: #6A7CA0;
+        --critical-red: #E54848;
+        --high-orange: #F08736;
+        --medium-amber: #F3B65B;
+        --low-green-blue: #51A5BA;
+    }
+
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
-        color: #1f77b4;
+        color: var(--dark-blue);
         margin-bottom: 1rem;
     }
+
     .metric-card {
-        background-color: #f0f2f6;
+        background-color: var(--light-blue);
         padding: 1rem;
         border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
+        border-left: 4px solid var(--medium-blue);
     }
+
     .alert-high {
-        background-color: #ffcccc;
+        background-color: #fee2e2;
         padding: 0.5rem;
         border-radius: 0.3rem;
-        border-left: 4px solid #ff0000;
+        border-left: 4px solid var(--critical-red);
     }
+
     .alert-medium {
-        background-color: #fff3cd;
+        background-color: #fef3c7;
         padding: 0.5rem;
         border-radius: 0.3rem;
-        border-left: 4px solid #ffa500;
+        border-left: 4px solid var(--medium-amber);
     }
+
     .alert-low {
-        background-color: #d1ecf1;
+        background-color: #d1fae5;
         padding: 0.5rem;
         border-radius: 0.3rem;
-        border-left: 4px solid #17a2b8;
+        border-left: 4px solid var(--low-green-blue);
     }
+
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
     }
+
     .stTabs [data-baseweb="tab"] {
         height: 50px;
         padding-left: 20px;
         padding-right: 20px;
-        background-color: #f1f5f9;
+        background-color: var(--soft-grey);
         border-radius: 5px;
+        color: var(--deep-grey);
     }
+
     .stTabs [aria-selected="true"] {
-        background-color: #3b82f6;
-        color: white;
+        background-color: var(--medium-blue);
+        color: var(--white);
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: var(--dark-blue);
+    }
+
+    [data-testid="stSidebar"] .stMarkdown {
+        color: var(--white);
+    }
+
+    /* Page background */
+    .main .block-container {
+        background-color: var(--soft-grey);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -74,7 +115,7 @@ st.markdown("""
 
 def login_page():
     """Display login page"""
-    st.markdown('<div class="main-header">🛡️ Arriba Advisors Real-Time Detection System</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🛡️ Arriba Advisors Transaction Screening System</div>', unsafe_allow_html=True)
     st.markdown("### Login to Dashboard")
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -123,7 +164,7 @@ def main_dashboard():
     # Sidebar
     with st.sidebar:
         st.markdown("### 🛡️ Arriba Advisors")
-        st.markdown("**Real-Time Detection System**")
+        st.markdown("**Transaction Screening System**")
 
         # User info
         user_info = get_user_info()

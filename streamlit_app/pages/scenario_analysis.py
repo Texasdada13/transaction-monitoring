@@ -556,21 +556,29 @@ def render():
 
     st.markdown("---")
 
-    # Sidebar for scenario selection
-    with st.sidebar:
-        st.markdown("### 🔍 Select Fraud Scenario")
-        
+    # Scenario selection dropdown on main page
+    st.markdown("## 🔍 Select Fraud Scenario to Analyze")
+
+    col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+
+    with col1:
         scenario_key = st.selectbox(
-            "Choose a scenario to analyze:",
+            "Choose a scenario:",
             options=list(fraud_scenarios.keys()),
-            format_func=lambda x: fraud_scenarios[x]['title']
+            format_func=lambda x: fraud_scenarios[x]['title'],
+            label_visibility="collapsed"
         )
-        
-        st.markdown("---")
-        st.markdown("### 📊 Display Options")
-        show_visualizations = st.checkbox("Show Advanced Visualizations", value=True)
-        show_metrics = st.checkbox("Show Detailed Metrics", value=True)
-        show_timeline = st.checkbox("Show Timeline", value=True)
+
+    with col2:
+        show_visualizations = st.checkbox("Visualizations", value=True)
+
+    with col3:
+        show_metrics = st.checkbox("Metrics", value=True)
+
+    with col4:
+        show_timeline = st.checkbox("Timeline", value=True)
+
+    st.markdown("---")
 
     # Get selected scenario
     scenario = fraud_scenarios[scenario_key]
