@@ -202,17 +202,17 @@ def main_dashboard():
 
     # Route to the selected page
     if page == "🏠 Homepage":
-        from streamlit_app.pages import homepage
-        homepage.render()
+        from streamlit_app.pages import Analyst_Dashboard
+        Analyst_Dashboard.render()
     elif page == "📊 Transaction Monitoring System":
-        from streamlit_app.pages import transaction_monitoring_system
-        transaction_monitoring_system.render()
+        from streamlit_app.pages import Fraud_Transaction_Monitoring
+        Fraud_Transaction_Monitoring.render()
     elif page == "📈 Rule Performance Analytics":
-        from streamlit_app.pages import rule_performance_analytics
-        rule_performance_analytics.render()
+        from streamlit_app.pages import Rule_Performance
+        Rule_Performance.render()
     elif page == "🔍 Fraud Scenario Analysis":
-        from streamlit_app.pages import scenario_analysis
-        scenario_analysis.render()
+        from streamlit_app.pages import Scenario_Analysis
+        Scenario_Analysis.render()
     elif page == "⚙️ Operational Analytics":
         from streamlit_app.pages import operational_analytics
         operational_analytics.render()

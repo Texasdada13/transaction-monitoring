@@ -29,6 +29,112 @@ def format_timestamp(timestamp_str):
         return timestamp_str
 
 
+# def render_transaction_search():
+#     """Render transaction search interface"""
+#     st.markdown("### 🔍 Transaction Search")
+
+#     with st.form("transaction_search"):
+#         col1, col2 = st.columns(2)
+
+#         with col1:
+#             transaction_id = st.text_input("Transaction ID", help="Search by exact or partial transaction ID")
+#             account_id = st.text_input("Account ID", help="Filter by account")
+
+#             # Amount range
+#             st.markdown("**Amount Range**")
+#             amount_col1, amount_col2 = st.columns(2)
+#             with amount_col1:
+#                 min_amount = st.number_input("Min Amount", min_value=0.0, value=0.0, step=100.0)
+#             with amount_col2:
+#                 max_amount = st.number_input("Max Amount", min_value=0.0, value=100000.0, step=100.0)
+
+#         with col2:
+#             # Date range
+#             st.markdown("**Date Range**")
+#             date_col1, date_col2 = st.columns(2)
+#             with date_col1:
+#                 start_date = st.date_input("Start Date", value=datetime.now() - timedelta(days=30))
+#             with date_col2:
+#                 end_date = st.date_input("End Date", value=datetime.now())
+
+#             risk_level = st.selectbox(
+#                 "Risk Level",
+#                 ["All", "Low", "Medium", "High"],
+#                 help="Filter by risk level"
+#             )
+
+#             limit = st.number_input("Max Results", min_value=10, max_value=500, value=50, step=10)
+
+#         search_button = st.form_submit_button("🔍 Search", use_container_width=True)
+
+#     if search_button:
+#         client = get_api_client()
+
+#         try:
+#             with st.spinner("Searching transactions..."):
+#                 results = client.search_transactions(
+#                     transaction_id=transaction_id if transaction_id else None,
+#                     account_id=account_id if account_id else None,
+#                     min_amount=min_amount if min_amount > 0 else None,
+#                     max_amount=max_amount if max_amount < 100000 else None,
+#                     start_date=start_date.isoformat() if start_date else None,
+#                     end_date=end_date.isoformat() if end_date else None,
+#                     risk_level=risk_level.lower() if risk_level != "All" else None,
+#                     limit=limit
+#                 )
+
+#             transactions = results.get("transactions", [])
+
+#             if not transactions:
+#                 st.info("No transactions found matching your criteria")
+#                 return
+
+#             st.success(f"Found {len(transactions)} transaction(s)")
+
+#             # Display results
+#             for idx, tx in enumerate(transactions):
+#                 with st.expander(
+#                     f"**{tx['transaction_id']}** - {format_currency(tx['amount'])} - "
+#                     f"{tx.get('transaction_type', 'N/A')} - Risk: {tx.get('risk_score', 0):.2f}",
+#                     expanded=(idx == 0)
+#                 ):
+#                     col1, col2, col3 = st.columns(3)
+
+#                     with col1:
+#                         st.markdown("#### Transaction Details")
+#                         st.markdown(f"**ID:** {tx['transaction_id']}")
+#                         st.markdown(f"**Account:** {tx['account_id']}")
+#                         st.markdown(f"**Amount:** {format_currency(tx['amount'])}")
+#                         st.markdown(f"**Direction:** {tx.get('direction', 'N/A')}")
+
+#                     with col2:
+#                         st.markdown("#### Risk Information")
+#                         risk_score = tx.get('risk_score', 0)
+#                         st.markdown(f"**Risk Score:** {risk_score:.3f}")
+#                         st.markdown(f"**Decision:** {tx.get('decision', 'N/A')}")
+#                         st.markdown(f"**Status:** {tx.get('review_status', 'N/A')}")
+#                         st.markdown(f"**Rules Triggered:** {tx.get('triggered_rules_count', 0)}")
+
+#                     with col3:
+#                         st.markdown("#### Other Info")
+#                         st.markdown(f"**Type:** {tx.get('transaction_type', 'N/A')}")
+#                         st.markdown(f"**Counterparty:** {tx.get('counterparty_id', 'N/A')}")
+#                         st.markdown(f"**Timestamp:** {format_timestamp(tx.get('timestamp', ''))}")
+
+#                     # Action buttons
+#                     btn_col1, btn_col2, btn_col3 = st.columns(3)
+#                     with btn_col1:
+#                         if st.button(f"View Module Breakdown", key=f"modules_{idx}"):
+#                             st.session_state.view_module_breakdown = tx['transaction_id']
+#                     with btn_col2:
+#                         if st.button(f"Investigate Account", key=f"account_{idx}"):
+#                             st.session_state.investigate_account = tx['account_id']
+#                     with btn_col3:
+#                         st.markdown("")  # Spacing
+
+#         except Exception as e:
+#             st.error(f"Search failed: {str(e)}")
+
 def render_transaction_search():
     """Render transaction search interface"""
     st.markdown("### 🔍 Transaction Search")
@@ -91,7 +197,66 @@ def render_transaction_search():
 
             st.success(f"Found {len(transactions)} transaction(s)")
 
-            # Display results
+            # ===============================
+            # 📊 Global Visualizations (NEW)
+            # ===============================
+            # Extract data safely
+            risk_scores = [float(t.get('risk_score', 0) or 0) for t in transactions]
+            amounts = [float(t.get('amount', 0) or 0) for t in transactions]
+            tx_ids = [t.get('transaction_id', 'N/A') for t in transactions]
+
+            viz_col1, viz_col2 = st.columns(2)
+
+            # Risk Score Distribution (Histogram)
+            with viz_col1:
+                st.markdown("#### Risk Score Distribution")
+                fig_dist = go.Figure()
+                fig_dist.add_trace(go.Histogram(
+                    x=risk_scores,
+                    nbinsx=20,
+                    marker_color='#3b82f6',
+                    hovertemplate='Risk Score: %{x:.2f}<br>Count: %{y}<extra></extra>'
+                ))
+                fig_dist.update_layout(
+                    xaxis_title="Risk Score",
+                    yaxis_title="Transaction Count",
+                    height=400,
+                    bargap=0.05
+                )
+                st.plotly_chart(fig_dist, use_container_width=True)
+
+            # Amount vs Risk (Scatter)
+            with viz_col2:
+                st.markdown("#### Transaction Amount vs Risk Score")
+                fig_scatter = go.Figure()
+                fig_scatter.add_trace(go.Scatter(
+                    x=amounts,
+                    y=risk_scores,
+                    mode='markers',
+                    marker=dict(
+                        size=10,
+                        color=risk_scores,
+                        colorscale='RdYlGn_r',
+                        showscale=True,
+                        colorbar=dict(title="Risk Score")
+                    ),
+                    text=tx_ids,
+                    hovertemplate='<b>%{text}</b><br>Amount: $%{x:,.2f}<br>Risk: %{y:.2f}<extra></extra>'
+                ))
+                fig_scatter.update_layout(
+                    xaxis_title="Transaction Amount ($)",
+                    yaxis_title="Risk Score",
+                    height=400,
+                    hovermode='closest'
+                )
+                st.plotly_chart(fig_scatter, use_container_width=True)
+
+            st.divider()
+            st.markdown("#### Results")
+
+            # =====================================
+            # Existing per-transaction expanders
+            # =====================================
             for idx, tx in enumerate(transactions):
                 with st.expander(
                     f"**{tx['transaction_id']}** - {format_currency(tx['amount'])} - "
@@ -109,7 +274,7 @@ def render_transaction_search():
 
                     with col2:
                         st.markdown("#### Risk Information")
-                        risk_score = tx.get('risk_score', 0)
+                        risk_score = float(tx.get('risk_score', 0) or 0)
                         st.markdown(f"**Risk Score:** {risk_score:.3f}")
                         st.markdown(f"**Decision:** {tx.get('decision', 'N/A')}")
                         st.markdown(f"**Status:** {tx.get('review_status', 'N/A')}")
@@ -454,8 +619,8 @@ def render():
     """Render the Investigation Tools page"""
 
     # Header
-    st.markdown("# 🔍 Investigation Tools")
-    st.markdown("Deep-dive investigation features for fraud analysts")
+    st.markdown("# Transaction Monitoring System")
+    st.markdown("### Real-Time Fraud Detection & Alert Management")
 
     st.divider()
 
