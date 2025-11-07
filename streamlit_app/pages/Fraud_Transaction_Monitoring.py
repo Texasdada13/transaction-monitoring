@@ -16,6 +16,7 @@ from typing import Dict, Any, List
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
+from streamlit_app.explainability import get_explainability_engine
 
 
 def format_currency(amount):
@@ -705,6 +706,43 @@ def render():
 
         fig_fraud_detection = go.Figure()
 
+        # Enhanced hover information with explainability
+        hover_texts = []
+        for category, rate, count in zip(fraud_categories, detection_rates, fraud_counts):
+            avg_loss_map = {
+                'Account Takeover': 12400,
+                'Payment Fraud': 3200,
+                'Identity Theft': 8500,
+                'Money Laundering': 45000,
+                'Card Fraud': 850,
+                'Wire Fraud': 25000
+            }
+            avg_loss = avg_loss_map.get(category, 5000)
+
+            if rate >= 98:
+                assessment = "⭐ EXCELLENT - Near-perfect detection"
+                action = "Maintain current model"
+            elif rate >= 95:
+                assessment = "✅ STRONG - High effectiveness"
+                action = "Continue monitoring"
+            else:
+                assessment = "⚠️ MODERATE - Room for improvement"
+                action = "Review and optimize model"
+
+            hover_text = (
+                f"<b>{category}</b><br><br>"
+                f"<b>📊 Performance Metrics:</b><br>"
+                f"• Detection Rate: <b>{rate:.1f}%</b><br>"
+                f"• Cases Detected: <b>{count}</b><br>"
+                f"• Est. Cases Missed: <b>{int(count * (100-rate) / rate)}</b><br><br>"
+                f"<b>💰 Financial Impact:</b><br>"
+                f"• Avg Loss/Case: <b>${avg_loss:,}</b><br>"
+                f"• Total Prevented: <b>${count * avg_loss:,}</b><br><br>"
+                f"<b>🎯 Assessment:</b> {assessment}<br>"
+                f"<b>💡 Action:</b> {action}"
+            )
+            hover_texts.append(hover_text)
+
         fig_fraud_detection.add_trace(go.Bar(
             x=fraud_categories,
             y=detection_rates,
@@ -712,8 +750,25 @@ def render():
             marker=dict(color=colors['success']),
             text=[f"{v:.1f}%" for v in detection_rates],
             textposition='outside',
-            yaxis='y'
+            yaxis='y',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
+
+        # Enhanced hover for scatter plot
+        scatter_hover_texts = []
+        for category, count in zip(fraud_categories, fraud_counts):
+            total_estimated = int(count * 1.05)  # Estimate with 5% escape rate
+            scatter_hover_text = (
+                f"<b>{category} - Cases Detected</b><br><br>"
+                f"<b>📈 Detection Stats:</b><br>"
+                f"• Detected: <b>{count} cases</b><br>"
+                f"• Est. Total: <b>{total_estimated} cases</b><br>"
+                f"• Escape Rate: <b>~5%</b><br><br>"
+                f"<b>💡 Insight:</b><br>"
+                f"{'High volume - Major fraud vector' if count > 150 else 'Moderate volume - Monitor trends' if count > 50 else 'Low volume but critical to track'}"
+            )
+            scatter_hover_texts.append(scatter_hover_text)
 
         fig_fraud_detection.add_trace(go.Scatter(
             x=fraud_categories,
@@ -722,7 +777,9 @@ def render():
             mode='lines+markers',
             marker=dict(size=10, color=colors['danger']),
             line=dict(width=3),
-            yaxis='y2'
+            yaxis='y2',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=scatter_hover_texts
         ))
 
         fig_fraud_detection.update_layout(

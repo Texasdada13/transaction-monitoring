@@ -12,6 +12,7 @@ from datetime import datetime
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
+from streamlit_app.explainability import get_explainability_engine
 
 
 # Generate synthetic dataset for visualization
@@ -97,6 +98,62 @@ def render():
 
         fig_bubble = go.Figure()
 
+        # Enhanced hover information with AI insights
+        explainer = get_explainability_engine()
+        bubble_hover_texts = []
+
+        for _, row in rule_performance_df.iterrows():
+            # Performance assessment
+            precision = row['precision']
+            frequency = row['trigger_frequency']
+            fp_rate = row['false_positive_rate']
+            fraud_caught = row['confirmed_fraud_count']
+            weight = row['rule_weight']
+
+            # Determine performance level
+            if precision >= 0.90:
+                perf_badge = "⭐ EXCELLENT"
+                perf_color = "#10b981"
+            elif precision >= 0.75:
+                perf_badge = "✅ GOOD"
+                perf_color = "#3b82f6"
+            elif precision >= 0.60:
+                perf_badge = "⚠️ FAIR"
+                perf_color = "#f59e0b"
+            else:
+                perf_badge = "🔴 NEEDS WORK"
+                perf_color = "#ef4444"
+
+            # Generate recommendations
+            recommendations = []
+            if precision < 0.70:
+                recommendations.append("• Adjust thresholds")
+            if fp_rate > 0.30:
+                recommendations.append("• Review false positives")
+            if frequency > 400 and precision < 0.80:
+                recommendations.append("• High volume burden")
+            if fraud_caught < 20:
+                recommendations.append("• Low fraud detection")
+
+            rec_text = "<br>".join(recommendations) if recommendations else "• Continue monitoring"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{row['rule_name']}</b><br><br>"
+                f"<b style='color:{perf_color}'>Performance: {perf_badge}</b><br><br>"
+                f"<b>📊 Key Metrics:</b><br>"
+                f"• Precision: <b>{precision*100:.1f}%</b><br>"
+                f"• Trigger Frequency: <b>{frequency}</b><br>"
+                f"• False Positive Rate: <b>{fp_rate*100:.1f}%</b><br>"
+                f"• Fraud Caught: <b>{fraud_caught} cases</b><br>"
+                f"• Rule Weight: <b>{weight}</b><br><br>"
+                f"<b>💡 Analysis:</b><br>"
+                f"{'High-precision rule with excellent accuracy' if precision > 0.90 else 'Solid performer' if precision > 0.75 else 'Needs optimization'}<br>"
+                f"{'High frequency - major workload driver' if frequency > 300 else 'Moderate activity' if frequency > 100 else 'Low frequency'}<br><br>"
+                f"<b style='color:#059669'>🎯 Recommendations:</b><br>"
+                f"{rec_text}"
+            )
+            bubble_hover_texts.append(hover_text)
+
         fig_bubble.add_trace(go.Scatter(
             x=rule_performance_df['trigger_frequency'],
             y=rule_performance_df['precision'] * 100,
@@ -112,7 +169,8 @@ def render():
                 line=dict(width=1, color='white')
             ),
             text=rule_performance_df['rule_name'],
-            hovertemplate='<b>%{text}</b><br>Frequency: %{x}<br>Precision: %{y:.1f}%<br><extra></extra>'
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=bubble_hover_texts
         ))
 
         fig_bubble.update_layout(
