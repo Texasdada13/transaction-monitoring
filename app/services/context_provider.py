@@ -166,6 +166,14 @@ class ContextProvider:
                 small_deposit_count += 1
 
             context["small_deposit_count"][hours] = small_deposit_count
+
+        # Get total transaction count for activity assessment (90 day period)
+        ninety_days_ago = (now - datetime.timedelta(days=90)).isoformat()
+        total_count = self.db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.timestamp > ninety_days_ago
+        ).count()
+        context["total_tx_count_period"] = total_count
         
         # Calculate average transaction amount for this type
         tx_type = current_tx.get("transaction_type")
