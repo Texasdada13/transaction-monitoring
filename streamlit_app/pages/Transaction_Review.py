@@ -18,6 +18,7 @@ import json
 from typing import Dict, Any, List
 
 from streamlit_app.api_client import get_api_client
+from streamlit_app.theme import get_chart_colors
 
 
 def render_workflow_diagram():
@@ -910,6 +911,9 @@ def render():
     """Main render function for Transaction Review Detail page"""
 
     st.set_page_config(page_title="Transaction Review Detail", page_icon="🔍", layout="wide")
+
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # Header with blue theme
     st.markdown("""
