@@ -1054,20 +1054,68 @@ def render_risk_evolution(data, colors):
         risk_changes['month'] = risk_changes['event_date'].dt.to_period('M')
         monthly_changes = risk_changes.groupby('month').size()
 
+        # Calculate statistics
+        mean_changes = monthly_changes.mean()
+        max_changes = monthly_changes.max()
+
+        # Enhanced hover texts for risk changes
+        hover_texts = []
+        for month, count in zip(monthly_changes.index, monthly_changes.values):
+            # Get month-specific data
+            month_data = risk_changes[risk_changes['month'] == month]
+            increased = len(month_data[month_data['new_risk_level'].map(risk_map) > month_data['previous_risk_level'].map(risk_map)])
+            decreased = len(month_data[month_data['new_risk_level'].map(risk_map) < month_data['previous_risk_level'].map(risk_map)])
+
+            # Assess change volume
+            if count > mean_changes * 1.5:
+                status = "🔴 HIGH VOLATILITY"
+                status_color = "#ef4444"
+                insight = "Significant risk level changes this month"
+                recommendation = "Review CDD events for systemic issues or patterns"
+            elif count > mean_changes:
+                status = "🟡 ELEVATED"
+                status_color = "#f59e0b"
+                insight = "Above-average risk changes"
+                recommendation = "Monitor for emerging trends"
+            else:
+                status = "✅ NORMAL"
+                status_color = "#10b981"
+                insight = "Standard risk change activity"
+                recommendation = "Continue routine monitoring"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{str(month)}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Change Metrics:</b><br>"
+                f"• Total Changes: <b>{count}</b><br>"
+                f"• Risk Increased: <b>{increased}</b><br>"
+                f"• Risk Decreased: <b>{decreased}</b><br>"
+                f"• Monthly Average: <b>{mean_changes:.1f}</b><br>"
+                f"• vs Average: <b>{((count/mean_changes - 1)*100):+.0f}%</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Recommendation:</b><br>"
+                f"{recommendation}"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=[str(m) for m in monthly_changes.index],
             y=monthly_changes.values,
             mode='lines+markers',
             fill='tozeroy',
-            marker_color=colors['warning']
+            marker_color=colors['warning'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
             height=400,
             xaxis_title="Month",
             yaxis_title="Risk Level Changes",
-            showlegend=False
+            showlegend=False,
+            title=f"Risk Level Changes (Avg: {mean_changes:.0f}/month)"
         )
 
         st.plotly_chart(fig, use_container_width=True, key="risk_changes_time")
@@ -1076,11 +1124,58 @@ def render_risk_evolution(data, colors):
         st.markdown("### CDD Event Types Causing Risk Changes")
 
         event_types = risk_changes['event_type'].value_counts()
+        total_events = event_types.sum()
+
+        # Enhanced hover texts for event types pie
+        hover_texts = []
+        for event_type, count in event_types.items():
+            pct = (count / total_events * 100) if total_events > 0 else 0
+
+            # Get event-specific insights
+            event_data = risk_changes[risk_changes['event_type'] == event_type]
+            risk_increases = len(event_data[event_data['new_risk_level'].map(risk_map) > event_data['previous_risk_level'].map(risk_map)])
+            risk_decreases = len(event_data[event_data['new_risk_level'].map(risk_map) < event_data['previous_risk_level'].map(risk_map)])
+
+            # Assess event impact
+            if pct > 40:
+                status = "🔴 DOMINANT TRIGGER"
+                status_color = "#ef4444"
+                insight = "Primary driver of risk level changes"
+                recommendation = "Focus monitoring and process improvement here"
+            elif pct > 20:
+                status = "🟡 SIGNIFICANT FACTOR"
+                status_color = "#f59e0b"
+                insight = "Major contributor to risk changes"
+                recommendation = "Regular review and optimization"
+            else:
+                status = "✅ MODERATE FACTOR"
+                status_color = "#10b981"
+                insight = "Contributing factor to risk changes"
+                recommendation = "Standard monitoring"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{event_type}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Event Metrics:</b><br>"
+                f"• Occurrences: <b>{count}</b><br>"
+                f"• % of Risk Changes: <b>{pct:.1f}%</b><br>"
+                f"• Led to Increase: <b>{risk_increases}</b><br>"
+                f"• Led to Decrease: <b>{risk_decreases}</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Recommendation:</b><br>"
+                f"{recommendation}<br><br>"
+                f"<b>📈 Impact Pattern:</b><br>"
+                f"{risk_increases} increases vs {risk_decreases} decreases"
+            )
+            hover_texts.append(hover_text)
 
         fig = go.Figure(go.Pie(
             labels=event_types.index,
             values=event_types.values,
-            hole=0.4
+            hole=0.4,
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(height=400)
@@ -1220,20 +1315,93 @@ def render_false_positive_analysis(data, colors):
         fp_trend.columns = ['false_positives', 'total']
         fp_trend['fp_rate'] = (fp_trend['false_positives'] / fp_trend['total'] * 100).round(2)
 
+        # Calculate trend statistics
+        mean_fp_rate = fp_trend['fp_rate'].mean()
+        first_month_fp = fp_trend['fp_rate'].iloc[0] if len(fp_trend) > 0 else 0
+        last_month_fp = fp_trend['fp_rate'].iloc[-1] if len(fp_trend) > 0 else 0
+        trend_direction = "improving" if last_month_fp < first_month_fp else "worsening" if last_month_fp > first_month_fp else "stable"
+
+        # Enhanced hover texts for FP trend
+        hover_texts = []
+        for i, (month, row) in enumerate(fp_trend.iterrows()):
+            fp_rate = row['fp_rate']
+            fp_count = int(row['false_positives'])
+            total = int(row['total'])
+
+            # Calculate month-over-month change
+            if i > 0:
+                prev_rate = fp_trend.iloc[i-1]['fp_rate']
+                mom_change = fp_rate - prev_rate
+                mom_change_pct = (mom_change / prev_rate * 100) if prev_rate > 0 else 0
+            else:
+                mom_change = 0
+                mom_change_pct = 0
+
+            # Assess performance
+            if fp_rate < 15:
+                status = "✅ EXCELLENT"
+                status_color = "#10b981"
+                insight = "Low false positive rate - excellent performance"
+            elif fp_rate < 30:
+                status = "🟡 ACCEPTABLE"
+                status_color = "#f59e0b"
+                insight = "Moderate false positive rate"
+            else:
+                status = "🔴 NEEDS IMPROVEMENT"
+                status_color = "#ef4444"
+                insight = "High false positive rate - requires optimization"
+
+            # Trend assessment
+            if mom_change < -2:
+                trend = "📉 IMPROVING"
+                trend_color = "#10b981"
+                trend_note = "FP rate decreasing"
+            elif mom_change > 2:
+                trend = "📈 WORSENING"
+                trend_color = "#ef4444"
+                trend_note = "FP rate increasing - investigate"
+            else:
+                trend = "➡️ STABLE"
+                trend_color = "#3b82f6"
+                trend_note = "FP rate relatively stable"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{str(month)}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 FP Metrics:</b><br>"
+                f"• FP Rate: <b>{fp_rate:.1f}%</b><br>"
+                f"• False Positives: <b>{fp_count}</b><br>"
+                f"• Total Alerts: <b>{total}</b><br>"
+                f"• True Positives: <b>{total - fp_count}</b><br>"
+                f"• Average FP Rate: <b>{mean_fp_rate:.1f}%</b><br><br>"
+                f"<b style='color:{trend_color}'>📈 Trend: {trend}</b><br>"
+                f"• MoM Change: <b>{mom_change:+.1f}pp</b><br>"
+                f"• {trend_note}<br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>💰 Cost Impact:</b><br>"
+                f"~{fp_count * 2} analyst hours wasted<br>"
+                f"~${fp_count * 2 * 50:,} in investigation costs"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=[str(m) for m in fp_trend.index],
             y=fp_trend['fp_rate'],
             mode='lines+markers',
             marker_color=colors['warning'],
-            line=dict(width=3)
+            line=dict(width=3),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
             height=400,
             xaxis_title="Month",
             yaxis_title="False Positive Rate (%)",
-            showlegend=False
+            showlegend=False,
+            title=f"FP Trend (Avg: {mean_fp_rate:.1f}%, {trend_direction})"
         )
 
         st.plotly_chart(fig, use_container_width=True, key="fp_trend")
@@ -1307,11 +1475,55 @@ def render_regulatory_compliance_dashboard(data, colors):
         st.markdown("### KYC Status Distribution")
 
         kyc_status = customers_df['KYC_status'].value_counts()
+        total_customers = kyc_status.sum()
+
+        # Enhanced hover texts for KYC status
+        hover_texts = []
+        for status, count in kyc_status.items():
+            pct = (count / total_customers * 100) if total_customers > 0 else 0
+
+            # Assess KYC status
+            if status == 'Verified':
+                status_badge = "✅ COMPLIANT"
+                status_color = "#10b981"
+                insight = "KYC verification completed successfully"
+                recommendation = "Annual review cycle"
+            elif status == 'Pending':
+                status_badge = "🟡 IN PROGRESS"
+                status_color = "#f59e0b"
+                insight = "KYC verification in progress"
+                recommendation = "Expedite verification process"
+            elif status == 'Expired':
+                status_badge = "⚠️ REQUIRES RENEWAL"
+                status_color = "#ef4444"
+                insight = "KYC documentation has expired"
+                recommendation = "URGENT: Re-verify customer immediately"
+            else:
+                status_badge = "🔴 NON-COMPLIANT"
+                status_color = "#dc2626"
+                insight = "KYC verification failed or missing"
+                recommendation = "CRITICAL: Cannot onboard without KYC"
+
+            hover_text = (
+                f"<b style='font-size:14px'>KYC Status: {status}</b><br><br>"
+                f"<b style='color:{status_color}'>{status_badge}</b><br><br>"
+                f"<b>📊 Status Metrics:</b><br>"
+                f"• Customer Count: <b>{count:,}</b><br>"
+                f"• Percentage: <b>{pct:.1f}%</b><br>"
+                f"• Total Customers: <b>{total_customers:,}</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Action Required:</b><br>"
+                f"{recommendation}"
+            )
+            hover_texts.append(hover_text)
 
         fig = go.Figure(go.Pie(
             labels=kyc_status.index,
             values=kyc_status.values,
-            hole=0.4
+            hole=0.4,
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(height=350)
@@ -1322,11 +1534,57 @@ def render_regulatory_compliance_dashboard(data, colors):
         st.markdown("### AML Status Distribution")
 
         aml_status = customers_df['AML_status'].value_counts()
+        total_customers_aml = aml_status.sum()
+
+        # Enhanced hover texts for AML status
+        hover_texts = []
+        for status, count in aml_status.items():
+            pct = (count / total_customers_aml * 100) if total_customers_aml > 0 else 0
+
+            # Assess AML status
+            if status == 'Clear':
+                status_badge = "✅ NO CONCERNS"
+                status_color = "#10b981"
+                insight = "No AML red flags identified"
+                recommendation = "Continue routine monitoring"
+            elif status == 'Under Review':
+                status_badge = "🟡 INVESTIGATION"
+                status_color = "#f59e0b"
+                insight = "AML investigation in progress"
+                recommendation = "Complete investigation within 30 days"
+            elif status == 'Flagged':
+                status_badge = "🔴 HIGH RISK"
+                status_color = "#ef4444"
+                insight = "AML concerns identified"
+                recommendation = "Enhanced due diligence required"
+            else:
+                status_badge = "⚠️ ALERT"
+                status_color = "#dc2626"
+                insight = "AML status requires attention"
+                recommendation = "Immediate review needed"
+
+            hover_text = (
+                f"<b style='font-size:14px'>AML Status: {status}</b><br><br>"
+                f"<b style='color:{status_color}'>{status_badge}</b><br><br>"
+                f"<b>📊 Status Metrics:</b><br>"
+                f"• Customer Count: <b>{count:,}</b><br>"
+                f"• Percentage: <b>{pct:.1f}%</b><br>"
+                f"• Total Customers: <b>{total_customers_aml:,}</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Action Required:</b><br>"
+                f"{recommendation}<br><br>"
+                f"<b>🛡️ Compliance Note:</b><br>"
+                f"AML screening is mandatory for all customers"
+            )
+            hover_texts.append(hover_text)
 
         fig = go.Figure(go.Pie(
             labels=aml_status.index,
             values=aml_status.values,
-            hole=0.4
+            hole=0.4,
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(height=350)
@@ -1340,11 +1598,57 @@ def render_regulatory_compliance_dashboard(data, colors):
 
     with col1:
         edd_outcomes = edd_df['outcome'].value_counts()
+        total_edd = edd_outcomes.sum()
+
+        # Enhanced hover texts for EDD outcomes
+        hover_texts = []
+        for outcome, count in edd_outcomes.items():
+            pct = (count / total_edd * 100) if total_edd > 0 else 0
+
+            # Assess outcome
+            if outcome == 'Cleared':
+                status = "✅ RESOLVED - LOW RISK"
+                status_color = "#10b981"
+                insight = "Investigation concluded with no issues found"
+                action = "Return to standard monitoring"
+            elif outcome == 'Ongoing':
+                status = "🟡 IN PROGRESS"
+                status_color = "#f59e0b"
+                insight = "Investigation still underway"
+                action = "Continue enhanced monitoring"
+            elif outcome == 'Escalated':
+                status = "🔴 HIGH CONCERN"
+                status_color = "#ef4444"
+                insight = "Escalated to senior compliance team"
+                action = "Heightened scrutiny required"
+            else:  # Account Closed, etc.
+                status = "⛔ TERMINATED"
+                status_color = "#dc2626"
+                insight = "Relationship terminated due to concerns"
+                action = "Final reporting and exit procedures"
+
+            hover_text = (
+                f"<b style='font-size:14px'>EDD Outcome: {outcome}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Outcome Metrics:</b><br>"
+                f"• Investigation Count: <b>{count}</b><br>"
+                f"• % of Total EDDs: <b>{pct:.1f}%</b><br>"
+                f"• Total Investigations: <b>{total_edd}</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Next Steps:</b><br>"
+                f"{action}<br><br>"
+                f"<b>⏱️ Note:</b><br>"
+                f"EDD investigations require thorough documentation"
+            )
+            hover_texts.append(hover_text)
 
         fig = go.Figure(go.Bar(
             x=edd_outcomes.index,
             y=edd_outcomes.values,
-            marker_color=colors['primary']
+            marker_color=colors['primary'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -1358,12 +1662,53 @@ def render_regulatory_compliance_dashboard(data, colors):
 
     with col2:
         edd_reasons = edd_df['edd_reason'].value_counts()
+        total_edd_reasons = edd_reasons.sum()
+
+        # Enhanced hover texts for EDD reasons
+        hover_texts = []
+        for reason, count in edd_reasons.items():
+            pct = (count / total_edd_reasons * 100) if total_edd_reasons > 0 else 0
+
+            # Assess trigger reason
+            if pct > 40:
+                trigger_level = "🔴 PRIMARY TRIGGER"
+                trigger_color = "#ef4444"
+                insight = "Most common reason for EDD initiation"
+                recommendation = "Focus prevention efforts on this risk factor"
+            elif pct > 20:
+                trigger_level = "🟡 SIGNIFICANT TRIGGER"
+                trigger_color = "#f59e0b"
+                insight = "Major contributor to EDD investigations"
+                recommendation = "Enhanced monitoring for this risk factor"
+            else:
+                trigger_level = "✅ MODERATE TRIGGER"
+                trigger_color = "#10b981"
+                insight = "Contributing factor to EDD triggers"
+                recommendation = "Standard risk assessment protocols"
+
+            hover_text = (
+                f"<b style='font-size:14px'>EDD Reason: {reason}</b><br><br>"
+                f"<b style='color:{trigger_color}'>{trigger_level}</b><br><br>"
+                f"<b>📊 Trigger Metrics:</b><br>"
+                f"• Investigation Count: <b>{count}</b><br>"
+                f"• % of All EDDs: <b>{pct:.1f}%</b><br>"
+                f"• Total EDDs: <b>{total_edd_reasons}</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Risk Management:</b><br>"
+                f"{recommendation}<br><br>"
+                f"<b>🛡️ Prevention Focus:</b><br>"
+                f"Address root causes to reduce EDD volume"
+            )
+            hover_texts.append(hover_text)
 
         fig = go.Figure(go.Bar(
             x=edd_reasons.values,
             y=edd_reasons.index,
             orientation='h',
-            marker_color=colors['warning']
+            marker_color=colors['warning'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
