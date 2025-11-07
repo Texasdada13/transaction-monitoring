@@ -308,6 +308,168 @@ def render():
                 icon="🔧"
             )
 
+    # ML-Enhanced Rule Intelligence
+    st.markdown("---")
+    st.markdown("## 🤖 ML-Enhanced Rule Intelligence")
+    st.markdown("*Machine learning insights for rule optimization*")
+
+    ml_rule_col1, ml_rule_col2, ml_rule_col3, ml_rule_col4 = st.columns(4)
+
+    with ml_rule_col1:
+        st.metric("ML-Optimized Rules", "12/20", "+3")
+    with ml_rule_col2:
+        st.metric("Avg Precision Gain", "+8.3%", "+1.2%")
+    with ml_rule_col3:
+        st.metric("False Positive Reduction", "22%", "-5%")
+    with ml_rule_col4:
+        st.metric("Ensemble Boost", "+15%", "+3%")
+
+    ml_rule_viz_col1, ml_rule_viz_col2 = st.columns(2)
+
+    with ml_rule_viz_col1:
+        st.markdown("### 📊 ML vs Rule-Based Performance")
+
+        comparison_metrics = ['Precision', 'Recall', 'F1 Score', 'FP Rate']
+        ml_scores = [94.3, 91.8, 93.0, 6.2]
+        rule_scores = [86.1, 84.5, 85.3, 24.5]
+
+        fig_ml_comparison = go.Figure()
+
+        fig_ml_comparison.add_trace(go.Bar(
+            x=comparison_metrics,
+            y=ml_scores,
+            name='ML-Enhanced',
+            marker=dict(color=colors['primary']),
+            text=[f"{v:.1f}%" for v in ml_scores],
+            textposition='outside'
+        ))
+
+        fig_ml_comparison.add_trace(go.Bar(
+            x=comparison_metrics,
+            y=rule_scores,
+            name='Rules Only',
+            marker=dict(color=colors['secondary']),
+            text=[f"{v:.1f}%" for v in rule_scores],
+            textposition='outside'
+        ))
+
+        fig_ml_comparison.update_layout(
+            title="Performance: ML-Enhanced vs Traditional Rules",
+            yaxis_title="Score (%)",
+            height=350,
+            barmode='group'
+        )
+
+        st.plotly_chart(fig_ml_comparison, use_container_width=True, key="ml_rule_comparison")
+
+    with ml_rule_viz_col2:
+        st.markdown("### 🎯 Rule Optimization Impact")
+
+        # Show before/after for optimized rules
+        optimized_rules = rule_performance_df.nlargest(5, 'precision')['rule_name'].tolist()
+        before_precision = [0.78, 0.82, 0.75, 0.80, 0.79]
+        after_precision = optimized_rules_precision = [r['precision'] for _, r in rule_performance_df.nlargest(5, 'precision').iterrows()]
+
+        fig_optimization = go.Figure()
+
+        fig_optimization.add_trace(go.Scatter(
+            x=list(range(1, 6)),
+            y=before_precision,
+            name='Before ML',
+            mode='lines+markers',
+            line=dict(color=colors['danger'], width=3),
+            marker=dict(size=10)
+        ))
+
+        fig_optimization.add_trace(go.Scatter(
+            x=list(range(1, 6)),
+            y=after_precision,
+            name='After ML',
+            mode='lines+markers',
+            line=dict(color=colors['success'], width=3),
+            marker=dict(size=10)
+        ))
+
+        fig_optimization.update_layout(
+            title="Precision Improvement Post-ML Optimization",
+            xaxis_title="Rule Rank",
+            yaxis_title="Precision",
+            height=350,
+            yaxis=dict(range=[0.7, 1.0])
+        )
+
+        st.plotly_chart(fig_optimization, use_container_width=True, key="ml_optimization_impact")
+
+    # ML Feature Importance for Rules
+    st.markdown("### 🔍 ML Feature Importance Analysis")
+
+    feat_col1, feat_col2 = st.columns(2)
+
+    with feat_col1:
+        st.markdown("#### Top Features for Fraud Detection")
+
+        ml_features = [
+            'Transaction Amount Deviation',
+            'Time-of-Day Anomaly',
+            'Geographic Risk Score',
+            'Account Behavior Change',
+            'Counterparty Risk',
+            'Velocity Metrics'
+        ]
+        ml_importance = [0.28, 0.22, 0.18, 0.14, 0.11, 0.07]
+
+        fig_ml_features = go.Figure(go.Bar(
+            y=ml_features,
+            x=ml_importance,
+            orientation='h',
+            marker=dict(
+                color=ml_importance,
+                colorscale='Viridis',
+                showscale=False
+            ),
+            text=[f"{v:.1%}" for v in ml_importance],
+            textposition='outside'
+        ))
+
+        fig_ml_features.update_layout(
+            title="ML-Learned Feature Importance",
+            xaxis_title="Importance Score",
+            height=300
+        )
+
+        st.plotly_chart(fig_ml_features, use_container_width=True, key="ml_feature_importance_rules")
+
+    with feat_col2:
+        st.markdown("#### Rule Synergy Matrix")
+
+        # Show which rules work best together
+        rule_synergy = np.array([
+            [1.00, 0.85, 0.72, 0.68],
+            [0.85, 1.00, 0.78, 0.65],
+            [0.72, 0.78, 1.00, 0.82],
+            [0.68, 0.65, 0.82, 1.00]
+        ])
+
+        top_rules = ['Amount Anomalies', 'Device Fingerprint', 'Geo-Location', 'Behavior Score']
+
+        fig_synergy = go.Figure(data=go.Heatmap(
+            z=rule_synergy,
+            x=top_rules,
+            y=top_rules,
+            colorscale='RdYlGn',
+            text=rule_synergy,
+            texttemplate='%{text:.2f}',
+            textfont={"size": 10},
+            colorbar=dict(title="Synergy")
+        ))
+
+        fig_synergy.update_layout(
+            title="ML-Detected Rule Synergies",
+            height=300
+        )
+
+        st.plotly_chart(fig_synergy, use_container_width=True, key="rule_synergy_matrix")
+
     st.markdown("---")
     st.caption(f"💡 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Enhanced analytics with synthetic correlation data")
 
