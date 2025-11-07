@@ -1250,9 +1250,12 @@ def render():
         st.error("Unable to load data. Please ensure compliance_dataset/ exists with required CSV files.")
         return
 
-    # Get theme colors with fallback
+    # Get theme colors with fallback - convert to list if needed
     try:
         colors = get_chart_colors()
+        # Convert dict to list of values if it's a dict
+        if isinstance(colors, dict):
+            colors = list(colors.values())
         # Ensure it's a list/array with at least some colors
         if not colors or len(colors) == 0:
             colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
