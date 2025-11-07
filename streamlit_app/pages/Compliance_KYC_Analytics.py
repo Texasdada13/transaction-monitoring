@@ -133,14 +133,81 @@ def render_customer_lifecycle_timeline(data, colors):
     timeline_df = pd.DataFrame(events).sort_values('date')
 
     if len(timeline_df) > 0:
-        # Create timeline chart
-        fig = px.scatter(timeline_df, x='date', y='type',
-                        color='type', hover_data=['event', 'details'],
-                        title=f"Compliance Timeline for {customer_info['full_name']}",
-                        height=400)
+        # Enhanced hover texts for timeline
+        type_colors = {'Onboarding': '#3b82f6', 'KYC': '#10b981', 'CDD': '#f59e0b', 'EDD': '#ef4444'}
 
-        fig.update_traces(marker=dict(size=15, line=dict(width=2, color='white')))
-        fig.update_layout(showlegend=True, hovermode='closest')
+        fig = go.Figure()
+
+        for event_type in timeline_df['type'].unique():
+            type_events = timeline_df[timeline_df['type'] == event_type]
+
+            hover_texts = []
+            for _, row in type_events.iterrows():
+                # Assess event criticality
+                if event_type == 'EDD':
+                    criticality = "🔴 HIGH PRIORITY"
+                    crit_color = "#ef4444"
+                    insight = "Enhanced Due Diligence - High-risk investigation"
+                elif event_type == 'CDD':
+                    criticality = "🟡 MEDIUM PRIORITY"
+                    crit_color = "#f59e0b"
+                    insight = "Ongoing Customer Due Diligence monitoring"
+                elif event_type == 'KYC':
+                    criticality = "✅ STANDARD"
+                    crit_color = "#10b981"
+                    insight = "Regular KYC verification check"
+                else:  # Onboarding
+                    criticality = "🟢 INITIAL"
+                    crit_color = "#3b82f6"
+                    insight = "Customer onboarding and initial assessment"
+
+                # Time context
+                days_ago = (pd.Timestamp.now() - pd.to_datetime(row['date'])).days
+                if days_ago < 30:
+                    time_context = f"{days_ago} days ago (Recent)"
+                elif days_ago < 365:
+                    time_context = f"{days_ago} days ago (~{days_ago//30} months)"
+                else:
+                    time_context = f"{days_ago} days ago (~{days_ago//365} years)"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{row['event']}</b><br><br>"
+                    f"<b style='color:{crit_color}'>{criticality}</b><br><br>"
+                    f"<b>📊 Event Details:</b><br>"
+                    f"• Type: <b>{event_type}</b><br>"
+                    f"• Date: <b>{row['date'].strftime('%Y-%m-%d')}</b><br>"
+                    f"• Time Context: <b>{time_context}</b><br>"
+                    f"• Details: <b>{row['details']}</b><br><br>"
+                    f"<b>💡 What This Means:</b><br>"
+                    f"{insight}<br><br>"
+                    f"<b>🎯 Compliance Context:</b><br>"
+                    f"Part of ongoing compliance monitoring and risk assessment<br>"
+                    f"for customer {customer_info['full_name']}"
+                )
+                hover_texts.append(hover_text)
+
+            fig.add_trace(go.Scatter(
+                x=type_events['date'],
+                y=type_events['type'],
+                mode='markers',
+                name=event_type,
+                marker=dict(
+                    size=15,
+                    color=type_colors.get(event_type, '#3b82f6'),
+                    line=dict(width=2, color='white')
+                ),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=hover_texts
+            ))
+
+        fig.update_layout(
+            title=f"Compliance Timeline for {customer_info['full_name']}",
+            height=400,
+            showlegend=True,
+            hovermode='closest',
+            xaxis_title="Date",
+            yaxis_title="Event Type"
+        )
 
         st.plotly_chart(fig, use_container_width=True, key="lifecycle_timeline")
 
@@ -188,11 +255,72 @@ def render_analyst_retrospectives(data, colors):
         analyst_decisions = alerts_df.groupby(['analyst_id', 'analyst_decision']).size().unstack(fill_value=0)
 
         fig = go.Figure()
+
+        # Enhanced hover texts for each decision type
+        decision_colors = {
+            'Escalate': '#ef4444',
+            'Close': '#10b981',
+            'Investigation': '#f59e0b'
+        }
+
         for decision in analyst_decisions.columns:
+            hover_texts = []
+            for analyst_id in analyst_decisions.index:
+                count = analyst_decisions.loc[analyst_id, decision]
+                total_analyst_decisions = analyst_decisions.loc[analyst_id].sum()
+                pct_of_total = (count / total_analyst_decisions * 100) if total_analyst_decisions > 0 else 0
+
+                # Get analyst-specific metrics
+                analyst_alerts = alerts_df[(alerts_df['analyst_id'] == analyst_id) &
+                                          (alerts_df['analyst_decision'] == decision)]
+                avg_decision_time = analyst_alerts['time_to_decision_hours'].mean() if len(analyst_alerts) > 0 else 0
+                fp_rate = (analyst_alerts['false_positive'].sum() / len(analyst_alerts) * 100) if len(analyst_alerts) > 0 else 0
+
+                # Decision-specific assessment
+                if decision == 'Escalate':
+                    if pct_of_total > 30:
+                        assessment = "High escalation rate - may indicate caution or uncertainty"
+                        recommendation = "Review escalation criteria and provide additional training"
+                    else:
+                        assessment = "Reasonable escalation rate"
+                        recommendation = "Escalating appropriately when needed"
+                elif decision == 'Close':
+                    if pct_of_total > 60:
+                        assessment = "High closure rate - efficient processing"
+                        recommendation = "Monitor for false negatives"
+                    else:
+                        assessment = "Moderate closure rate"
+                        recommendation = "Thorough investigation approach"
+                else:  # Investigation
+                    if pct_of_total > 40:
+                        assessment = "High investigation rate - thorough approach"
+                        recommendation = "Ensure timely closure of investigations"
+                    else:
+                        assessment = "Balanced investigation approach"
+                        recommendation = "Continue current investigation protocols"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>Analyst {analyst_id} - {decision}</b><br><br>"
+                    f"<b>📊 Decision Metrics:</b><br>"
+                    f"• {decision} Count: <b>{count}</b><br>"
+                    f"• % of Analyst's Decisions: <b>{pct_of_total:.1f}%</b><br>"
+                    f"• Total Decisions: <b>{total_analyst_decisions}</b><br>"
+                    f"• Avg Time for {decision}: <b>{avg_decision_time:.1f}h</b><br>"
+                    f"• False Positive Rate: <b>{fp_rate:.1f}%</b><br><br>"
+                    f"<b>💡 Pattern Analysis:</b><br>"
+                    f"{assessment}<br><br>"
+                    f"<b>🎯 Recommendation:</b><br>"
+                    f"{recommendation}"
+                )
+                hover_texts.append(hover_text)
+
             fig.add_trace(go.Bar(
                 name=decision,
                 x=analyst_decisions.index,
-                y=analyst_decisions[decision]
+                y=analyst_decisions[decision],
+                marker_color=decision_colors.get(decision, '#3b82f6'),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=hover_texts
             ))
 
         fig.update_layout(
@@ -340,11 +468,56 @@ def render_rule_effectiveness(data, colors):
         st.markdown("### Top Triggered Rules")
         rule_triggers = rule_df[rule_df['rule_triggered']].groupby('rule_name').size().sort_values(ascending=False).head(15)
 
+        # Enhanced hover texts for rule triggers
+        hover_texts = []
+        total_triggers = rule_df['rule_triggered'].sum()
+        for rule_name, trigger_count in rule_triggers.items():
+            pct_of_total = (trigger_count / total_triggers * 100) if total_triggers > 0 else 0
+
+            # Get rule-specific metrics
+            rule_data = rule_df[rule_df['rule_name'] == rule_name]
+            avg_score = rule_data['rule_score'].mean()
+            trigger_rate = (rule_data['rule_triggered'].sum() / len(rule_data) * 100) if len(rule_data) > 0 else 0
+
+            # Assess trigger frequency
+            if trigger_count > total_triggers * 0.15:
+                status = "🔴 HIGH FREQUENCY"
+                status_color = "#ef4444"
+                insight = "This rule is triggered very frequently"
+                recommendation = "Review rule logic - may need threshold adjustment"
+            elif trigger_count > total_triggers * 0.08:
+                status = "🟡 MODERATE FREQUENCY"
+                status_color = "#f59e0b"
+                insight = "Moderate trigger rate - performing as expected"
+                recommendation = "Continue monitoring for pattern changes"
+            else:
+                status = "✅ NORMAL FREQUENCY"
+                status_color = "#10b981"
+                insight = "Reasonable trigger frequency"
+                recommendation = "Rule is performing within expected parameters"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{rule_name}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Trigger Metrics:</b><br>"
+                f"• Total Triggers: <b>{trigger_count:,}</b><br>"
+                f"• % of All Triggers: <b>{pct_of_total:.1f}%</b><br>"
+                f"• Trigger Rate: <b>{trigger_rate:.1f}%</b><br>"
+                f"• Avg Rule Score: <b>{avg_score:.2f}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Recommendation:</b><br>"
+                f"{recommendation}"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=rule_triggers.values,
             y=rule_triggers.index,
             orientation='h',
-            marker_color=colors['warning']
+            marker_color=colors['warning'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -359,11 +532,61 @@ def render_rule_effectiveness(data, colors):
         st.markdown("### Rule Performance Scores")
         rule_scores = rule_df[rule_df['rule_triggered']].groupby('rule_name')['rule_score'].mean().sort_values(ascending=False).head(15)
 
+        # Enhanced hover texts for rule scores
+        hover_texts = []
+        for rule_name, avg_score in rule_scores.items():
+            rule_data = rule_df[rule_df['rule_name'] == rule_name]
+            trigger_count = rule_data['rule_triggered'].sum()
+            max_score = rule_data['rule_score'].max()
+            min_score = rule_data['rule_score'].min()
+            std_score = rule_data['rule_score'].std()
+
+            # Assess score performance
+            if avg_score >= 0.8:
+                status = "⭐ EXCELLENT"
+                status_color = "#10b981"
+                insight = "High-confidence rule - strong signal"
+                recommendation = "Maintain current configuration"
+            elif avg_score >= 0.6:
+                status = "✅ GOOD"
+                status_color = "#22c55e"
+                insight = "Solid performance - reliable rule"
+                recommendation = "Continue monitoring"
+            elif avg_score >= 0.4:
+                status = "🟡 MODERATE"
+                status_color = "#f59e0b"
+                insight = "Moderate confidence - room for improvement"
+                recommendation = "Consider tuning thresholds"
+            else:
+                status = "🔴 LOW"
+                status_color = "#ef4444"
+                insight = "Low confidence scores"
+                recommendation = "Review rule logic and parameters"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{rule_name}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Score Metrics:</b><br>"
+                f"• Average Score: <b>{avg_score:.3f}</b><br>"
+                f"• Max Score: <b>{max_score:.3f}</b><br>"
+                f"• Min Score: <b>{min_score:.3f}</b><br>"
+                f"• Std Deviation: <b>{std_score:.3f}</b><br>"
+                f"• Times Triggered: <b>{trigger_count:,}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{insight}<br>"
+                f"Score represents confidence/severity level (0-1).<br><br>"
+                f"<b>🎯 Recommendation:</b><br>"
+                f"{recommendation}"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=rule_scores.values,
             y=rule_scores.index,
             orientation='h',
-            marker_color=colors['success']
+            marker_color=colors['success'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -377,19 +600,59 @@ def render_rule_effectiveness(data, colors):
     # Rule execution time analysis
     st.markdown("### Rule Execution Time Distribution")
 
+    # Calculate execution time statistics
+    exec_times = rule_df['execution_time_ms']
+    mean_time = exec_times.mean()
+    median_time = exec_times.median()
+    p95_time = exec_times.quantile(0.95)
+    p99_time = exec_times.quantile(0.99)
+
+    # Assess performance
+    if p95_time < 50:
+        perf_status = "⭐ EXCELLENT"
+        perf_color = "#10b981"
+        perf_insight = "Very fast rule execution"
+    elif p95_time < 100:
+        perf_status = "✅ GOOD"
+        perf_color = "#22c55e"
+        perf_insight = "Good execution performance"
+    elif p95_time < 200:
+        perf_status = "🟡 MODERATE"
+        perf_color = "#f59e0b"
+        perf_insight = "Acceptable but could be optimized"
+    else:
+        perf_status = "🔴 SLOW"
+        perf_color = "#ef4444"
+        perf_insight = "Slow execution - optimization needed"
+
     fig = go.Figure()
     fig.add_trace(go.Histogram(
-        x=rule_df['execution_time_ms'],
+        x=exec_times,
         nbinsx=50,
         marker_color=colors['primary'],
-        opacity=0.7
+        opacity=0.7,
+        hovertemplate=(
+            "<b>Execution Time Bin</b><br>"
+            "Time Range: %{x} ms<br>"
+            "Frequency: %{y} rules<br><br>"
+            f"<b style='color:{perf_color}'>Overall: {perf_status}</b><br><br>"
+            f"<b>📊 Global Statistics:</b><br>"
+            f"• Mean: <b>{mean_time:.1f} ms</b><br>"
+            f"• Median: <b>{median_time:.1f} ms</b><br>"
+            f"• 95th Percentile: <b>{p95_time:.1f} ms</b><br>"
+            f"• 99th Percentile: <b>{p99_time:.1f} ms</b><br><br>"
+            f"<b>💡 Performance Insight:</b><br>"
+            f"{perf_insight}<br>"
+            "<extra></extra>"
+        )
     ))
 
     fig.update_layout(
         height=300,
         xaxis_title="Execution Time (ms)",
         yaxis_title="Frequency",
-        showlegend=False
+        showlegend=False,
+        title=f"Execution Time Distribution (p95: {p95_time:.0f}ms)"
     )
 
     st.plotly_chart(fig, use_container_width=True, key="exec_time_dist")
