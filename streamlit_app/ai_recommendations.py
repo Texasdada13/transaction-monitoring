@@ -304,8 +304,8 @@ def render_adaptive_ai_banner():
         <div style="display: flex; align-items: center; margin-bottom: 15px;">
             <div style="font-size: 40px; margin-right: 20px;">🧠</div>
             <div>
-                <h2 style="color: white; margin: 0; font-size: 28px;">Adaptive AI</h2>
-                <h3 style="color: #93c5fd; margin: 5px 0 0 0; font-weight: normal; font-size: 18px;">
+                <h2 style="color: #e0e7ff; margin: 0; font-size: 28px;">Adaptive AI</h2>
+                <h3 style="color: #e0e7ff; margin: 5px 0 0 0; font-weight: normal; font-size: 18px;">
                     Smarter than Evolving Fraud
                 </h3>
             </div>

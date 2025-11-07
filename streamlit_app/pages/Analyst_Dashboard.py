@@ -186,63 +186,6 @@ def render():
 
     st.markdown("---")
 
-    # # Executive Summary
-    # st.markdown("## 💼 Executive Summary")
-
-    # col1, col2 = st.columns([2, 1])
-
-    # with col1:
-    #     st.markdown("""
-    #     **System Performance Overview**
-
-    #     The fraud detection system is operating at optimal efficiency with a **94.2% accuracy rate**.
-    #     Today's transaction volume shows healthy growth (+8.2%) while maintaining strong fraud prevention metrics.
-
-    #     **Key Highlights:**
-    #     - ✅ **95% auto-approval rate** - Minimal false positives
-    #     - ✅ **47 fraud cases detected** - $2.3M in potential losses prevented
-    #     - ✅ **Sub-second detection** - Real-time risk assessment
-    #     - ✅ **6.2% false positive rate** - Down from 7.0% last week
-
-    #     **Risk Areas Monitored:**
-    #     - Account Takeover Attempts
-    #     - Payment Fraud & BEC Attacks
-    #     - Money Laundering Patterns
-    #     - Geographic Anomalies
-    #     - Beneficiary Fraud
-    #     """)
-
-    # with col2:
-    #     st.markdown("**System Status**")
-    #     st.success("🟢 **All Systems Operational**")
-
-    #     st.markdown("**Active Detection Modules**")
-    #     st.info("26 fraud detection rules")
-
-    #     st.markdown("**Coverage**")
-    #     st.info("7 fraud scenarios")
-
-    #     st.markdown("**Response Time**")
-    #     st.info("< 500ms average")
-
-    # st.markdown("---")
-
-    # # Financial Impact
-    # st.markdown("## 💰 Financial Impact Analysis")
-
-    # col1, col2, col3, col4 = st.columns(4)
-
-    # with col1:
-    #     st.metric("Fraud Prevented (Today)", "$2.3M", delta="-12% vs. yesterday")
-    # with col2:
-    #     st.metric("Fraud Prevented (MTD)", "$47.8M", delta="↑ 15%")
-    # with col3:
-    #     st.metric("Manual Review Costs Saved", "$59,575", delta="Per day")
-    # with col4:
-    #     st.metric("Average Fraud Amount", "$48,936", delta="↓ 8%")
-
-    # st.markdown("---")
-
     # System Activity Timeline
     st.markdown("## 📊 Live Transaction Pulse")
 
