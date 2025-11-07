@@ -2230,12 +2230,59 @@ def render_feature_engineering(features, colors):
 
         for fraud_val, name, color in [(0, 'Legitimate', colors[0]), (1, 'Fraud', colors[1])]:
             mask = y == fraud_val
+
+            # Enhanced hover texts for PCA points
+            pca_hovers = []
+            for i, (pc1, pc2) in enumerate(X_pca[mask]):
+                # Determine cluster position
+                if abs(pc1) < 1 and abs(pc2) < 1:
+                    cluster_pos = "Center Cluster"
+                    cluster_note = "Typical transaction profile"
+                elif abs(pc1) > 3 or abs(pc2) > 3:
+                    cluster_pos = "Outlier Region"
+                    cluster_note = "Unusual feature combination - warrants investigation"
+                else:
+                    cluster_pos = "Normal Spread"
+                    cluster_note = "Within expected variance"
+
+                # Separation quality
+                if fraud_val == 1:  # Fraud
+                    if pc1 > 2:
+                        separation = "Well-separated from legitimate transactions"
+                    else:
+                        separation = "Some overlap with legitimate transactions"
+                else:  # Legitimate
+                    if pc1 < -1:
+                        separation = "Clearly distinguished from fraud"
+                    else:
+                        separation = "Some similarity to fraud patterns"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{name} Transaction</b><br><br>"
+                    f"<b>📊 PCA Coordinates:</b><br>"
+                    f"• PC1: <b>{pc1:.3f}</b><br>"
+                    f"• PC2: <b>{pc2:.3f}</b><br><br>"
+                    f"<b>🎯 Cluster Position:</b><br>"
+                    f"{cluster_pos}<br>"
+                    f"<i>{cluster_note}</i><br><br>"
+                    f"<b>🔍 Separation Analysis:</b><br>"
+                    f"{separation}<br><br>"
+                    f"<b>💡 What PCA Shows:</b><br>"
+                    f"PCA reduces {X.shape[1]} features into 2 dimensions<br>"
+                    f"capturing {pca.explained_variance_ratio_.sum():.1%} of variance.<br>"
+                    f"Points close together have similar feature profiles.<br><br>"
+                    f"<b>🎭 Class:</b> <b>{name}</b>"
+                )
+                pca_hovers.append(hover_text)
+
             fig.add_trace(go.Scatter(
                 x=X_pca[mask, 0],
                 y=X_pca[mask, 1],
                 mode='markers',
                 name=name,
-                marker=dict(size=5, color=color, opacity=0.6)
+                marker=dict(size=5, color=color, opacity=0.6),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=pca_hovers
             ))
 
         fig.update_layout(
@@ -2263,12 +2310,77 @@ def render_feature_engineering(features, colors):
 
         for fraud_val, name, color in [(0, 'Legitimate', colors[2]), (1, 'Fraud', colors[3])]:
             mask = y_sample == fraud_val
+            y_sample_array = y_sample.values
+
+            # Enhanced hover texts for t-SNE points
+            tsne_hovers = []
+            for i, (tsne1, tsne2) in enumerate(X_tsne[mask]):
+                # Calculate distance from centroid
+                fraud_centroid = X_tsne[y_sample_array == 1].mean(axis=0)
+                legit_centroid = X_tsne[y_sample_array == 0].mean(axis=0)
+
+                dist_to_fraud = np.sqrt((tsne1 - fraud_centroid[0])**2 + (tsne2 - fraud_centroid[1])**2)
+                dist_to_legit = np.sqrt((tsne1 - legit_centroid[0])**2 + (tsne2 - legit_centroid[1])**2)
+
+                # Cluster analysis
+                if fraud_val == 1:  # Fraud
+                    if dist_to_fraud < 10:
+                        cluster_analysis = "🔴 Core fraud cluster - typical fraud pattern"
+                        confidence = "High confidence fraud"
+                    else:
+                        cluster_analysis = "🟠 Peripheral fraud - atypical patterns"
+                        confidence = "Moderate confidence - requires review"
+                else:  # Legitimate
+                    if dist_to_legit < 10:
+                        cluster_analysis = "🟢 Core legitimate cluster - normal behavior"
+                        confidence = "High confidence legitimate"
+                    else:
+                        cluster_analysis = "🟡 Edge case - unusual but legitimate"
+                        confidence = "Monitor for anomalies"
+
+                # Separation quality
+                if abs(dist_to_fraud - dist_to_legit) > 15:
+                    separation_quality = "Excellent separation"
+                    sep_note = "Clear distinction from opposite class"
+                elif abs(dist_to_fraud - dist_to_legit) > 8:
+                    separation_quality = "Good separation"
+                    sep_note = "Moderately distinct from opposite class"
+                else:
+                    separation_quality = "Poor separation"
+                    sep_note = "Close to opposite class - ambiguous case"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{name} Transaction</b><br><br>"
+                    f"<b>📊 t-SNE Coordinates:</b><br>"
+                    f"• Dimension 1: <b>{tsne1:.2f}</b><br>"
+                    f"• Dimension 2: <b>{tsne2:.2f}</b><br><br>"
+                    f"<b>🎯 Cluster Analysis:</b><br>"
+                    f"{cluster_analysis}<br>"
+                    f"Confidence: <i>{confidence}</i><br><br>"
+                    f"<b>📏 Distances:</b><br>"
+                    f"• To fraud centroid: <b>{dist_to_fraud:.1f}</b><br>"
+                    f"• To legit centroid: <b>{dist_to_legit:.1f}</b><br><br>"
+                    f"<b>🔍 Separation Quality:</b><br>"
+                    f"<b>{separation_quality}</b><br>"
+                    f"{sep_note}<br><br>"
+                    f"<b>💡 What t-SNE Shows:</b><br>"
+                    f"t-SNE reveals nonlinear patterns that PCA misses.<br>"
+                    f"Similar transactions cluster together based on<br>"
+                    f"complex feature interactions. Perplexity=30 balances<br>"
+                    f"local vs global structure.<br><br>"
+                    f"<b>🎭 Class:</b> <b>{name}</b><br>"
+                    f"<b>📦 Sample:</b> {sample_size} of {len(X)} transactions"
+                )
+                tsne_hovers.append(hover_text)
+
             fig.add_trace(go.Scatter(
                 x=X_tsne[mask, 0],
                 y=X_tsne[mask, 1],
                 mode='markers',
                 name=name,
-                marker=dict(size=5, color=color, opacity=0.6)
+                marker=dict(size=5, color=color, opacity=0.6),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=tsne_hovers
             ))
 
         fig.update_layout(
@@ -2285,6 +2397,77 @@ def render_feature_engineering(features, colors):
 
     corr_matrix = X.corr()
 
+    # Enhanced hover texts for correlation heatmap
+    corr_hovers = []
+    for i, feat1 in enumerate(corr_matrix.columns):
+        for j, feat2 in enumerate(corr_matrix.columns):
+            corr_val = corr_matrix.iloc[i, j]
+
+            # Correlation strength assessment
+            abs_corr = abs(corr_val)
+            if abs_corr == 1.0:
+                strength = "Perfect" if feat1 == feat2 else "Perfect (Multicollinearity)"
+                strength_color = "#dc2626" if feat1 != feat2 else "#10b981"
+                interpretation = "Same feature" if feat1 == feat2 else "⚠️ CRITICAL: Features are redundant"
+                action = "Baseline" if feat1 == feat2 else "Remove one feature to avoid multicollinearity"
+            elif abs_corr >= 0.9:
+                strength = "Very Strong"
+                strength_color = "#ef4444"
+                interpretation = "Features highly correlated - potential multicollinearity"
+                action = "Consider removing one feature or use PCA"
+            elif abs_corr >= 0.7:
+                strength = "Strong"
+                strength_color = "#f97316"
+                interpretation = "Significant relationship between features"
+                action = "Monitor for multicollinearity if both used in linear models"
+            elif abs_corr >= 0.5:
+                strength = "Moderate"
+                strength_color = "#eab308"
+                interpretation = "Noticeable relationship between features"
+                action = "Acceptable correlation - both features can be useful"
+            elif abs_corr >= 0.3:
+                strength = "Weak"
+                strength_color = "#3b82f6"
+                interpretation = "Slight relationship between features"
+                action = "Features provide mostly independent information"
+            else:
+                strength = "Very Weak / None"
+                strength_color = "#10b981"
+                interpretation = "Little to no linear relationship"
+                action = "Features are independent - ideal for modeling"
+
+            # Direction of relationship
+            if corr_val > 0:
+                direction = "Positive correlation"
+                direction_note = f"When {feat1} increases, {feat2} tends to increase"
+            elif corr_val < 0:
+                direction = "Negative correlation"
+                direction_note = f"When {feat1} increases, {feat2} tends to decrease"
+            else:
+                direction = "No correlation"
+                direction_note = "No linear relationship"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{feat1} vs {feat2}</b><br><br>"
+                f"<b style='color:{strength_color}'>Correlation: {corr_val:.3f}</b><br>"
+                f"<b>Strength:</b> {strength}<br><br>"
+                f"<b>📊 Direction:</b><br>"
+                f"{direction}<br>"
+                f"<i>{direction_note}</i><br><br>"
+                f"<b>💡 Interpretation:</b><br>"
+                f"{interpretation}<br><br>"
+                f"<b>🎯 Modeling Impact:</b><br>"
+                f"{action}<br><br>"
+                f"<b>📈 What This Means:</b><br>"
+                f"Correlation measures linear relationships between<br>"
+                f"features. High correlations (|r| > 0.7) indicate<br>"
+                f"redundancy that can hurt model performance."
+            )
+            corr_hovers.append(hover_text)
+
+    # Reshape hover texts to match the 2D structure
+    corr_hovers_2d = np.array(corr_hovers).reshape(len(corr_matrix.columns), len(corr_matrix.columns))
+
     fig = go.Figure(data=go.Heatmap(
         z=corr_matrix.values,
         x=corr_matrix.columns,
@@ -2294,7 +2477,9 @@ def render_feature_engineering(features, colors):
         text=np.round(corr_matrix.values, 2),
         texttemplate='%{text}',
         textfont={"size": 8},
-        colorbar=dict(title="Correlation")
+        colorbar=dict(title="Correlation"),
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=corr_hovers_2d
     ))
 
     fig.update_layout(
@@ -2313,19 +2498,122 @@ def render_feature_engineering(features, colors):
 
         cumsum = np.cumsum(pca_full.explained_variance_ratio_)
 
+        # Enhanced hover for individual variance bars
+        bar_hovers = []
+        for i, (pc_num, var_ratio) in enumerate(zip(range(1, len(pca_full.explained_variance_ratio_) + 1), pca_full.explained_variance_ratio_)):
+            # Importance assessment
+            if var_ratio > 0.25:
+                importance = "🔴 CRITICAL COMPONENT"
+                importance_color = "#ef4444"
+                note = "Captures major data patterns - essential for analysis"
+            elif var_ratio > 0.15:
+                importance = "🟠 HIGH IMPORTANCE"
+                importance_color = "#f97316"
+                note = "Significant variance explained - very useful"
+            elif var_ratio > 0.08:
+                importance = "🟡 MODERATE IMPORTANCE"
+                importance_color = "#eab308"
+                note = "Meaningful contribution to understanding data"
+            elif var_ratio > 0.03:
+                importance = "🔵 LOW IMPORTANCE"
+                importance_color = "#3b82f6"
+                note = "Minor patterns - may be noise"
+            else:
+                importance = "⚪ MINIMAL IMPORTANCE"
+                importance_color = "#6b7280"
+                note = "Very small variance - likely noise"
+
+            # Dimensionality reduction recommendation
+            cumulative_at_pc = cumsum[i]
+            if cumulative_at_pc >= 0.95:
+                dim_rec = f"✅ Stop here: {pc_num} components capture 95%+ variance"
+            elif cumulative_at_pc >= 0.90:
+                dim_rec = f"⚠️ {pc_num} components capture 90%+ variance"
+            else:
+                dim_rec = f"Need more components to reach 90% threshold"
+
+            hover_text = (
+                f"<b style='font-size:14px'>Principal Component {pc_num}</b><br><br>"
+                f"<b style='color:{importance_color}'>{importance}</b><br>"
+                f"{note}<br><br>"
+                f"<b>📊 Variance Metrics:</b><br>"
+                f"• Individual: <b>{var_ratio:.2%}</b><br>"
+                f"• Cumulative: <b>{cumulative_at_pc:.2%}</b><br>"
+                f"• Rank: <b>#{pc_num}</b> of {len(pca_full.explained_variance_ratio_)}<br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"This component explains <b>{var_ratio:.2%}</b> of total<br>"
+                f"variance in the data. It represents a linear<br>"
+                f"combination of original features that captures<br>"
+                f"maximum remaining variance.<br><br>"
+                f"<b>🎯 Dimensionality Reduction:</b><br>"
+                f"{dim_rec}"
+            )
+            bar_hovers.append(hover_text)
+
+        # Enhanced hover for cumulative line
+        cumulative_hovers = []
+        for pc_num, cum_var in enumerate(cumsum, start=1):
+            # Adequacy assessment
+            if cum_var >= 0.99:
+                adequacy = "⭐ EXCELLENT"
+                adequacy_color = "#10b981"
+                assessment = "Nearly all variance captured - perfect representation"
+            elif cum_var >= 0.95:
+                adequacy = "✅ VERY GOOD"
+                adequacy_color = "#3b82f6"
+                assessment = "Excellent representation with minimal information loss"
+            elif cum_var >= 0.90:
+                adequacy = "🟢 GOOD"
+                adequacy_color = "#22c55e"
+                assessment = "Good representation - acceptable for most applications"
+            elif cum_var >= 0.80:
+                adequacy = "🟡 ACCEPTABLE"
+                adequacy_color = "#eab308"
+                assessment = "Moderate representation - some information lost"
+            else:
+                adequacy = "🔴 INSUFFICIENT"
+                adequacy_color = "#ef4444"
+                assessment = "Poor representation - too much information lost"
+
+            # Components needed recommendations
+            components_for_90 = next((i for i, v in enumerate(cumsum, 1) if v >= 0.90), len(cumsum))
+            components_for_95 = next((i for i, v in enumerate(cumsum, 1) if v >= 0.95), len(cumsum))
+
+            hover_text = (
+                f"<b style='font-size:14px'>First {pc_num} Components</b><br><br>"
+                f"<b style='color:{adequacy_color}'>{adequacy} COVERAGE</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 Cumulative Variance:</b><br>"
+                f"• Explained: <b>{cum_var:.2%}</b><br>"
+                f"• Lost: <b>{(1-cum_var):.2%}</b><br>"
+                f"• Components: <b>{pc_num}</b> of {len(cumsum)}<br><br>"
+                f"<b>🎯 Recommendations:</b><br>"
+                f"• For 90% variance: <b>{components_for_90}</b> components<br>"
+                f"• For 95% variance: <b>{components_for_95}</b> components<br><br>"
+                f"<b>💡 Rule of Thumb:</b><br>"
+                f"Retaining 90-95% variance usually provides good<br>"
+                f"balance between dimensionality reduction and<br>"
+                f"information preservation."
+            )
+            cumulative_hovers.append(hover_text)
+
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=list(range(1, len(pca_full.explained_variance_ratio_) + 1)),
             y=pca_full.explained_variance_ratio_,
             name='Individual',
-            marker=dict(color=colors[0])
+            marker=dict(color=colors[0]),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=bar_hovers
         ))
         fig.add_trace(go.Scatter(
             x=list(range(1, len(cumsum) + 1)),
             y=cumsum,
             name='Cumulative',
             line=dict(color=colors[1], width=3),
-            yaxis='y2'
+            yaxis='y2',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=cumulative_hovers
         ))
 
         fig.update_layout(
