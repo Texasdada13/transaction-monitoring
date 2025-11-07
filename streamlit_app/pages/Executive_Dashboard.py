@@ -949,5 +949,5 @@ def render():
 
     st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Using enhanced synthetic data for demonstration")
 
-if __name__ == "__main__" or True:
+if __name__ == "__main__":
     render()

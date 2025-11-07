@@ -890,5 +890,5 @@ def render():
     st.caption("💡 **Note:** All scenarios are based on real fraud patterns and detection methodologies used in financial institutions.")
     st.caption(f"**System Status:** 🟢 Active | **Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-if __name__ == "__main__" or True:
+if __name__ == "__main__":
     render()
