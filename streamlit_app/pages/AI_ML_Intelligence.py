@@ -602,17 +602,87 @@ def render_ensemble_models(features, colors):
 
         st.plotly_chart(fig, use_container_width=True, key="feature_importance")
 
-    # XGBoost training progress
+    # Enhanced XGBoost training progress with explainability
     st.markdown("### XGBoost Training Progress")
     iterations = list(range(1, 101))
     train_error = [0.35 * np.exp(-0.03 * i) + np.random.rand() * 0.01 for i in iterations]
     val_error = [0.35 * np.exp(-0.025 * i) + np.random.rand() * 0.015 for i in iterations]
 
+    # Create enhanced hover texts
+    xgb_hover_texts = []
+    for iteration, t_err, v_err in zip(iterations, train_error, val_error):
+        gap = abs(t_err - v_err)
+
+        # Assess boosting progress
+        if iteration < 20:
+            phase = "🚀 RAPID LEARNING"
+            phase_note = "Early boosting - each tree adds significant value"
+        elif iteration < 60:
+            phase = "📈 STEADY IMPROVEMENT"
+            phase_note = "Middle phase - consistent error reduction"
+        else:
+            phase = "📉 FINE-TUNING"
+            phase_note = "Late stage - marginal improvements"
+
+        # Overfitting check
+        if gap < 0.015:
+            fit_status = "✅ GOOD FIT"
+            fit_color = "#10b981"
+            fit_note = "Train and validation errors are close"
+        elif gap < 0.03:
+            fit_status = "🟡 SLIGHT OVERFITTING"
+            fit_color = "#eab308"
+            fit_note = "Small gap emerging - monitor closely"
+        else:
+            fit_status = "🔴 OVERFITTING"
+            fit_color = "#ef4444"
+            fit_note = "Large gap - consider early stopping"
+
+        # Performance assessment
+        if v_err < 0.05:
+            perf = "⭐ EXCELLENT"
+            perf_note = "Outstanding error rate"
+        elif v_err < 0.10:
+            perf = "✅ VERY GOOD"
+            perf_note = "Strong performance"
+        elif v_err < 0.15:
+            perf = "🟡 GOOD"
+            perf_note = "Acceptable performance"
+        else:
+            perf = "⚠️ NEEDS IMPROVEMENT"
+            perf_note = "Consider more iterations or tuning"
+
+        hover_text = (
+            f"<b style='font-size:14px'>Iteration {iteration}</b><br><br>"
+            f"<b>{phase}</b><br>"
+            f"{phase_note}<br><br>"
+            f"<b>📊 Error Metrics:</b><br>"
+            f"• Training Error: <b>{t_err:.4f}</b><br>"
+            f"• Validation Error: <b>{v_err:.4f}</b><br>"
+            f"• Gap: <b>{gap:.4f}</b><br><br>"
+            f"<b style='color:{fit_color}'>{fit_status}</b><br>"
+            f"{fit_note}<br><br>"
+            f"<b>{perf}</b><br>"
+            f"{perf_note}<br><br>"
+            f"<b>💡 Boosting Insight:</b><br>"
+            f"Each iteration adds a weak learner that focuses on<br>"
+            f"mistakes from previous trees, progressively reducing error"
+        )
+        xgb_hover_texts.append(hover_text)
+
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=iterations, y=train_error, name='Training Error',
-                             line=dict(color=colors[0]), fill='tozeroy'))
-    fig.add_trace(go.Scatter(x=iterations, y=val_error, name='Validation Error',
-                             line=dict(color=colors[1]), fill='tozeroy'))
+    fig.add_trace(go.Scatter(
+        x=iterations, y=train_error, name='Training Error',
+        line=dict(color=colors[0]), fill='tozeroy',
+        customdata=xgb_hover_texts,
+        hovertemplate='%{customdata}<extra></extra>'
+    ))
+    fig.add_trace(go.Scatter(
+        x=iterations, y=val_error, name='Validation Error',
+        line=dict(color=colors[1]), fill='tozeroy',
+        customdata=xgb_hover_texts,
+        hovertemplate='%{customdata}<extra></extra>'
+    ))
 
     fig.update_layout(
         title="XGBoost Training Error Reduction",
@@ -646,26 +716,91 @@ def render_model_performance(features, colors):
     col1, col2 = st.columns(2)
 
     with col1:
-        # ROC Curves
+        # Enhanced ROC Curves with explainability
         fig = go.Figure()
 
         for model, name, color in [(rf, 'Random Forest', colors[0]),
                                      (gb, 'Gradient Boosting', colors[1])]:
             y_pred_proba = model.predict_proba(X_test)[:, 1]
-            fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+            fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
             roc_auc = auc(fpr, tpr)
+
+            # Create detailed hover texts for ROC curve points
+            roc_hover_texts = []
+            for i, (fpr_val, tpr_val) in enumerate(zip(fpr, tpr)):
+                # Performance assessment
+                if roc_auc >= 0.95:
+                    auc_badge = "⭐ EXCELLENT"
+                    auc_color = "#10b981"
+                    auc_note = "Outstanding discrimination ability"
+                elif roc_auc >= 0.90:
+                    auc_badge = "✅ VERY GOOD"
+                    auc_color = "#3b82f6"
+                    auc_note = "Strong fraud detection capability"
+                elif roc_auc >= 0.80:
+                    auc_badge = "🟡 GOOD"
+                    auc_color = "#eab308"
+                    auc_note = "Acceptable performance"
+                else:
+                    auc_badge = "⚠️ POOR"
+                    auc_color = "#ef4444"
+                    auc_note = "Needs significant improvement"
+
+                # Operating point analysis
+                if tpr_val >= 0.95 and fpr_val <= 0.10:
+                    op_point = "🏆 IDEAL POINT"
+                    op_note = "Catches most fraud with few false alarms"
+                elif tpr_val >= 0.85:
+                    op_point = "✅ HIGH RECALL"
+                    op_note = "Catches most fraud, some false positives"
+                elif fpr_val <= 0.05:
+                    op_point = "🎯 HIGH PRECISION"
+                    op_note = "Few false alarms, may miss some fraud"
+                else:
+                    op_point = "⚖️ BALANCED"
+                    op_note = "Trade-off between recall and precision"
+
+                # Calculate practical metrics
+                total_fraud = int(y_test.sum())
+                total_legit = len(y_test) - total_fraud
+                fraud_caught = int(tpr_val * total_fraud)
+                fraud_missed = total_fraud - fraud_caught
+                false_alarms = int(fpr_val * total_legit)
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{name}</b><br><br>"
+                    f"<b style='color:{auc_color}'>{auc_badge}</b><br>"
+                    f"• AUC-ROC: <b>{roc_auc:.3f}</b><br>"
+                    f"{auc_note}<br><br>"
+                    f"<b>📊 Operating Point:</b><br>"
+                    f"• True Positive Rate: <b>{tpr_val:.1%}</b><br>"
+                    f"• False Positive Rate: <b>{fpr_val:.1%}</b><br><br>"
+                    f"<b>{op_point}</b><br>"
+                    f"{op_note}<br><br>"
+                    f"<b>💡 Practical Impact:</b><br>"
+                    f"• Fraud Caught: <b>{fraud_caught}/{total_fraud}</b><br>"
+                    f"• Fraud Missed: <b>{fraud_missed}</b><br>"
+                    f"• False Alarms: <b>{false_alarms}</b><br><br>"
+                    f"<b>🎯 What This Means:</b><br>"
+                    f"At this threshold, you'd catch <b>{tpr_val:.1%}</b> of fraud<br>"
+                    f"while generating <b>{fpr_val:.1%}</b> false positive rate"
+                )
+                roc_hover_texts.append(hover_text)
 
             fig.add_trace(go.Scatter(
                 x=fpr, y=tpr,
                 name=f'{name} (AUC = {roc_auc:.3f})',
-                line=dict(color=color, width=3)
+                line=dict(color=color, width=3),
+                customdata=roc_hover_texts,
+                hovertemplate='%{customdata}<extra></extra>'
             ))
 
         # Random baseline
         fig.add_trace(go.Scatter(
             x=[0, 1], y=[0, 1],
             name='Random Classifier',
-            line=dict(color='gray', width=2, dash='dash')
+            line=dict(color='gray', width=2, dash='dash'),
+            hovertemplate='<b>Random Baseline</b><br>AUC = 0.500<br>No better than guessing<extra></extra>'
         ))
 
         fig.update_layout(
@@ -678,24 +813,97 @@ def render_model_performance(features, colors):
         st.plotly_chart(fig, use_container_width=True, key="roc_curves")
 
     with col2:
-        # Precision-Recall Curves
+        # Enhanced Precision-Recall Curves with explainability
         fig = go.Figure()
 
         for model, name, color in [(rf, 'Random Forest', colors[2]),
                                      (gb, 'Gradient Boosting', colors[3])]:
             y_pred_proba = model.predict_proba(X_test)[:, 1]
-            precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+            precision, recall, thresholds = precision_recall_curve(y_test, y_pred_proba)
+
+            # Create detailed hover texts for PR curve points
+            pr_hover_texts = []
+            for i, (prec_val, rec_val) in enumerate(zip(precision, recall)):
+                # F1 Score calculation
+                if prec_val + rec_val > 0:
+                    f1 = 2 * (prec_val * rec_val) / (prec_val + rec_val)
+                else:
+                    f1 = 0
+
+                # Performance assessment
+                if f1 >= 0.90:
+                    f1_badge = "⭐ EXCELLENT"
+                    f1_color = "#10b981"
+                    f1_note = "Outstanding balance of precision and recall"
+                elif f1 >= 0.80:
+                    f1_badge = "✅ VERY GOOD"
+                    f1_color = "#3b82f6"
+                    f1_note = "Strong balanced performance"
+                elif f1 >= 0.70:
+                    f1_badge = "🟡 GOOD"
+                    f1_color = "#eab308"
+                    f1_note = "Acceptable balance"
+                else:
+                    f1_badge = "⚠️ POOR"
+                    f1_color = "#ef4444"
+                    f1_note = "Needs improvement"
+
+                # Operating point analysis
+                if prec_val >= 0.90 and rec_val >= 0.90:
+                    op_point = "🏆 IDEAL"
+                    op_note = "High precision AND high recall - best of both worlds"
+                elif prec_val >= 0.90:
+                    op_point = "🎯 HIGH PRECISION"
+                    op_note = "When we flag fraud, we're usually right"
+                elif rec_val >= 0.90:
+                    op_point = "✅ HIGH RECALL"
+                    op_note = "We catch most fraud cases"
+                else:
+                    op_point = "⚖️ BALANCED"
+                    op_note = "Trade-off between precision and recall"
+
+                # Calculate practical metrics
+                total_fraud = int(y_test.sum())
+                fraud_caught = int(rec_val * total_fraud)
+                fraud_missed = total_fraud - fraud_caught
+                # Precision = TP / (TP + FP), so FP = TP/precision - TP
+                if prec_val > 0:
+                    false_positives = int(fraud_caught / prec_val - fraud_caught)
+                else:
+                    false_positives = 0
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{name}</b><br><br>"
+                    f"<b style='color:{f1_color}'>{f1_badge}</b><br>"
+                    f"• F1 Score: <b>{f1:.3f}</b><br>"
+                    f"{f1_note}<br><br>"
+                    f"<b>📊 Metrics:</b><br>"
+                    f"• Precision: <b>{prec_val:.1%}</b><br>"
+                    f"• Recall: <b>{rec_val:.1%}</b><br><br>"
+                    f"<b>{op_point}</b><br>"
+                    f"{op_note}<br><br>"
+                    f"<b>💡 Practical Impact:</b><br>"
+                    f"• Fraud Caught: <b>{fraud_caught}/{total_fraud}</b><br>"
+                    f"• Fraud Missed: <b>{fraud_missed}</b><br>"
+                    f"• False Positives: <b>~{false_positives}</b><br><br>"
+                    f"<b>🎯 What This Means:</b><br>"
+                    f"Of all fraud flags, <b>{prec_val:.1%}</b> are real fraud<br>"
+                    f"We catch <b>{rec_val:.1%}</b> of all actual fraud cases"
+                )
+                pr_hover_texts.append(hover_text)
 
             fig.add_trace(go.Scatter(
                 x=recall, y=precision,
                 name=name,
-                line=dict(color=color, width=3)
+                line=dict(color=color, width=3),
+                customdata=pr_hover_texts,
+                hovertemplate='%{customdata}<extra></extra>'
             ))
 
         fig.update_layout(
             title="Precision-Recall Curves",
-            xaxis_title="Recall",
-            yaxis_title="Precision",
+            xaxis_title="Recall (Fraud Caught)",
+            yaxis_title="Precision (Accuracy of Flags)",
             height=400
         )
 
