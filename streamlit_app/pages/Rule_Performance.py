@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
 
 # Generate synthetic dataset for visualization
@@ -251,6 +252,61 @@ def render():
         use_container_width=True,
         hide_index=True
     )
+
+    st.markdown("---")
+
+    # AI-Powered Rule Optimization Recommendations
+    st.markdown("## 🤖 AI-Powered Rule Optimization")
+
+    opt_col1, opt_col2 = st.columns(2)
+
+    with opt_col1:
+        st.markdown("### 🎯 Top Performing Rules")
+
+        # Get top 3 performing rules
+        top_performers = rule_performance_df.nlargest(3, 'confirmed_fraud_count')
+
+        ai_engine = get_ai_engine()
+
+        for idx, row in top_performers.iterrows():
+            recommendation = ai_engine.get_rule_optimization(
+                rule_name=row['rule_name'],
+                performance={
+                    'precision': row['precision'],
+                    'frequency': row['trigger_frequency'],
+                    'fp_rate': row['false_positive_rate'],
+                    'catches': row['confirmed_fraud_count']
+                }
+            )
+
+            render_ai_insight(
+                title=f"{row['rule_name']}",
+                recommendation=recommendation,
+                icon="✅"
+            )
+
+    with opt_col2:
+        st.markdown("### ⚠️ Rules Needing Attention")
+
+        # Get bottom 3 rules by precision
+        needs_attention = rule_performance_df.nsmallest(3, 'precision')
+
+        for idx, row in needs_attention.iterrows():
+            recommendation = ai_engine.get_rule_optimization(
+                rule_name=row['rule_name'],
+                performance={
+                    'precision': row['precision'],
+                    'frequency': row['trigger_frequency'],
+                    'fp_rate': row['false_positive_rate'],
+                    'catches': row['confirmed_fraud_count']
+                }
+            )
+
+            render_ai_insight(
+                title=f"{row['rule_name']}",
+                recommendation=recommendation,
+                icon="🔧"
+            )
 
     st.markdown("---")
     st.caption(f"💡 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Enhanced analytics with synthetic correlation data")

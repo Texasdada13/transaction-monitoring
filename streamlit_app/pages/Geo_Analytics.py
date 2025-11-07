@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
 
 # Generate synthetic dataset for visualization
@@ -230,6 +231,76 @@ def render():
     )
 
     st.plotly_chart(fig_multi_anomaly, use_container_width=True)
+
+    st.markdown("---")
+
+    # AI Geographic Pattern Analysis
+    st.markdown("## 🤖 AI Geographic Risk Analysis")
+
+    geo_col1, geo_col2 = st.columns(2)
+
+    with geo_col1:
+        st.markdown("### 🗺️ Regional Fraud Trends")
+
+        # Get AI insights on geographic patterns
+        ai_engine = get_ai_engine()
+
+        top_states = usa_vpn_locations.nlargest(3, 'vpn_fraud_count')
+
+        for idx, row in top_states.iterrows():
+            geo_insight = ai_engine.get_pattern_insight(
+                pattern_type="geographic",
+                pattern_data={
+                    "location": row['state'],
+                    "vpn_count": int(row['vpn_fraud_count']),
+                    "intensity": float(row['intensity']),
+                    "trend": "increasing"
+                }
+            )
+
+            render_ai_insight(
+                title=f"{row['state']} - {row['vpn_fraud_count']} VPN Cases",
+                recommendation=geo_insight,
+                icon="🌍"
+            )
+
+    with geo_col2:
+        st.markdown("### 🕵️ Behavioral Anomaly Insights")
+
+        # Anomaly pattern insight
+        anomaly_insight = ai_engine.get_pattern_insight(
+            pattern_type="behavioral",
+            pattern_data={
+                "device_change": "100% different",
+                "location_shift": "6,147 miles",
+                "vpn_detected": True,
+                "typing_speed_variance": "66%",
+                "time_anomaly": "2 AM activity"
+            }
+        )
+
+        render_ai_insight(
+            title="Account Takeover Pattern Detected",
+            recommendation=anomaly_insight,
+            icon="🚨"
+        )
+
+        # Temporal pattern insight
+        temporal_insight = ai_engine.get_pattern_insight(
+            pattern_type="temporal",
+            pattern_data={
+                "peak_hours": "2-4 AM",
+                "normal_hours": "9 AM - 6 PM",
+                "fraud_spike": "250% above baseline",
+                "day_pattern": "Weekdays higher risk"
+            }
+        )
+
+        render_ai_insight(
+            title="Temporal Fraud Patterns",
+            recommendation=temporal_insight,
+            icon="⏰"
+        )
 
     st.markdown("---")
     st.caption(f"💡 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Geographic and behavioral analytics with synthetic data")

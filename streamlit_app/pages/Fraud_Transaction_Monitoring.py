@@ -14,6 +14,7 @@ from typing import Dict, Any, List
 
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
 
 def format_currency(amount):
@@ -286,6 +287,23 @@ def render_transaction_search():
                         st.markdown(f"**Type:** {tx.get('transaction_type', 'N/A')}")
                         st.markdown(f"**Counterparty:** {tx.get('counterparty_id', 'N/A')}")
                         st.markdown(f"**Timestamp:** {format_timestamp(tx.get('timestamp', ''))}")
+
+                    # AI Analysis Section
+                    st.markdown("---")
+                    st.markdown("#### 🤖 AI Analysis")
+
+                    ai_engine = get_ai_engine()
+                    tx_recommendation = ai_engine.get_risk_recommendation(
+                        risk_score=risk_score,
+                        amount=tx['amount'],
+                        context={
+                            'type': tx.get('transaction_type', 'Unknown'),
+                            'rules_triggered': tx.get('triggered_rules_count', 0),
+                            'decision': tx.get('decision', 'N/A')
+                        }
+                    )
+
+                    st.info(tx_recommendation)
 
                     # Action buttons
                     btn_col1, btn_col2, btn_col3 = st.columns(3)
