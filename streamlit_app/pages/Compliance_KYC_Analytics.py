@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.explainability import get_explainability_engine
 
 
 def load_compliance_data():
@@ -208,11 +209,67 @@ def render_analyst_retrospectives(data, colors):
         st.markdown("### Average Decision Time by Analyst")
         analyst_time = alerts_df.groupby('analyst_id')['time_to_decision_hours'].mean().sort_values()
 
+        # Enhanced hover texts for analyst performance
+        hover_texts = []
+        for analyst_id in analyst_time.index:
+            avg_time = analyst_time[analyst_id]
+            analyst_alerts = alerts_df[alerts_df['analyst_id'] == analyst_id]
+            total_cases = len(analyst_alerts)
+            fp_rate = (analyst_alerts['false_positive'].sum() / total_cases * 100) if total_cases > 0 else 0
+
+            # SLA thresholds (example)
+            sla_target = 24  # hours
+            sla_compliance = (analyst_alerts['time_to_decision_hours'] <= sla_target).mean() * 100
+
+            # Performance assessment
+            if avg_time <= 12:
+                performance = "⭐ EXCELLENT"
+                perf_color = "#10b981"
+                assessment = "Very fast decision-making"
+                note = "Top performer - consistently quick turnaround"
+            elif avg_time <= 24:
+                performance = "✅ GOOD"
+                perf_color = "#3b82f6"
+                assessment = "Meeting SLA targets"
+                note = "Good performance within acceptable timeframes"
+            elif avg_time <= 48:
+                performance = "🟡 ACCEPTABLE"
+                perf_color = "#f59e0b"
+                assessment = "Slightly above target but manageable"
+                note = "Monitor workload and provide support if needed"
+            else:
+                performance = "🔴 NEEDS IMPROVEMENT"
+                perf_color = "#ef4444"
+                assessment = "Significantly exceeding SLA targets"
+                note = "Requires attention - possible training or workload issues"
+
+            hover_text = (
+                f"<b style='font-size:14px'>Analyst {analyst_id}</b><br><br>"
+                f"<b style='color:{perf_color}'>{performance}</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 Performance Metrics:</b><br>"
+                f"• Avg Decision Time: <b>{avg_time:.1f} hours</b><br>"
+                f"• SLA Target: <b>{sla_target} hours</b><br>"
+                f"• SLA Compliance: <b>{sla_compliance:.1f}%</b><br>"
+                f"• Total Cases Handled: <b>{total_cases}</b><br>"
+                f"• False Positive Rate: <b>{fp_rate:.1f}%</b><br><br>"
+                f"<b>💡 Analysis:</b><br>"
+                f"{note}<br><br>"
+                f"<b>🎯 Quality vs Speed:</b><br>"
+                f"Fast: {avg_time:.1f}h avg | "
+                f"Accurate: {100-fp_rate:.1f}% precision<br><br>"
+                f"<b>📈 Productivity:</b><br>"
+                f"Handling <b>{total_cases}</b> cases with <b>{avg_time:.1f}h</b> avg time"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=analyst_time.values,
             y=analyst_time.index,
             orientation='h',
-            marker_color=colors['primary']
+            marker_color=colors['primary'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -648,12 +705,76 @@ def render_false_positive_analysis(data, colors):
         fp_by_type['fp_rate'] = (fp_by_type['false_positives'] / fp_by_type['total'] * 100).round(2)
         fp_by_type = fp_by_type.sort_values('fp_rate', ascending=False)
 
+        # Enhanced hover texts for FP rates
+        hover_texts = []
+        for alert_type in fp_by_type.index:
+            fp_rate = fp_by_type.loc[alert_type, 'fp_rate']
+            fp_count = int(fp_by_type.loc[alert_type, 'false_positives'])
+            total_count = int(fp_by_type.loc[alert_type, 'total'])
+            true_positive_count = total_count - fp_count
+            precision = (true_positive_count / total_count) * 100 if total_count > 0 else 0
+
+            # Assess FP rate severity
+            if fp_rate >= 50:
+                status = "🔴 CRITICAL"
+                status_color = "#dc2626"
+                assessment = "Unacceptably high false positive rate"
+                action = "URGENT: Review and retune this alert type immediately"
+                cost_impact = "Very High"
+            elif fp_rate >= 30:
+                status = "🟠 HIGH"
+                status_color = "#f59e0b"
+                assessment = "High false positive rate - significant analyst burden"
+                action = "HIGH PRIORITY: Schedule rule optimization"
+                cost_impact = "High"
+            elif fp_rate >= 15:
+                status = "🟡 MODERATE"
+                status_color = "#eab308"
+                assessment = "Moderate false positives - room for improvement"
+                action = "MONITOR: Consider threshold adjustments"
+                cost_impact = "Medium"
+            else:
+                status = "🟢 ACCEPTABLE"
+                status_color = "#10b981"
+                assessment = "Low false positive rate - performing well"
+                action = "MAINTAIN: Continue current configuration"
+                cost_impact = "Low"
+
+            # Estimate analyst time waste
+            avg_time_per_alert = 2  # hours
+            wasted_hours = fp_count * avg_time_per_alert
+            cost_per_hour = 50  # dollars
+            wasted_cost = wasted_hours * cost_per_hour
+
+            hover_text = (
+                f"<b style='font-size:14px'>{alert_type}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 False Positive Metrics:</b><br>"
+                f"• FP Rate: <b>{fp_rate:.1f}%</b><br>"
+                f"• False Positives: <b>{fp_count}</b> of <b>{total_count}</b><br>"
+                f"• True Positives: <b>{true_positive_count}</b><br>"
+                f"• Precision: <b>{precision:.1f}%</b><br><br>"
+                f"<b>💰 Business Impact:</b><br>"
+                f"• Wasted Analyst Time: <b>~{wasted_hours:.0f} hours</b><br>"
+                f"• Estimated Cost: <b>${wasted_cost:,}</b><br>"
+                f"• Cost Impact Level: <b>{cost_impact}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"Out of every 100 '{alert_type}' alerts, {fp_rate:.0f} are false<br>"
+                f"alarms that waste analyst time without catching real fraud.<br><br>"
+                f"<b>🎯 Recommended Action:</b><br>"
+                f"{action}"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=fp_by_type.index,
             y=fp_by_type['fp_rate'],
             marker_color=colors['danger'],
             text=fp_by_type['fp_rate'].apply(lambda x: f"{x:.1f}%"),
-            textposition='outside'
+            textposition='outside',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
