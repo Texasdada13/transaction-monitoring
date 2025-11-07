@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
+from streamlit_app.explainability import get_explainability_engine
 
 
 # Complete fraud scenarios dataset (all 13 scenarios)
@@ -670,6 +671,82 @@ def render():
     rule_df = pd.DataFrame(scenario['triggered_rules'])
     rule_df = rule_df.sort_values('weight', ascending=True)
 
+    # Enhanced hover texts with explainability
+    rule_hover_texts = []
+    total_weight = rule_df['weight'].sum()
+
+    for _, row in rule_df.iterrows():
+        rule_name = row['name']
+        weight = row['weight']
+        detail = row['detail']
+        severity = row['severity']
+
+        # Calculate contribution percentage
+        contribution_pct = (weight / total_weight) * 100 if total_weight > 0 else 0
+
+        # Severity assessment
+        severity_info = {
+            'critical': {
+                'badge': '🔴 CRITICAL',
+                'color': '#dc2626',
+                'impact': 'Major fraud indicator - Extremely suspicious behavior',
+                'action': 'This alone warrants investigation'
+            },
+            'high': {
+                'badge': '🟠 HIGH',
+                'color': '#f59e0b',
+                'impact': 'Strong fraud signal - Significant risk factor',
+                'action': 'Important contributor to overall risk'
+            },
+            'medium': {
+                'badge': '🟡 MODERATE',
+                'color': '#eab308',
+                'impact': 'Notable concern - Adds to risk profile',
+                'action': 'Supporting evidence for fraud detection'
+            },
+            'low': {
+                'badge': '🔵 LOW',
+                'color': '#3b82f6',
+                'impact': 'Minor flag - Supplementary indicator',
+                'action': 'Minimal contribution to risk score'
+            }
+        }
+
+        sev_info = severity_info.get(severity, severity_info['medium'])
+
+        # Impact explanation
+        if weight >= 30:
+            impact_level = "DOMINANT FACTOR"
+            impact_note = f"This rule alone accounts for {contribution_pct:.0f}% of the risk score"
+        elif weight >= 20:
+            impact_level = "MAJOR CONTRIBUTOR"
+            impact_note = f"Significant {contribution_pct:.0f}% contribution to total risk"
+        elif weight >= 10:
+            impact_level = "MODERATE IMPACT"
+            impact_note = f"Notable {contribution_pct:.0f}% of the risk assessment"
+        else:
+            impact_level = "SUPPORTING EVIDENCE"
+            impact_note = f"Adds {contribution_pct:.0f}% to overall risk picture"
+
+        hover_text = (
+            f"<b style='font-size:14px'>{rule_name}</b><br><br>"
+            f"<b style='color:{sev_info['color']}'>{sev_info['badge']} SEVERITY</b><br>"
+            f"{sev_info['impact']}<br><br>"
+            f"<b>📊 Risk Contribution:</b><br>"
+            f"• Risk Points: <b>+{weight}</b><br>"
+            f"• Percentage of Total: <b>{contribution_pct:.1f}%</b><br>"
+            f"• Impact Level: <b>{impact_level}</b><br><br>"
+            f"<b>🔍 Detection Detail:</b><br>"
+            f"{detail}<br><br>"
+            f"<b>💡 What This Means:</b><br>"
+            f"{impact_note}<br><br>"
+            f"<b>🎯 Analysis Impact:</b><br>"
+            f"{sev_info['action']}<br><br>"
+            f"<b>📈 Cumulative Effect:</b><br>"
+            f"Without this rule, score would be <b>{scenario['risk_score'] - weight}</b> instead of <b>{scenario['risk_score']}</b>"
+        )
+        rule_hover_texts.append(hover_text)
+
     fig_rules = go.Figure()
     fig_rules.add_trace(go.Bar(
         y=rule_df['name'],
@@ -683,8 +760,8 @@ def render():
         ),
         text=rule_df['weight'],
         textposition='outside',
-        hovertemplate='<b>%{y}</b><br>Weight: +%{x}<br>%{customdata}<extra></extra>',
-        customdata=rule_df['detail']
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=rule_hover_texts
     ))
 
     fig_rules.update_layout(
@@ -734,10 +811,36 @@ def render():
         # Scenario 1: Transaction Amount Timeline
         if 'amounts' in viz_data and 'dates' in viz_data:
             fig_amount = go.Figure()
-            
+
             amounts = viz_data['amounts']
             dates = viz_data['dates']
-            
+            avg = sum(amounts[:-1]) / len(amounts[:-1])
+
+            # Enhanced hover for normal transactions
+            normal_hover_texts = []
+            for date, amount in zip(dates[:-1], amounts[:-1]):
+                deviation_pct = ((amount - avg) / avg * 100) if avg > 0 else 0
+
+                if abs(deviation_pct) < 20:
+                    status = "🟢 Normal"
+                    assessment = "Within expected range"
+                elif abs(deviation_pct) < 50:
+                    status = "🟡 Slight Variation"
+                    assessment = "Minor deviation from average"
+                else:
+                    status = "🟠 Notable"
+                    assessment = "Larger than typical but not alarming"
+
+                hover_text = (
+                    f"<b>Date:</b> {date}<br>"
+                    f"<b>Amount:</b> ${amount}<br><br>"
+                    f"<b>Status:</b> {status}<br>"
+                    f"<b>vs Average:</b> ${avg:.0f}<br>"
+                    f"<b>Deviation:</b> {deviation_pct:+.1f}%<br><br>"
+                    f"<b>💡 Assessment:</b> {assessment}"
+                )
+                normal_hover_texts.append(hover_text)
+
             # Normal transactions
             fig_amount.add_trace(go.Scatter(
                 x=dates[:-1],
@@ -745,31 +848,61 @@ def render():
                 mode='lines+markers',
                 name='Normal Activity',
                 line=dict(color='#10b981', width=2),
-                marker=dict(size=8)
+                marker=dict(size=8),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=normal_hover_texts
             ))
-            
+
+            # Enhanced hover for flagged transaction
+            flagged_amount = amounts[-1]
+            flagged_date = dates[-1]
+            increase_pct = ((flagged_amount - avg) / avg * 100) if avg > 0 else 0
+            std_deviations = (flagged_amount - avg) / (sum([(x-avg)**2 for x in amounts[:-1]]) / len(amounts[:-1]))**0.5
+
+            flagged_hover = (
+                f"<b style='font-size:14px; color:#dc2626'>🚨 FLAGGED TRANSACTION</b><br><br>"
+                f"<b>Date:</b> {flagged_date}<br>"
+                f"<b>Amount:</b> <b style='color:#dc2626'>${flagged_amount:,}</b><br><br>"
+                f"<b>📊 Anomaly Metrics:</b><br>"
+                f"• Average Transaction: <b>${avg:.0f}</b><br>"
+                f"• This Transaction: <b>${flagged_amount:,}</b><br>"
+                f"• Increase: <b>+{increase_pct:.0f}%</b><br>"
+                f"• Standard Deviations: <b>{std_deviations:.1f}σ</b><br><br>"
+                f"<b>🔴 Why This Was Flagged:</b><br>"
+                f"This transaction is <b>{flagged_amount/avg:.1f}x</b> larger than normal<br>"
+                f"activity, representing a <b>{increase_pct:.0f}%</b> spike that is<br>"
+                f"<b>{std_deviations:.0f}</b> standard deviations from typical behavior.<br><br>"
+                f"<b>🎯 Risk Assessment:</b><br>"
+                f"Extreme deviation from established spending pattern.<br>"
+                f"This level of anomaly warrants immediate investigation.<br><br>"
+                f"<b>💡 Context:</b><br>"
+                f"Sudden large transfers from dormant or low-activity<br>"
+                f"accounts are classic indicators of account takeover."
+            )
+
             # Flagged transaction
             fig_amount.add_trace(go.Scatter(
                 x=[dates[-1]],
                 y=[amounts[-1]],
                 mode='markers',
                 name='Flagged Transaction',
-                marker=dict(size=20, color='#ef4444', symbol='star')
+                marker=dict(size=20, color='#ef4444', symbol='star'),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=[flagged_hover]
             ))
-            
+
             # Average line
-            avg = sum(amounts[:-1]) / len(amounts[:-1])
-            fig_amount.add_hline(y=avg, line_dash="dash", line_color="gray", 
+            fig_amount.add_hline(y=avg, line_dash="dash", line_color="gray",
                                  annotation_text=f"Average: ${avg:.0f}")
-            
+
             fig_amount.update_layout(
                 title="Transaction Amount Over Time",
                 xaxis_title="Date",
                 yaxis_title="Amount ($)",
                 height=400,
-                hovermode='x unified'
+                hovermode='closest'
             )
-            
+
             st.plotly_chart(fig_amount, use_container_width=True)
         
         # Scenario 2: Testing Pattern
