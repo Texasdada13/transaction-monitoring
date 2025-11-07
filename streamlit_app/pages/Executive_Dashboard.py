@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
+from streamlit_app.explainability import get_explainability_engine
 
 
 # Generate synthetic dataset for visualization
@@ -283,6 +284,49 @@ def render():
         st.subheader("🤖 Detection Attribution Analysis")
         st.caption("Shows which rules catch the most confirmed fraud")
 
+        # Enhanced treemap hover with explainability
+        treemap_hover_texts = []
+        total_fraud = rule_performance_df['confirmed_fraud_count'].sum()
+
+        for _, row in rule_performance_df.iterrows():
+            fraud_count = row['confirmed_fraud_count']
+            percentage = (fraud_count / total_fraud * 100)
+            precision = row['precision']
+            frequency = row['trigger_frequency']
+
+            # Estimate financial impact
+            avg_fraud_value = 12400  # Average fraud transaction value
+            prevented_loss = fraud_count * avg_fraud_value
+
+            # Performance badge
+            if fraud_count > 150:
+                badge = "🏆 TOP PERFORMER"
+                impact = "Major fraud prevention contributor"
+            elif fraud_count > 100:
+                badge = "⭐ HIGH IMPACT"
+                impact = "Significant fraud detection"
+            elif fraud_count > 50:
+                badge = "✅ SOLID"
+                impact = "Reliable fraud catcher"
+            else:
+                badge = "📊 MODERATE"
+                impact = "Supplementary detection"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{row['rule_name']}</b><br><br>"
+                f"<b style='color:#dc2626'>{badge}</b><br><br>"
+                f"<b>📊 Detection Stats:</b><br>"
+                f"• Fraud Caught: <b>{fraud_count}</b> cases<br>"
+                f"• Share of Total: <b>{percentage:.1f}%</b><br>"
+                f"• Precision: <b>{precision*100:.1f}%</b><br>"
+                f"• Trigger Frequency: <b>{frequency}</b><br><br>"
+                f"<b>💰 Business Impact:</b><br>"
+                f"• Est. Losses Prevented: <b>${prevented_loss:,}</b><br>"
+                f"• Avg per Case: <b>${avg_fraud_value:,}</b><br><br>"
+                f"<b>💡 Insight:</b> {impact}"
+            )
+            treemap_hover_texts.append(hover_text)
+
         fig_treemap = go.Figure(go.Treemap(
             labels=rule_performance_df['rule_name'],
             parents=[''] * len(rule_performance_df),
@@ -292,7 +336,8 @@ def render():
                 colorscale='Reds',
                 cmid=rule_performance_df['confirmed_fraud_count'].mean()
             ),
-            hovertemplate='<b>%{label}</b><br>Fraud Caught: %{value}<br>Percentage: %{percentParent}<extra></extra>'
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=treemap_hover_texts
         ))
 
         fig_treemap.update_layout(height=500)
