@@ -908,17 +908,47 @@ def render():
         # Scenario 2: Testing Pattern
         if 'times' in viz_data and 'types' in viz_data:
             fig_test = go.Figure()
-            
+
             colors = ['#fbbf24' if t == 'test' else '#ef4444' for t in viz_data['types']]
-            
+
+            # Enhanced hover for testing pattern
+            test_hover_texts = []
+            for idx, (time, amount, tx_type) in enumerate(zip(viz_data['times'], viz_data['amounts'], viz_data['types'])):
+                if tx_type == 'test':
+                    status = "🟡 TEST TRANSACTION"
+                    status_color = "#f59e0b"
+                    insight = "Small transaction testing system limits"
+                    action = "Fraudster validating stolen credentials"
+                else:
+                    status = "🔴 EXPLOITATION"
+                    status_color = "#ef4444"
+                    insight = "Large fraudulent transaction after successful test"
+                    action = "Actual fraud execution - stolen funds"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{time}</b><br><br>"
+                    f"<b style='color:{status_color}'>{status}</b><br><br>"
+                    f"<b>📊 Transaction Details:</b><br>"
+                    f"• Amount: <b>${amount}</b><br>"
+                    f"• Type: <b>{tx_type.upper()}</b><br>"
+                    f"• Sequence: <b>#{idx+1}</b> of {len(viz_data['times'])}<br><br>"
+                    f"<b>💡 Fraud Pattern:</b><br>"
+                    f"{insight}<br><br>"
+                    f"<b>🎯 Assessment:</b><br>"
+                    f"{action}"
+                )
+                test_hover_texts.append(hover_text)
+
             fig_test.add_trace(go.Bar(
                 x=viz_data['times'],
                 y=viz_data['amounts'],
                 marker=dict(color=colors),
                 text=[f"${a}" for a in viz_data['amounts']],
-                textposition='outside'
+                textposition='outside',
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=test_hover_texts
             ))
-            
+
             fig_test.update_layout(
                 title="Testing Pattern: Small Tests → Large Exploitation",
                 xaxis_title="Time",
@@ -926,7 +956,7 @@ def render():
                 yaxis_type="log",
                 height=400
             )
-            
+
             st.plotly_chart(fig_test, use_container_width=True)
         
         # Scenario 4: Money Mule Flow
