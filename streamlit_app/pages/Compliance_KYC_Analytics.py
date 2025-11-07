@@ -531,9 +531,14 @@ def render_risk_evolution(data, colors):
     # Overall risk evolution metrics
     col1, col2, col3 = st.columns(3)
 
+    # Map risk levels to numeric for comparison
+    risk_map = {'low': 1, 'medium': 2, 'high': 3}
+    customers_df['initial_numeric'] = customers_df['risk_level_initial'].map(risk_map)
+    customers_df['current_numeric'] = customers_df['current_risk_level'].map(risk_map)
+
     with col1:
         risk_increased = customers_df[
-            customers_df['risk_level_initial'] < customers_df['current_risk_level'].map({'low': 1, 'medium': 2, 'high': 3})
+            customers_df['initial_numeric'] < customers_df['current_numeric']
         ]
         st.metric("Risk Increased", f"{len(risk_increased)}")
 
@@ -543,16 +548,12 @@ def render_risk_evolution(data, colors):
 
     with col3:
         risk_decreased = customers_df[
-            customers_df['risk_level_initial'] > customers_df['current_risk_level'].map({'low': 1, 'medium': 2, 'high': 3})
+            customers_df['initial_numeric'] > customers_df['current_numeric']
         ]
         st.metric("Risk Decreased", f"{len(risk_decreased)}")
 
     # Risk transition matrix
     st.markdown("### Risk Level Transition Matrix")
-
-    risk_map = {'low': 1, 'medium': 2, 'high': 3}
-    customers_df['initial_numeric'] = customers_df['risk_level_initial'].map(risk_map)
-    customers_df['current_numeric'] = customers_df['current_risk_level'].map(risk_map)
 
     transition_matrix = pd.crosstab(
         customers_df['risk_level_initial'],
