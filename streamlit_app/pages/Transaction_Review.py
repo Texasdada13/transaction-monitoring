@@ -21,14 +21,21 @@ from streamlit_app.api_client import get_api_client
 
 def render_workflow_diagram():
     """Render the transaction processing workflow diagram"""
-    st.markdown("### 📊 Transaction Processing Workflow")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;">
+        <h3 style="color: white; margin: 0;">📊 Transaction Processing Workflow</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Create a Sankey diagram to show the workflow
+    # Create a Sankey diagram to show the workflow - Blue theme
     fig = go.Figure(data=[go.Sankey(
         node = dict(
             pad = 15,
             thickness = 20,
-            line = dict(color = "black", width = 0.5),
+            line = dict(color = "white", width = 0.5),
             label = [
                 "Incoming Transaction",  # 0
                 "Rule Engine Check",  # 1
@@ -39,7 +46,7 @@ def render_workflow_diagram():
                 "High Priority Review (> 0.6)",  # 6
                 "Critical Review (> 0.8)"  # 7
             ],
-            color = ["#4472C4", "#70AD47", "#FFC000", "#FF6B6B", "#28A745", "#FFC107", "#FF5722", "#DC3545"],
+            color = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa", "#28A745", "#FFC107", "#FF5722", "#DC3545"],
             x = [0.1, 0.3, 0.5, 0.7, 0.95, 0.95, 0.95, 0.95],
             y = [0.5, 0.5, 0.5, 0.5, 0.2, 0.45, 0.7, 0.9]
         ),
@@ -47,7 +54,7 @@ def render_workflow_diagram():
             source = [0, 1, 2, 3, 3, 3, 3],
             target = [1, 2, 3, 4, 5, 6, 7],
             value = [100, 100, 100, 30, 30, 30, 10],
-            color = ["#E0E0E0", "#E0E0E0", "#E0E0E0", "#28A745", "#FFC107", "#FF5722", "#DC3545"]
+            color = ["#93c5fd", "#93c5fd", "#93c5fd", "#28A745", "#FFC107", "#FF5722", "#DC3545"]
         )
     )])
 
@@ -96,7 +103,14 @@ def render_workflow_diagram():
 
 def render_transaction_card(transaction: Dict[str, Any]):
     """Render transaction details card"""
-    st.markdown("### 💳 Transaction Details")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;">
+        <h3 style="color: white; margin: 0;">💳 Transaction Details</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -120,7 +134,14 @@ def render_transaction_card(transaction: Dict[str, Any]):
 
 def render_rule_evaluation(assessment: Dict[str, Any], all_rules: List[Dict[str, Any]]):
     """Render detailed rule evaluation showing all rules checked"""
-    st.markdown("### 🔍 Rule Evaluation Results")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;">
+        <h3 style="color: white; margin: 0;">🔍 Rule Evaluation Results</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     triggered_rules = assessment.get('triggered_rules', {})
 
@@ -216,7 +237,14 @@ def render_rule_evaluation(assessment: Dict[str, Any], all_rules: List[Dict[str,
 
 def render_risk_score_calculation(assessment: Dict[str, Any], all_rules: List[Dict[str, Any]]):
     """Render visual risk score calculation breakdown"""
-    st.markdown("### 📈 Risk Score Calculation")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;">
+        <h3 style="color: white; margin: 0;">📈 Risk Score Calculation</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     triggered_rules = assessment.get('triggered_rules', {})
     risk_score = assessment['risk_score']
@@ -313,7 +341,14 @@ def render_risk_score_calculation(assessment: Dict[str, Any], all_rules: List[Di
 
 def render_threshold_comparison(assessment: Dict[str, Any]):
     """Render threshold comparison visualization"""
-    st.markdown("### 🎯 Threshold Comparison & Decision Logic")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;">
+        <h3 style="color: white; margin: 0;">🎯 Threshold Comparison & Decision Logic</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     risk_score = assessment['risk_score']
     decision = assessment['decision']
@@ -428,7 +463,14 @@ def render_threshold_comparison(assessment: Dict[str, Any]):
 
 def render_decision_explanation(assessment: Dict[str, Any]):
     """Render detailed explanation of why decision was made"""
-    st.markdown("### 💡 Decision Explanation")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;">
+        <h3 style="color: white; margin: 0;">💡 Decision Explanation</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     risk_score = assessment['risk_score']
     decision = assessment['decision']
@@ -542,7 +584,14 @@ def get_risk_color(risk_score):
 
 def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
     """Render comprehensive audit trail with timeline and event history"""
-    st.markdown("### 📜 Audit Trail & Decision History")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 15px;
+                border-radius: 10px;
+                margin-bottom: 20px;">
+        <h3 style="color: white; margin: 0;">📜 Audit Trail & Decision History</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Generate mock audit events - in production, fetch from database
     base_time = datetime.fromisoformat(transaction['timestamp'].replace('Z', '+00:00'))
@@ -670,14 +719,14 @@ def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
     # Create timeline chart
     fig = go.Figure()
 
-    # Color mapping for event types
+    # Color mapping for event types - Blue theme
     color_map = {
-        "system": "#4472C4",
-        "rule_trigger": "#FF6B6B",
-        "decision": "#FFC107",
-        "analyst_action": "#70AD47",
-        "note": "#9966CC",
-        "approval": "#28A745"
+        "system": "#1e3a8a",
+        "rule_trigger": "#3b82f6",
+        "decision": "#60a5fa",
+        "analyst_action": "#93c5fd",
+        "note": "#667eea",
+        "approval": "#2563eb"
     }
 
     for event in audit_events:
@@ -861,10 +910,19 @@ def render():
 
     st.set_page_config(page_title="Transaction Review Detail", page_icon="🔍", layout="wide")
 
-    # Header
-    st.markdown("# 🔍 Transaction Review Detail")
-    st.markdown("**Comprehensive Analysis: Auto-Clear vs Manual Review Decision Process**")
-    st.divider()
+    # Header with blue theme
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                padding: 25px;
+                border-radius: 15px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <h1 style="color: white; margin: 0;">🔍 Transaction Review Detail</h1>
+        <p style="color: #e0e7ff; font-size: 18px; margin: 10px 0 0 0;">
+            <strong>Comprehensive Analysis: Auto-Clear vs Manual Review Decision Process</strong>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Transaction selector
     col1, col2 = st.columns([3, 1])
@@ -946,7 +1004,14 @@ def render():
 
         # Action buttons
         st.divider()
-        st.markdown("### 🎬 Review Actions")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                    padding: 15px;
+                    border-radius: 10px;
+                    margin-bottom: 20px;">
+            <h3 style="color: white; margin: 0;">🎬 Review Actions</h3>
+        </div>
+        """, unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
@@ -970,7 +1035,14 @@ def render():
 
         # Show example
         st.markdown("---")
-        st.markdown("### 📚 Example Use Cases")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+                    padding: 15px;
+                    border-radius: 10px;
+                    margin-bottom: 20px;">
+            <h3 style="color: white; margin: 0;">📚 Example Use Cases</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
         col1, col2, col3 = st.columns(3)
 
