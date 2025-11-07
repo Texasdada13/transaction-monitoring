@@ -707,20 +707,75 @@ def render_audit_trail(data, colors):
 
     audit_daily = filtered_audit.groupby(filtered_audit['timestamp'].dt.date).size()
 
+    # Calculate statistics for context
+    mean_entries = audit_daily.mean()
+    median_entries = audit_daily.median()
+    max_entries = audit_daily.max()
+
+    # Enhanced hover texts for audit timeline
+    hover_texts = []
+    for date, count in zip(audit_daily.index, audit_daily.values):
+        # Assess activity level
+        if count > mean_entries * 1.5:
+            activity = "🔴 HIGH ACTIVITY"
+            activity_color = "#ef4444"
+            insight = "Significantly above average audit volume"
+            recommendation = "Review for unusual activity patterns or system events"
+        elif count > mean_entries:
+            activity = "🟡 ABOVE AVERAGE"
+            activity_color = "#f59e0b"
+            insight = "Elevated audit activity"
+            recommendation = "Normal elevated activity - monitor for trends"
+        elif count > mean_entries * 0.5:
+            activity = "✅ NORMAL"
+            activity_color = "#10b981"
+            insight = "Standard audit activity level"
+            recommendation = "Activity within expected range"
+        else:
+            activity = "🟢 LOW ACTIVITY"
+            activity_color = "#22c55e"
+            insight = "Below average audit volume"
+            recommendation = "Typical for low-activity periods"
+
+        # Get day-specific breakdown
+        day_data = filtered_audit[filtered_audit['timestamp'].dt.date == date]
+        top_actions = day_data['audit_action'].value_counts().head(3)
+        actions_summary = ", ".join([f"{action} ({cnt})" for action, cnt in top_actions.items()])
+
+        hover_text = (
+            f"<b style='font-size:14px'>Audit Activity: {date}</b><br><br>"
+            f"<b style='color:{activity_color}'>{activity}</b><br><br>"
+            f"<b>📊 Daily Metrics:</b><br>"
+            f"• Total Entries: <b>{count}</b><br>"
+            f"• Daily Average: <b>{mean_entries:.1f}</b><br>"
+            f"• vs Average: <b>{((count/mean_entries - 1)*100):+.0f}%</b><br>"
+            f"• Daily Max: <b>{max_entries}</b><br><br>"
+            f"<b>🎯 Top Actions:</b><br>"
+            f"{actions_summary}<br><br>"
+            f"<b>💡 Assessment:</b><br>"
+            f"{insight}<br><br>"
+            f"<b>🔍 Recommendation:</b><br>"
+            f"{recommendation}"
+        )
+        hover_texts.append(hover_text)
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=audit_daily.index,
         y=audit_daily.values,
         mode='lines+markers',
         fill='tozeroy',
-        marker_color=colors['primary']
+        marker_color=colors['primary'],
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=hover_texts
     ))
 
     fig.update_layout(
         height=300,
         xaxis_title="Date",
         yaxis_title="Audit Entries",
-        showlegend=False
+        showlegend=False,
+        title=f"Audit Activity (Avg: {mean_entries:.0f} entries/day)"
     )
 
     st.plotly_chart(fig, use_container_width=True, key="audit_timeline")
@@ -789,12 +844,67 @@ def render_segment_benchmarking(data, colors):
         risk_by_segment = customers_df.groupby(['segment', 'current_risk_level']).size().unstack(fill_value=0)
 
         fig = go.Figure()
+
+        risk_colors = {'low': '#10b981', 'medium': '#f59e0b', 'high': '#ef4444'}
+
         for risk_level in ['low', 'medium', 'high']:
             if risk_level in risk_by_segment.columns:
+                # Enhanced hover texts for risk distribution
+                hover_texts = []
+                for segment in risk_by_segment.index:
+                    count = risk_by_segment.loc[segment, risk_level]
+                    total_segment = risk_by_segment.loc[segment].sum()
+                    pct_of_segment = (count / total_segment * 100) if total_segment > 0 else 0
+
+                    # Assess risk concentration
+                    if risk_level == 'high':
+                        if pct_of_segment > 20:
+                            status = "🔴 HIGH CONCENTRATION"
+                            status_color = "#ef4444"
+                            insight = "Significant high-risk customer concentration"
+                            recommendation = "Enhanced monitoring and due diligence required"
+                        elif pct_of_segment > 10:
+                            status = "⚠️ ELEVATED"
+                            status_color = "#f59e0b"
+                            insight = "Moderate high-risk concentration"
+                            recommendation = "Regular monitoring and periodic reviews"
+                        else:
+                            status = "✅ NORMAL"
+                            status_color = "#10b981"
+                            insight = "Expected high-risk proportion"
+                            recommendation = "Continue standard monitoring"
+                    elif risk_level == 'medium':
+                        insight = "Medium-risk customers requiring periodic review"
+                        status = "🟡 MEDIUM RISK"
+                        status_color = "#f59e0b"
+                        recommendation = "Quarterly risk assessments recommended"
+                    else:  # low
+                        insight = "Low-risk customers with minimal monitoring"
+                        status = "✅ LOW RISK"
+                        status_color = "#10b981"
+                        recommendation = "Annual reviews sufficient"
+
+                    hover_text = (
+                        f"<b style='font-size:14px'>{segment} - {risk_level.capitalize()} Risk</b><br><br>"
+                        f"<b style='color:{status_color}'>{status}</b><br><br>"
+                        f"<b>📊 Risk Metrics:</b><br>"
+                        f"• Customer Count: <b>{count}</b><br>"
+                        f"• % of Segment: <b>{pct_of_segment:.1f}%</b><br>"
+                        f"• Total in Segment: <b>{total_segment}</b><br><br>"
+                        f"<b>💡 Assessment:</b><br>"
+                        f"{insight}<br><br>"
+                        f"<b>🎯 Recommendation:</b><br>"
+                        f"{recommendation}"
+                    )
+                    hover_texts.append(hover_text)
+
                 fig.add_trace(go.Bar(
                     name=risk_level.capitalize(),
                     x=risk_by_segment.index,
-                    y=risk_by_segment[risk_level]
+                    y=risk_by_segment[risk_level],
+                    marker_color=risk_colors.get(risk_level, '#3b82f6'),
+                    hovertemplate='%{customdata}<extra></extra>',
+                    customdata=hover_texts
                 ))
 
         fig.update_layout(
@@ -810,11 +920,62 @@ def render_segment_benchmarking(data, colors):
         st.markdown("### Transaction Volume by Segment")
 
         trans_by_segment = trans_with_segment.groupby('segment').size()
+        total_transactions = trans_by_segment.sum()
+
+        # Enhanced hover texts for transaction volume
+        hover_texts = []
+        for segment, count in trans_by_segment.items():
+            pct_of_total = (count / total_transactions * 100) if total_transactions > 0 else 0
+
+            # Get segment-specific metrics
+            segment_data = trans_with_segment[trans_with_segment['segment'] == segment]
+            avg_amount = segment_data['amount'].mean() if 'amount' in segment_data.columns else 0
+            high_risk_trans = segment_data[segment_data['current_risk_level'] == 'high']
+            high_risk_pct = (len(high_risk_trans) / len(segment_data) * 100) if len(segment_data) > 0 else 0
+
+            # Assess volume
+            if pct_of_total > 50:
+                status = "🔵 DOMINANT SEGMENT"
+                status_color = "#3b82f6"
+                insight = "Majority of transaction volume"
+                recommendation = "Ensure adequate monitoring resources allocated"
+            elif pct_of_total > 30:
+                status = "✅ HIGH VOLUME"
+                status_color = "#10b981"
+                insight = "Significant transaction activity"
+                recommendation = "Standard monitoring protocols"
+            elif pct_of_total > 15:
+                status = "🟡 MODERATE VOLUME"
+                status_color = "#f59e0b"
+                insight = "Moderate transaction activity"
+                recommendation = "Balanced monitoring approach"
+            else:
+                status = "🟢 LOW VOLUME"
+                status_color = "#22c55e"
+                insight = "Lower transaction activity"
+                recommendation = "Risk-based monitoring sufficient"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{segment} Segment</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Volume Metrics:</b><br>"
+                f"• Transaction Count: <b>{count:,}</b><br>"
+                f"• % of Total: <b>{pct_of_total:.1f}%</b><br>"
+                f"• Avg Amount: <b>${avg_amount:,.2f}</b><br>"
+                f"• High-Risk Trans: <b>{high_risk_pct:.1f}%</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>🎯 Recommendation:</b><br>"
+                f"{recommendation}"
+            )
+            hover_texts.append(hover_text)
 
         fig = go.Figure(go.Bar(
             x=trans_by_segment.index,
             y=trans_by_segment.values,
-            marker_color=colors['primary']
+            marker_color=colors['primary'],
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
