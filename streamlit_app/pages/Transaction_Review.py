@@ -19,6 +19,7 @@ from typing import Dict, Any, List
 
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import get_chart_colors
+from streamlit_app.explainability import get_explainability_engine
 
 
 def render_workflow_diagram():
@@ -272,6 +273,52 @@ def render_risk_score_calculation(assessment: Dict[str, Any], all_rules: List[Di
             sorted_data = sorted(zip(rule_names, weights), key=lambda x: x[1], reverse=True)
             rule_names, weights = zip(*sorted_data) if sorted_data else ([], [])
 
+            # Enhanced waterfall hover with explainability
+            waterfall_hover_texts = []
+            cumulative_score = 0
+            for rule_name, weight in zip(rule_names, weights):
+                cumulative_score += weight
+                contribution_pct = (weight / risk_score * 100) if risk_score > 0 else 0
+
+                # Assess impact
+                if weight > 0.15:
+                    impact = "🔴 MAJOR CONTRIBUTOR"
+                    note = "This rule significantly raises the risk score"
+                elif weight > 0.08:
+                    impact = "🟠 HIGH IMPACT"
+                    note = "Notable contribution to overall risk"
+                elif weight > 0.04:
+                    impact = "🟡 MODERATE"
+                    note = "Meaningful but not dominant factor"
+                else:
+                    impact = "🟢 MINOR"
+                    note = "Small incremental contribution"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{rule_name}</b><br><br>"
+                    f"<b>📊 Contribution:</b><br>"
+                    f"• Weight Added: <b>+{weight:.3f}</b><br>"
+                    f"• Share of Total: <b>{contribution_pct:.1f}%</b><br>"
+                    f"• Cumulative Score: <b>{cumulative_score:.3f}</b><br><br>"
+                    f"<b style='color:#dc2626'>{impact}</b><br>"
+                    f"<b>💡 Meaning:</b> {note}<br><br>"
+                    f"<b>🎯 Impact:</b> Without this rule, score would be {cumulative_score - weight:.3f}"
+                )
+                waterfall_hover_texts.append(hover_text)
+
+            # Add final score hover
+            final_hover = (
+                f"<b style='font-size:14px'>Final Risk Score</b><br><br>"
+                f"<b>📊 Score:</b> <b>{risk_score:.3f}</b><br><br>"
+                f"<b>🎯 Decision:</b><br>"
+                f"{'🔴 HIGH RISK - Manual Review Required' if risk_score >= 0.8 else '🟠 MEDIUM RISK - Review Needed' if risk_score >= 0.6 else '🟡 LOW RISK - Quick Check' if risk_score >= 0.3 else '🟢 AUTO-CLEARED - Low Risk'}<br><br>"
+                f"<b>📊 Composition:</b><br>"
+                f"• Number of Rules: <b>{len(weights)}</b><br>"
+                f"• Total Weight: <b>{sum(weights):.3f}</b><br>"
+                f"• Avg per Rule: <b>{sum(weights)/len(weights):.3f}</b>" if weights else ""
+            )
+            waterfall_hover_texts.append(final_hover)
+
             fig = go.Figure(go.Waterfall(
                 name = "Risk Score",
                 orientation = "v",
@@ -281,6 +328,8 @@ def render_risk_score_calculation(assessment: Dict[str, Any], all_rules: List[Di
                 text = [f"+{w:.2f}" for w in weights] + [f"{risk_score:.3f}"],
                 y = list(weights) + [risk_score],
                 connector = {"line":{"color":"rgb(63, 63, 63)"}},
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=waterfall_hover_texts
             ))
 
             fig.update_layout(
@@ -731,7 +780,32 @@ def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
         "approval": "#2563eb"
     }
 
+    # Enhanced hover for timeline events
     for event in audit_events:
+        event_type_labels = {
+            "system": "⚙️ SYSTEM EVENT",
+            "rule_trigger": "🔔 RULE TRIGGER",
+            "decision": "🎯 DECISION",
+            "analyst_action": "👤 ANALYST ACTION",
+            "note": "📝 NOTE",
+            "approval": "✅ APPROVAL"
+        }
+
+        event_label = event_type_labels.get(event['event_type'], "📌 EVENT")
+        event_color = color_map.get(event['event_type'], '#666666')
+
+        # Build enhanced hover
+        hover_text = (
+            f"<b style='font-size:14px'>{event['event']}</b><br><br>"
+            f"<b style='color:{event_color}'>{event_label}</b><br><br>"
+            f"<b>📊 Event Details:</b><br>"
+            f"• Time: <b>{event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}</b><br>"
+            f"• Actor: <b>{event['actor']}</b><br>"
+            f"• Type: <b>{event['event_type'].replace('_', ' ').title()}</b><br><br>"
+            f"<b>💡 Description:</b><br>"
+            f"{event['description']}"
+        )
+
         fig.add_trace(go.Scatter(
             x=[event['timestamp']],
             y=[event['event']],
@@ -745,11 +819,8 @@ def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
             textposition="top center",
             textfont=dict(size=9),
             name=event['event'],
-            hovertemplate='<b>%{y}</b><br>' +
-                         'Time: %{x}<br>' +
-                         f"Actor: {event['actor']}<br>" +
-                         f"Description: {event['description']}<br>" +
-                         '<extra></extra>'
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=[hover_text]
         ))
 
     fig.update_layout(
@@ -1074,11 +1145,52 @@ def render():
             colors_bins = [colors['success'] if b < 0.3 else colors['warning'] if b < 0.7 else colors['danger']
                           for b in bins[:-1]]
 
+            # Enhanced histogram hover with explainability
+            histogram_hover_texts = []
+            total_txns = len(risk_scores)
+            for bin_start, count in zip(bins[:-1], counts):
+                bin_end = bins[list(bins[:-1]).index(bin_start) + 1]
+                bin_mid = (bin_start + bin_end) / 2
+                pct_of_total = (count / total_txns * 100) if total_txns > 0 else 0
+
+                # Determine risk category
+                if bin_mid < 0.3:
+                    category = "🟢 LOW RISK"
+                    decision = "Auto-Cleared"
+                    action = "No manual review needed"
+                    color_label = "Green Zone"
+                elif bin_mid < 0.7:
+                    category = "🟡 MEDIUM RISK"
+                    decision = "Manual Review"
+                    action = "Analyst review required"
+                    color_label = "Yellow Zone"
+                else:
+                    category = "🔴 HIGH RISK"
+                    decision = "Priority Review"
+                    action = "Immediate investigation needed"
+                    color_label = "Red Zone"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>Risk Score Range: {bin_start:.2f} - {bin_end:.2f}</b><br><br>"
+                    f"<b>📊 Volume:</b><br>"
+                    f"• Transactions: <b>{count}</b><br>"
+                    f"• Share of Total: <b>{pct_of_total:.1f}%</b><br><br>"
+                    f"<b>{category}</b><br>"
+                    f"• Zone: <b>{color_label}</b><br>"
+                    f"• Decision: <b>{decision}</b><br>"
+                    f"• Action: {action}<br><br>"
+                    f"<b>💡 Meaning:</b><br>"
+                    f"{'These transactions are automatically approved with minimal risk' if bin_mid < 0.3 else 'These transactions need human review to verify legitimacy' if bin_mid < 0.7 else 'These transactions have strong fraud indicators and need priority attention'}"
+                )
+                histogram_hover_texts.append(hover_text)
+
             fig_risk_dist.add_trace(go.Bar(
                 x=bins[:-1],
                 y=counts,
                 marker=dict(color=colors_bins),
-                name='Risk Distribution'
+                name='Risk Distribution',
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=histogram_hover_texts
             ))
 
             # Add threshold lines
@@ -1112,6 +1224,81 @@ def render():
             ]
             importance_txn = [0.32, 0.18, 0.15, 0.12, 0.10, 0.07, 0.04, 0.02]
 
+            # Enhanced feature importance hover with explainability
+            feature_descriptions = {
+                'Transaction Amount': {
+                    'desc': 'How unusual is the transaction amount compared to normal behavior',
+                    'example': 'A $10,000 transaction from someone who usually spends $50',
+                    'impact': 'Most important factor'
+                },
+                'Time of Day': {
+                    'desc': 'Whether the transaction occurs at an unusual time',
+                    'example': '3 AM transaction from someone who normally transacts during business hours',
+                    'impact': 'Strong indicator'
+                },
+                'Counterparty History': {
+                    'desc': 'Trust level and history with the recipient',
+                    'example': 'First-time recipient vs established trusted contact',
+                    'impact': 'Significant factor'
+                },
+                'Location Consistency': {
+                    'desc': 'Whether transaction location matches user patterns',
+                    'example': 'Transaction from foreign country when user is local',
+                    'impact': 'Important signal'
+                },
+                'Account Age': {
+                    'desc': 'How long the account has been active',
+                    'example': 'Brand new account vs 5-year-old account',
+                    'impact': 'Moderate factor'
+                },
+                'Recent Activity Pattern': {
+                    'desc': 'Consistency with recent transaction behavior',
+                    'example': 'Sudden burst of activity after dormant period',
+                    'impact': 'Moderate signal'
+                },
+                'Device Fingerprint': {
+                    'desc': 'Recognition of device used for transaction',
+                    'example': 'New device vs recognized trusted device',
+                    'impact': 'Supporting factor'
+                },
+                'Behavioral Score': {
+                    'desc': 'Overall behavioral biometric analysis',
+                    'example': 'Typing patterns, mouse movements, navigation flow',
+                    'impact': 'Minor factor'
+                }
+            }
+
+            feature_hover_texts = []
+            for feature, importance in zip(features_txn, importance_txn):
+                info = feature_descriptions[feature]
+
+                # Determine significance
+                if importance >= 0.20:
+                    significance = "🔴 CRITICAL"
+                    weight_desc = "Dominant driver of risk score"
+                elif importance >= 0.10:
+                    significance = "🟠 HIGH"
+                    weight_desc = "Major contributor to risk assessment"
+                elif importance >= 0.05:
+                    significance = "🟡 MODERATE"
+                    weight_desc = "Meaningful but not decisive"
+                else:
+                    significance = "🟢 LOW"
+                    weight_desc = "Supporting evidence only"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{feature}</b><br><br>"
+                    f"<b>📊 Importance:</b> <b>{importance:.1%}</b><br>"
+                    f"<b>{significance}</b><br>"
+                    f"{weight_desc}<br><br>"
+                    f"<b>💡 What It Measures:</b><br>"
+                    f"{info['desc']}<br><br>"
+                    f"<b>📝 Example:</b><br>"
+                    f"{info['example']}<br><br>"
+                    f"<b>🎯 Impact Level:</b> {info['impact']}"
+                )
+                feature_hover_texts.append(hover_text)
+
             fig_features_txn = go.Figure(go.Bar(
                 y=features_txn,
                 x=importance_txn,
@@ -1122,7 +1309,9 @@ def render():
                     showscale=False
                 ),
                 text=[f"{v:.1%}" for v in importance_txn],
-                textposition='outside'
+                textposition='outside',
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=feature_hover_texts
             ))
 
             fig_features_txn.update_layout(
@@ -1140,17 +1329,53 @@ def render():
         perf_col1, perf_col2, perf_col3 = st.columns(3)
 
         with perf_col1:
-            st.markdown("#### Precision & Recall")
+            st.markdown("####Precision & Recall")
 
             precision_data = [0.945, 0.932, 0.928, 0.941, 0.938, 0.943, 0.949]
             recall_data = [0.912, 0.905, 0.898, 0.915, 0.908, 0.918, 0.923]
             days_labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+            # Enhanced hover for precision
+            precision_hover_texts = []
+            for day, prec, rec in zip(days_labels, precision_data, recall_data):
+                f1 = 2 * (prec * rec) / (prec + rec)
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b style='color:#3b82f6'>📊 PRECISION</b><br><br>"
+                    f"<b>Metrics:</b><br>"
+                    f"• Precision: <b>{prec:.1%}</b><br>"
+                    f"• Recall: <b>{rec:.1%}</b><br>"
+                    f"• F1 Score: <b>{f1:.1%}</b><br><br>"
+                    f"<b>💡 Meaning:</b><br>"
+                    f"{prec*100:.1f}% of flagged transactions are actually fraud"
+                )
+                precision_hover_texts.append(hover_text)
+
+            # Enhanced hover for recall
+            recall_hover_texts = []
+            for day, prec, rec in zip(days_labels, precision_data, recall_data):
+                f1 = 2 * (prec * rec) / (prec + rec)
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b style='color:#10b981'>📊 RECALL</b><br><br>"
+                    f"<b>Metrics:</b><br>"
+                    f"• Recall: <b>{rec:.1%}</b><br>"
+                    f"• Precision: <b>{prec:.1%}</b><br>"
+                    f"• F1 Score: <b>{f1:.1%}</b><br><br>"
+                    f"<b>💡 Meaning:</b><br>"
+                    f"{rec*100:.1f}% of actual fraud is caught"
+                )
+                recall_hover_texts.append(hover_text)
+
             fig_pr = go.Figure()
             fig_pr.add_trace(go.Scatter(x=days_labels, y=precision_data, name='Precision',
-                                       line=dict(color=colors['primary'], width=3), mode='lines+markers'))
+                                       line=dict(color=colors['primary'], width=3), mode='lines+markers',
+                                       hovertemplate='%{customdata}<extra></extra>',
+                                       customdata=precision_hover_texts))
             fig_pr.add_trace(go.Scatter(x=days_labels, y=recall_data, name='Recall',
-                                       line=dict(color=colors['success'], width=3), mode='lines+markers'))
+                                       line=dict(color=colors['success'], width=3), mode='lines+markers',
+                                       hovertemplate='%{customdata}<extra></extra>',
+                                       customdata=recall_hover_texts))
 
             fig_pr.update_layout(height=250, yaxis=dict(range=[0.85, 1.0]), showlegend=True)
             st.plotly_chart(fig_pr, use_container_width=True, key="txn_pr_metrics")
@@ -1160,9 +1385,32 @@ def render():
 
             fp_rate = [0.068, 0.072, 0.075, 0.065, 0.070, 0.062, 0.058]
 
+            # Enhanced hover for FP rate
+            fp_hover_texts = []
+            for idx, (day, fp) in enumerate(zip(days_labels, fp_rate)):
+                week_avg = sum(fp_rate) / len(fp_rate)
+                if fp < 0.06:
+                    status = "🟢 EXCELLENT"
+                elif fp < 0.07:
+                    status = "✅ GOOD"
+                else:
+                    status = "🟡 ACCEPTABLE"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b>{status}</b><br><br>"
+                    f"<b>📊 FP Metrics:</b><br>"
+                    f"• FP Rate: <b>{fp:.1%}</b><br>"
+                    f"• Week Avg: <b>{week_avg:.1%}</b><br>"
+                    f"• vs Avg: <b>{(fp-week_avg)*100:+.1f}pp</b>"
+                )
+                fp_hover_texts.append(hover_text)
+
             fig_fp = go.Figure()
             fig_fp.add_trace(go.Scatter(x=days_labels, y=fp_rate, name='FP Rate',
-                                       fill='tozeroy', line=dict(color=colors['danger'], width=3)))
+                                       fill='tozeroy', line=dict(color=colors['danger'], width=3),
+                                       hovertemplate='%{customdata}<extra></extra>',
+                                       customdata=fp_hover_texts))
 
             fig_fp.update_layout(height=250, yaxis=dict(range=[0, 0.1]), showlegend=False)
             st.plotly_chart(fig_fp, use_container_width=True, key="txn_fp_rate")
@@ -1172,9 +1420,27 @@ def render():
 
             throughput = [1180, 1205, 1190, 1225, 1210, 1247, 1265]
 
+            # Enhanced hover for throughput
+            throughput_hover_texts = []
+            for idx, (day, tput) in enumerate(zip(days_labels, throughput)):
+                week_avg = sum(throughput) / len(throughput)
+                change = ((tput - throughput[idx-1]) / throughput[idx-1] * 100) if idx > 0 else 0
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b style='color:#3b82f6'>⚡ THROUGHPUT</b><br><br>"
+                    f"<b>📊 Performance:</b><br>"
+                    f"• Throughput: <b>{tput} tx/min</b><br>"
+                    f"• Week Avg: <b>{week_avg:.0f} tx/min</b><br>"
+                    f"• vs Previous: <b>{change:+.1f}%</b>"
+                )
+                throughput_hover_texts.append(hover_text)
+
             fig_throughput = go.Figure()
             fig_throughput.add_trace(go.Bar(x=days_labels, y=throughput,
-                                           marker=dict(color=colors['info'])))
+                                           marker=dict(color=colors['info']),
+                                           hovertemplate='%{customdata}<extra></extra>',
+                                           customdata=throughput_hover_texts))
 
             fig_throughput.update_layout(height=250, yaxis_title="Transactions/Min")
             st.plotly_chart(fig_throughput, use_container_width=True, key="txn_throughput")

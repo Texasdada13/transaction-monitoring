@@ -16,6 +16,7 @@ from typing import Dict, Any, List
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
+from streamlit_app.explainability import get_explainability_engine
 
 
 def format_currency(amount):
@@ -213,12 +214,54 @@ def render_transaction_search():
             # Risk Score Distribution (Histogram)
             with viz_col1:
                 st.markdown("#### 📊 Risk Severity Distribution")
+
+                # Enhanced hover for histogram bins
+                # Calculate histogram data first
+                hist_data, bin_edges = np.histogram(risk_scores, bins=20)
+                bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+                dist_hover_texts = []
+                total_txs = len(risk_scores)
+                for count, score_mid in zip(hist_data, bin_centers):
+                    percentage = (count / total_txs) * 100
+
+                    if score_mid > 0.75:
+                        status = "🔴 CRITICAL RISK"
+                        status_color = "#ef4444"
+                        insight = "Transactions require immediate review - likely fraud"
+                    elif score_mid > 0.50:
+                        status = "🟡 HIGH RISK"
+                        status_color = "#f59e0b"
+                        insight = "Elevated risk - manual review recommended"
+                    elif score_mid > 0.25:
+                        status = "🟢 MODERATE RISK"
+                        status_color = "#10b981"
+                        insight = "Medium risk - automated monitoring"
+                    else:
+                        status = "✅ LOW RISK"
+                        status_color = "#3b82f6"
+                        insight = "Low risk - routine transactions"
+
+                    hover_text = (
+                        f"<b style='font-size:14px'>Risk Range: {score_mid:.2f}</b><br><br>"
+                        f"<b style='color:{status_color}'>{status}</b><br><br>"
+                        f"<b>📊 Distribution Stats:</b><br>"
+                        f"• Transaction Count: <b>{count}</b><br>"
+                        f"• Percentage: <b>{percentage:.1f}%</b><br>"
+                        f"• Risk Bucket: <b>{score_mid:.2f}</b><br><br>"
+                        f"<b>💡 Risk Assessment:</b><br>"
+                        f"{insight}"
+                    )
+                    dist_hover_texts.append(hover_text)
+
                 fig_dist = go.Figure()
-                fig_dist.add_trace(go.Histogram(
-                    x=risk_scores,
-                    nbinsx=20,
+                fig_dist.add_trace(go.Bar(
+                    x=bin_centers,
+                    y=hist_data,
+                    width=(bin_edges[1] - bin_edges[0]) * 0.9,
                     marker_color='#3b82f6',
-                    hovertemplate='Risk Score: %{x:.2f}<br>Count: %{y}<extra></extra>'
+                    hovertemplate='%{customdata}<extra></extra>',
+                    customdata=dist_hover_texts
                 ))
                 fig_dist.update_layout(
                     xaxis_title="Risk Score",
@@ -231,6 +274,43 @@ def render_transaction_search():
             # Amount vs Risk (Scatter)
             with viz_col2:
                 st.markdown("#### 📈 Risk-Value Correlation Analysis")
+
+                # Enhanced hover for scatter
+                scatter_hover_texts = []
+                for tx_id, amount, risk in zip(tx_ids, amounts, risk_scores):
+                    if risk > 0.75:
+                        status = "🔴 BLOCK"
+                        status_color = "#ef4444"
+                        action = "Transaction blocked - potential fraud"
+                    elif risk > 0.50:
+                        status = "🟡 REVIEW"
+                        status_color = "#f59e0b"
+                        action = "Flagged for analyst review"
+                    else:
+                        status = "✅ CLEAR"
+                        status_color = "#10b981"
+                        action = "Transaction cleared automatically"
+
+                    # Size classification
+                    if amount > 10000:
+                        size_class = "High-value transaction"
+                    elif amount > 1000:
+                        size_class = "Medium-value transaction"
+                    else:
+                        size_class = "Standard transaction"
+
+                    hover_text = (
+                        f"<b style='font-size:14px'>{tx_id}</b><br><br>"
+                        f"<b style='color:{status_color}'>{status}</b><br><br>"
+                        f"<b>📊 Transaction Details:</b><br>"
+                        f"• Amount: <b>${amount:,.2f}</b><br>"
+                        f"• Risk Score: <b>{risk:.3f}</b><br>"
+                        f"• Classification: <b>{size_class}</b><br><br>"
+                        f"<b>💡 Action Taken:</b><br>"
+                        f"{action}"
+                    )
+                    scatter_hover_texts.append(hover_text)
+
                 fig_scatter = go.Figure()
                 fig_scatter.add_trace(go.Scatter(
                     x=amounts,
@@ -244,7 +324,8 @@ def render_transaction_search():
                         colorbar=dict(title="Risk Score")
                     ),
                     text=tx_ids,
-                    hovertemplate='<b>%{text}</b><br>Amount: $%{x:,.2f}<br>Risk: %{y:.2f}<extra></extra>'
+                    hovertemplate='%{customdata}<extra></extra>',
+                    customdata=scatter_hover_texts
                 ))
                 fig_scatter.update_layout(
                     xaxis_title="Transaction Amount ($)",
@@ -705,6 +786,43 @@ def render():
 
         fig_fraud_detection = go.Figure()
 
+        # Enhanced hover information with explainability
+        hover_texts = []
+        for category, rate, count in zip(fraud_categories, detection_rates, fraud_counts):
+            avg_loss_map = {
+                'Account Takeover': 12400,
+                'Payment Fraud': 3200,
+                'Identity Theft': 8500,
+                'Money Laundering': 45000,
+                'Card Fraud': 850,
+                'Wire Fraud': 25000
+            }
+            avg_loss = avg_loss_map.get(category, 5000)
+
+            if rate >= 98:
+                assessment = "⭐ EXCELLENT - Near-perfect detection"
+                action = "Maintain current model"
+            elif rate >= 95:
+                assessment = "✅ STRONG - High effectiveness"
+                action = "Continue monitoring"
+            else:
+                assessment = "⚠️ MODERATE - Room for improvement"
+                action = "Review and optimize model"
+
+            hover_text = (
+                f"<b>{category}</b><br><br>"
+                f"<b>📊 Performance Metrics:</b><br>"
+                f"• Detection Rate: <b>{rate:.1f}%</b><br>"
+                f"• Cases Detected: <b>{count}</b><br>"
+                f"• Est. Cases Missed: <b>{int(count * (100-rate) / rate)}</b><br><br>"
+                f"<b>💰 Financial Impact:</b><br>"
+                f"• Avg Loss/Case: <b>${avg_loss:,}</b><br>"
+                f"• Total Prevented: <b>${count * avg_loss:,}</b><br><br>"
+                f"<b>🎯 Assessment:</b> {assessment}<br>"
+                f"<b>💡 Action:</b> {action}"
+            )
+            hover_texts.append(hover_text)
+
         fig_fraud_detection.add_trace(go.Bar(
             x=fraud_categories,
             y=detection_rates,
@@ -712,8 +830,25 @@ def render():
             marker=dict(color=colors['success']),
             text=[f"{v:.1f}%" for v in detection_rates],
             textposition='outside',
-            yaxis='y'
+            yaxis='y',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
+
+        # Enhanced hover for scatter plot
+        scatter_hover_texts = []
+        for category, count in zip(fraud_categories, fraud_counts):
+            total_estimated = int(count * 1.05)  # Estimate with 5% escape rate
+            scatter_hover_text = (
+                f"<b>{category} - Cases Detected</b><br><br>"
+                f"<b>📈 Detection Stats:</b><br>"
+                f"• Detected: <b>{count} cases</b><br>"
+                f"• Est. Total: <b>{total_estimated} cases</b><br>"
+                f"• Escape Rate: <b>~5%</b><br><br>"
+                f"<b>💡 Insight:</b><br>"
+                f"{'High volume - Major fraud vector' if count > 150 else 'Moderate volume - Monitor trends' if count > 50 else 'Low volume but critical to track'}"
+            )
+            scatter_hover_texts.append(scatter_hover_text)
 
         fig_fraud_detection.add_trace(go.Scatter(
             x=fraud_categories,
@@ -722,7 +857,9 @@ def render():
             mode='lines+markers',
             marker=dict(size=10, color=colors['danger']),
             line=dict(width=3),
-            yaxis='y2'
+            yaxis='y2',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=scatter_hover_texts
         ))
 
         fig_fraud_detection.update_layout(
@@ -787,6 +924,34 @@ def render():
         days_7 = pd.date_range(end=datetime.now(), periods=7, freq='D')
         accuracy_trend = [96.8, 97.2, 97.5, 97.8, 98.0, 98.1, 98.2]
 
+        # Enhanced hover for accuracy trend
+        acc_hover_texts = []
+        for idx, (day, acc) in enumerate(zip(days_7, accuracy_trend)):
+            if idx > 0:
+                change = acc - accuracy_trend[idx-1]
+            else:
+                change = 0
+
+            if acc > 98.0:
+                status = "⭐ EXCELLENT"
+                status_color = "#10b981"
+            elif acc > 97.5:
+                status = "✅ STRONG"
+                status_color = "#22c55e"
+            else:
+                status = "📊 GOOD"
+                status_color = "#3b82f6"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{day.strftime('%Y-%m-%d')}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Performance:</b><br>"
+                f"• Accuracy: <b>{acc:.1f}%</b><br>"
+                f"• Day-over-Day: <b>{change:+.1f}%</b><br>"
+                f"• Trend: <b>{'Improving' if change > 0 else 'Stable'}</b>"
+            )
+            acc_hover_texts.append(hover_text)
+
         fig_acc_trend = go.Figure()
         fig_acc_trend.add_trace(go.Scatter(
             x=days_7,
@@ -794,7 +959,9 @@ def render():
             mode='lines+markers',
             fill='tozeroy',
             line=dict(color=colors['primary'], width=3),
-            marker=dict(size=10)
+            marker=dict(size=10),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=acc_hover_texts
         ))
 
         fig_acc_trend.update_layout(
@@ -810,6 +977,34 @@ def render():
 
         fp_trend = [0.082, 0.075, 0.071, 0.068, 0.065, 0.062, 0.058]
 
+        # Enhanced hover for FP trend
+        fp_hover_texts = []
+        for idx, (day, fp) in enumerate(zip(days_7, fp_trend)):
+            if idx > 0:
+                change = fp - fp_trend[idx-1]
+            else:
+                change = 0
+
+            if fp < 0.06:
+                status = "🟢 EXCELLENT"
+                status_color = "#10b981"
+            elif fp < 0.075:
+                status = "✅ GOOD"
+                status_color = "#22c55e"
+            else:
+                status = "🟡 ACCEPTABLE"
+                status_color = "#f59e0b"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{day.strftime('%Y-%m-%d')}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 FP Metrics:</b><br>"
+                f"• FP Rate: <b>{fp:.1%}</b><br>"
+                f"• Day-over-Day: <b>{change:+.3f}</b><br>"
+                f"• Trend: <b>{'Improving' if change < 0 else 'Stable'}</b>"
+            )
+            fp_hover_texts.append(hover_text)
+
         fig_fp_trend = go.Figure()
         fig_fp_trend.add_trace(go.Scatter(
             x=days_7,
@@ -817,7 +1012,9 @@ def render():
             mode='lines+markers',
             fill='tozeroy',
             line=dict(color=colors['warning'], width=3),
-            marker=dict(size=10)
+            marker=dict(size=10),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=fp_hover_texts
         ))
 
         fig_fp_trend.update_layout(
@@ -833,11 +1030,34 @@ def render():
 
         prevented_amounts = [3.2, 3.4, 3.5, 3.6, 3.7, 3.8, 3.8]
 
+        # Enhanced hover for prevented amounts
+        prev_hover_texts = []
+        for idx, (day, amount) in enumerate(zip(days_7, prevented_amounts)):
+            if idx > 0:
+                change = amount - prevented_amounts[idx-1]
+            else:
+                change = 0
+
+            status = "💰 PROTECTED"
+            status_color = "#10b981"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{day.strftime('%Y-%m-%d')}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Prevention Stats:</b><br>"
+                f"• Amount: <b>${amount:.1f}M</b><br>"
+                f"• Day-over-Day: <b>${change:+.1f}M</b><br>"
+                f"• Weekly Total: <b>${sum(prevented_amounts):.1f}M</b>"
+            )
+            prev_hover_texts.append(hover_text)
+
         fig_prevented = go.Figure()
         fig_prevented.add_trace(go.Bar(
             x=days_7,
             y=prevented_amounts,
-            marker=dict(color=colors['success'])
+            marker=dict(color=colors['success']),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=prev_hover_texts
         ))
 
         fig_prevented.update_layout(
