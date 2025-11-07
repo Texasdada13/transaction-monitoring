@@ -13,6 +13,7 @@ from datetime import datetime
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
+from streamlit_app.explainability import get_explainability_engine
 
 
 # Generate synthetic dataset for visualization
@@ -65,12 +66,71 @@ def render():
     st.subheader("🤖 Transaction Flow Heatmap")
     st.caption("Shows when suspicious transactions cluster throughout the week")
 
+    # Enhanced heatmap hover with explainability
+    heatmap_hover_data = []
+    for day_idx, day in enumerate(days):
+        for hour_idx, hour in enumerate(hours):
+            flagged_count = transaction_heatmap_data[day_idx][hour_idx]
+
+            # Risk assessment based on count
+            if flagged_count > 15:
+                risk = "🔴 CRITICAL"
+                assessment = "Extremely high suspicious activity"
+                action = "Immediate investigation required"
+            elif flagged_count > 10:
+                risk = "🟠 HIGH"
+                assessment = "Elevated suspicious activity"
+                action = "Priority monitoring needed"
+            elif flagged_count > 5:
+                risk = "🟡 MODERATE"
+                assessment = "Notable suspicious activity"
+                action = "Standard monitoring"
+            else:
+                risk = "🟢 LOW"
+                assessment = "Normal activity levels"
+                action = "Routine monitoring"
+
+            # Time period context
+            if 0 <= hour < 6:
+                period_note = "Overnight - Historically high fraud risk period"
+            elif 6 <= hour < 9:
+                period_note = "Early morning - Activity ramping up"
+            elif 9 <= hour < 17:
+                period_note = "Business hours - Peak legitimate activity"
+            elif 17 <= hour < 21:
+                period_note = "Evening - Moderate activity"
+            else:
+                period_note = "Late night - Reduced activity"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{day} at {hour}:00</b><br><br>"
+                f"<b>📊 Flagged Transactions:</b> <b>{flagged_count}</b><br><br>"
+                f"<b>{risk}</b><br>"
+                f"• {assessment}<br><br>"
+                f"<b>⏰ Time Context:</b><br>"
+                f"{period_note}<br><br>"
+                f"<b>🎯 Recommended Action:</b><br>"
+                f"{action}"
+            )
+            heatmap_hover_data.append([hover_text])
+
+    # Reshape hover data to match heatmap dimensions
+    heatmap_hover_array = []
+    idx = 0
+    for day_idx in range(len(days)):
+        day_hovers = []
+        for hour_idx in range(len(hours)):
+            day_hovers.append(heatmap_hover_data[idx][0])
+            idx += 1
+        heatmap_hover_array.append(day_hovers)
+
     fig_heatmap_time = go.Figure(data=go.Heatmap(
         z=transaction_heatmap_data,
         x=hours,
         y=days,
         colorscale='YlOrRd',
-        hovertemplate='Day: %{y}<br>Hour: %{x}:00<br>Flagged Transactions: %{z}<extra></extra>',
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=heatmap_hover_array,
         colorbar=dict(title="Flagged<br>Count")
     ))
 
@@ -103,14 +163,55 @@ def render():
 
         fig_resolution = go.Figure()
 
+        # Enhanced box plot hover with explainability
+        sla_targets = {'Low': 120, 'Medium': 60, 'High': 30, 'Critical': 15}  # minutes
+
         for risk_level in ['Low', 'Medium', 'High', 'Critical']:
             data = resolution_data[resolution_data['risk_level'] == risk_level]['resolution_time_minutes']
+
+            # Calculate statistics
+            avg_time = data.mean()
+            median_time = data.median()
+            p90_time = data.quantile(0.9)
+            sla_target = sla_targets[risk_level]
+            sla_compliance = (data <= sla_target).mean() * 100
+
+            # Assess performance
+            if sla_compliance >= 95:
+                performance = "⭐ EXCELLENT"
+                status_note = "Consistently meeting SLA targets"
+            elif sla_compliance >= 85:
+                performance = "✅ GOOD"
+                status_note = "Generally meeting targets"
+            elif sla_compliance >= 70:
+                performance = "⚠️ NEEDS ATTENTION"
+                status_note = "Missing SLA targets frequently"
+            else:
+                performance = "🔴 CRITICAL"
+                status_note = "Significant SLA violations"
+
+            # Create custom hover text
+            hover_text = (
+                f"<b style='font-size:14px'>{risk_level} Risk Cases</b><br><br>"
+                f"<b>📊 Resolution Stats:</b><br>"
+                f"• Average: <b>{avg_time:.1f} min</b><br>"
+                f"• Median: <b>{median_time:.1f} min</b><br>"
+                f"• 90th Percentile: <b>{p90_time:.1f} min</b><br><br>"
+                f"<b>🎯 SLA Target:</b> <b>{sla_target} min</b><br>"
+                f"<b>✓ Compliance:</b> <b>{sla_compliance:.1f}%</b><br><br>"
+                f"<b>{performance}</b><br>"
+                f"{status_note}<br><br>"
+                f"<b>💡 Impact:</b><br>"
+                f"{'Fast response time - fraud is being caught quickly' if avg_time < sla_target else 'Response time exceeds target - consider adding resources'}"
+            )
 
             fig_resolution.add_trace(go.Box(
                 y=data,
                 name=risk_level,
                 marker_color={'Low': '#10b981', 'Medium': '#eab308',
-                             'High': '#f97316', 'Critical': '#ef4444'}[risk_level]
+                             'High': '#f97316', 'Critical': '#ef4444'}[risk_level],
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=[hover_text] * len(data)
             ))
 
         fig_resolution.update_layout(
