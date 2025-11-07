@@ -55,7 +55,7 @@ def render():
     colors = get_chart_colors()
 
     # VPN/Proxy Fraud Locations (USA)
-    st.subheader("🌐 AI Geo-Intelligence Fraud Mapping")
+    st.subheader("🌐 Geolocation Threat Map")
     st.caption("Device locations remotely triggered across USA using VPN/Proxy")
 
     fig_usa_map = go.Figure(go.Scattergeo(
@@ -114,7 +114,7 @@ def render():
     st.markdown("---")
 
     # Behavioral Anomaly Timeline
-    st.subheader("🧠 ML Behavioral Anomaly Prediction")
+    st.subheader("🧠 Anomaly Detection Timeline")
     st.caption("Normal behavior baseline vs flagged transaction patterns")
 
     col1, col2 = st.columns(2)
@@ -194,7 +194,7 @@ def render():
     st.markdown("---")
 
     # Combined Multi-Metric Anomaly View
-    st.subheader("🤖 AI Multi-Dimensional Risk Intelligence")
+    st.subheader("🤖 Cross-Vector Threat Analysis")
     st.caption("Comprehensive view of device, location, and behavioral inconsistencies")
 
     # Create sample anomaly data for a suspicious transaction

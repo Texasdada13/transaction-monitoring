@@ -85,7 +85,7 @@ def render():
     # st.markdown("---")
 
  # Recent Alerts Summary
-    st.markdown("## ⚡ AI Real-Time Risk Alert Stream")
+    st.markdown("## ⚡ Threat Detection Command Center")
 
     recent_alerts = pd.DataFrame({
         'Time': ['10 min ago', '25 min ago', '1 hr ago', '2 hr ago', '3 hr ago'],
@@ -116,7 +116,7 @@ def render():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("🤖 AI-Powered Transaction Flow Intelligence")
+        st.subheader("🤖 Transaction Lifecycle Monitor")
 
         funnel_data = pd.DataFrame({
             'Stage': ['Total Transactions', 'Auto-Cleared', 'Manual Review', 'Rejected', 'Fraud Confirmed'],
@@ -138,7 +138,7 @@ def render():
         st.info(f"💰 **Cost Savings**: Manual reviews prevented: 11,915 × $5 = **$59,575/day**")
 
     with col2:
-        st.subheader("🧠 ML-Enhanced Analyst Decision Analytics")
+        st.subheader("🧠 Decision Pattern Analytics")
 
         fig_decisions = go.Figure()
 
@@ -242,7 +242,7 @@ def render():
     # st.markdown("---")
 
     # System Activity Timeline
-    st.markdown("## 📊 AI Predictive Activity Intelligence")
+    st.markdown("## 📊 Live Transaction Pulse")
 
     # Generate sample time series data
     hours = pd.date_range(end=datetime.now(), periods=24, freq='H')
