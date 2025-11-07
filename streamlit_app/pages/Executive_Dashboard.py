@@ -68,6 +68,23 @@ def render():
     # Get standardized chart colors
     colors = get_chart_colors()
 
+    # Key metrics row
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        st.metric("Total Transactions Today", "12,547", delta="↑ 8.2%")
+    with col2:
+        st.metric("Auto-Cleared", "11,915 (95%)", delta="↑ 2.1%")
+    with col3:
+        st.metric("Flagged for Review", "632 (5%)", delta="↓ 1.3%")
+    with col4:
+        st.metric("Fraud Detected", "47", delta="↓ 12%")
+    with col5:
+        st.metric("False Positive Rate", "6.2%", delta="↓ 0.8%")
+
+    st.markdown("---")
+
+    
     # Executive Alert Notification System
     st.markdown("## 📨 Executive Alert Center")
     st.markdown("**Automated Daily Briefing & Critical Notifications**")
@@ -256,22 +273,6 @@ def render():
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # Key metrics row
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    with col1:
-        st.metric("Total Transactions Today", "12,547", delta="↑ 8.2%")
-    with col2:
-        st.metric("Auto-Cleared", "11,915 (95%)", delta="↑ 2.1%")
-    with col3:
-        st.metric("Flagged for Review", "632 (5%)", delta="↓ 1.3%")
-    with col4:
-        st.metric("Fraud Detected", "47", delta="↓ 12%")
-    with col5:
-        st.metric("False Positive Rate", "6.2%", delta="↓ 0.8%")
 
     st.markdown("---")
 
