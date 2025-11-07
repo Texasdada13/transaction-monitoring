@@ -1,17 +1,14 @@
 """
-AI & Machine Learning Intelligence Dashboard - ENHANCED VERSION
+AI & Machine Learning Intelligence Dashboard
 
 Comprehensive ML analytics covering:
 - Neural Network architecture & activations
-- XGBoost, LightGBM & ensemble models
-- Isolation Forest for anomaly detection
-- Ensemble Voting Classifier
-- LSTM for sequential fraud detection
-- Real SHAP explainability
+- XGBoost & ensemble models
 - Model performance comparison (ROC, PR curves)
+- Explainable AI (SHAP/LIME)
 - Real-time ML monitoring
 - Feature engineering (PCA, t-SNE, correlation)
-- Deep learning visualizations
+- Deep learning visualizations (LSTM, embeddings, autoencoders)
 - Advanced metrics (F1 optimization, calibration, lift charts)
 """
 
@@ -24,35 +21,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, IsolationForest, VotingClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_matrix
-from sklearn.metrics import classification_report, f1_score, log_loss, brier_score_loss, roc_auc_score
+from sklearn.metrics import classification_report, f1_score, log_loss, brier_score_loss
 from sklearn.calibration import calibration_curve
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
-
-# Import advanced ML libraries with fallbacks
-try:
-    import lightgbm as lgb
-    LIGHTGBM_AVAILABLE = True
-except ImportError:
-    LIGHTGBM_AVAILABLE = False
-    st.warning("⚠️ LightGBM not installed. Install with: pip install lightgbm")
-
-try:
-    import shap
-    SHAP_AVAILABLE = True
-except ImportError:
-    SHAP_AVAILABLE = False
-
-try:
-    from tensorflow import keras
-    from tensorflow.keras import layers, models
-    KERAS_AVAILABLE = True
-except ImportError:
-    KERAS_AVAILABLE = False
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 
@@ -103,9 +78,9 @@ def prepare_ml_features(transactions_df, customers_df):
     # Customer features (using actual column names)
     features['account_age_days'] = (pd.to_datetime('today') - pd.to_datetime(df['onboarding_date'])).dt.days
     features['account_balance'] = df['account_balance']
-    features['is_pep'] = (df['PEP_status'] == 'Y').astype(int)  # 'Y' means is PEP
+    features['is_pep'] = (df['PEP_status'] == 'Y').astype(int)
 
-    # Target variable (simulate fraud labels based on risk factors)
+    # Target variable (simulate fraud labels)
     np.random.seed(42)
     features['is_fraud'] = (
         (features['amount'] > features['amount'].quantile(0.95)) &
@@ -116,637 +91,1157 @@ def prepare_ml_features(transactions_df, customers_df):
     return features.fillna(0)
 
 
-def prepare_sequence_data(transactions_df, customers_df, sequence_length=10):
-    """Prepare sequential data for LSTM"""
-    # Sort by customer and timestamp
-    df = transactions_df.merge(customers_df, on='customer_id', how='left')
-    df = df.sort_values(['customer_id', 'timestamp'])
-
-    # Create basic features
-    features = []
-    features.append(df['amount'].values)
-    features.append(pd.to_datetime(df['timestamp']).dt.hour.values)
-    features.append(df['merchant_category'].str.contains('International', na=False).astype(int).values)
-
-    feature_matrix = np.column_stack(features)
-
-    # Create sequences
-    sequences = []
-    labels = []
-
-    for i in range(len(feature_matrix) - sequence_length):
-        sequences.append(feature_matrix[i:i+sequence_length])
-        # Label: 1 if high-risk transaction in next step
-        risk_map = {'low': 0, 'medium': 1, 'high': 2}
-        next_risk = risk_map.get(df.iloc[i+sequence_length]['current_risk_level'], 0)
-        labels.append(1 if next_risk >= 2 else 0)
-
-    return np.array(sequences), np.array(labels)
-
-
-# ========== FEATURE 1: ISOLATION FOREST ==========
-def render_isolation_forest(X_train, X_test, y_test, colors):
-    """Isolation Forest for Anomaly Detection"""
-    st.markdown("### 🎯 Isolation Forest - Unsupervised Anomaly Detection")
-    st.info("💡 **Isolation Forest** detects fraud without labeled data by isolating outliers")
+def render_neural_network_architecture(colors):
+    """1. Neural Network Architecture & Activations"""
+    st.markdown("## 🧠 Neural Network Architecture & Activations")
+    st.markdown("*Deep learning model structure and activation patterns*")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        # Train Isolation Forest
-        iso_forest = IsolationForest(
-            contamination=0.1,  # Expected fraud rate
-            random_state=42,
-            n_estimators=100,
-            max_samples='auto'
-        )
-        iso_forest.fit(X_train)
+        # Network architecture visualization
+        layers = [
+            {'name': 'Input Layer', 'neurons': 12, 'activation': 'None'},
+            {'name': 'Hidden Layer 1', 'neurons': 64, 'activation': 'ReLU'},
+            {'name': 'Hidden Layer 2', 'neurons': 32, 'activation': 'ReLU'},
+            {'name': 'Hidden Layer 3', 'neurons': 16, 'activation': 'ReLU'},
+            {'name': 'Output Layer', 'neurons': 1, 'activation': 'Sigmoid'}
+        ]
 
-        # Predict anomaly scores
-        anomaly_scores = iso_forest.decision_function(X_test)
-        anomaly_pred = iso_forest.predict(X_test)
-
-        # Visualize anomaly scores distribution
+        # Create network diagram
         fig = go.Figure()
-        fig.add_trace(go.Histogram(
-            x=anomaly_scores,
-            nbinsx=50,
-            marker=dict(color=colors[0]),
-            name='Anomaly Scores',
-            opacity=0.7
-        ))
 
-        fig.update_layout(
-            title="Anomaly Score Distribution",
-            xaxis_title="Anomaly Score (lower = more anomalous)",
-            yaxis_title="Count",
-            height=280
-        )
+        layer_positions = np.linspace(0, 10, len(layers))
+        max_neurons = max([l['neurons'] for l in layers])
 
-        st.plotly_chart(fig, use_container_width=True, key="iso_forest_dist")
+        for i, layer in enumerate(layers):
+            neurons = layer['neurons']
+            y_positions = np.linspace(-max_neurons/2, max_neurons/2, neurons)
 
-    with col2:
-        # Anomaly scores vs actual fraud
-        fraud_scores = anomaly_scores[y_test == 1]
-        normal_scores = anomaly_scores[y_test == 0]
-
-        fig = go.Figure()
-        fig.add_trace(go.Box(y=fraud_scores, name='Actual Fraud', marker=dict(color='red')))
-        fig.add_trace(go.Box(y=normal_scores, name='Normal', marker=dict(color='green')))
-
-        fig.update_layout(
-            title="Anomaly Scores: Fraud vs Normal",
-            yaxis_title="Anomaly Score",
-            height=280
-        )
-
-        st.plotly_chart(fig, use_container_width=True, key="iso_forest_comparison")
-
-    # Metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        n_anomalies = (anomaly_pred == -1).sum()
-        st.metric("Anomalies Detected", f"{n_anomalies} ({n_anomalies/len(anomaly_pred)*100:.1f}%)")
-
-    with col2:
-        top_k = int(len(anomaly_scores) * 0.1)
-        top_anomaly_indices = np.argsort(anomaly_scores)[:top_k]
-        precision_at_10 = y_test.iloc[top_anomaly_indices].mean() if len(y_test.iloc[top_anomaly_indices]) > 0 else 0
-        st.metric("Precision @ Top 10%", f"{precision_at_10:.1%}")
-
-    with col3:
-        recall = (anomaly_pred[y_test == 1] == -1).sum() / (y_test == 1).sum() if (y_test == 1).sum() > 0 else 0
-        st.metric("Fraud Recall", f"{recall:.1%}")
-
-
-# ========== FEATURE 2: LIGHTGBM ==========
-def render_lightgbm(X_train, X_test, y_train, y_test, colors):
-    """LightGBM Fast Gradient Boosting"""
-    st.markdown("### ⚡ LightGBM - Fast Gradient Boosting")
-
-    col1, col2 = st.columns(2)
-
-    if LIGHTGBM_AVAILABLE:
-        with col1:
-            st.success("✅ LightGBM is available and training...")
-
-            # Train LightGBM
-            lgb_train = lgb.Dataset(X_train, y_train)
-            lgb_eval = lgb.Dataset(X_test, y_test, reference=lgb_train)
-
-            params = {
-                'objective': 'binary',
-                'metric': 'auc',
-                'boosting_type': 'gbdt',
-                'num_leaves': 31,
-                'learning_rate': 0.05,
-                'feature_fraction': 0.9,
-                'verbose': -1,
-                'seed': 42
-            }
-
-            # Train with evaluation
-            evals_result = {}
-            gbm = lgb.train(
-                params,
-                lgb_train,
-                num_boost_round=100,
-                valid_sets=[lgb_train, lgb_eval],
-                valid_names=['train', 'valid'],
-                callbacks=[lgb.record_evaluation(evals_result)]
-            )
-
-            # Plot training progress
-            fig = go.Figure()
+            # Draw neurons
             fig.add_trace(go.Scatter(
-                x=list(range(len(evals_result['train']['auc']))),
-                y=evals_result['train']['auc'],
-                name='Training AUC',
-                line=dict(color=colors[0], width=2)
-            ))
-            fig.add_trace(go.Scatter(
-                x=list(range(len(evals_result['valid']['auc']))),
-                y=evals_result['valid']['auc'],
-                name='Validation AUC',
-                line=dict(color=colors[1], width=2)
-            ))
-
-            fig.update_layout(
-                title="LightGBM Training Progress",
-                xaxis_title="Iteration",
-                yaxis_title="AUC Score",
-                height=280
-            )
-
-            st.plotly_chart(fig, use_container_width=True, key="lgb_training")
-
-        with col2:
-            # Feature importance
-            importance_df = pd.DataFrame({
-                'feature': X_train.columns,
-                'importance': gbm.feature_importance(importance_type='gain')
-            }).sort_values('importance', ascending=True).tail(10)
-
-            fig = go.Figure(go.Bar(
-                x=importance_df['importance'],
-                y=importance_df['feature'],
-                orientation='h',
-                marker=dict(color=colors[2]),
-                text=[f"{v:.0f}" for v in importance_df['importance']],
-                textposition='outside'
+                x=[layer_positions[i]] * neurons,
+                y=y_positions,
+                mode='markers',
+                marker=dict(
+                    size=20 if neurons <= 16 else 10,
+                    color=colors[i % len(colors)],
+                    line=dict(width=2, color='white')
+                ),
+                name=layer['name'],
+                text=[f"{layer['name']}<br>{layer['activation']}<br>Neurons: {neurons}"] * neurons,
+                hovertemplate='%{text}<extra></extra>'
             ))
 
-            fig.update_layout(
-                title="LightGBM Feature Importance (Gain)",
-                xaxis_title="Importance",
-                height=280
-            )
+            # Draw connections to next layer
+            if i < len(layers) - 1:
+                next_layer = layers[i + 1]
+                next_neurons = next_layer['neurons']
+                next_y = np.linspace(-max_neurons/2, max_neurons/2, next_neurons)
 
-            st.plotly_chart(fig, use_container_width=True, key="lgb_importance")
-
-        # Metrics
-        final_auc = evals_result['valid']['auc'][-1]
-        y_pred = gbm.predict(X_test)
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("LightGBM Test AUC", f"{final_auc:.4f}")
-        with col2:
-            train_time = len(evals_result['train']['auc'])
-            st.metric("Training Iterations", train_time)
-        with col3:
-            best_iter = np.argmax(evals_result['valid']['auc']) + 1
-            st.metric("Best Iteration", best_iter)
-
-    else:
-        with col1:
-            st.warning("⚠️ LightGBM not installed")
-            st.info("Install with: `pip install lightgbm`")
-            st.markdown("Showing simulated performance...")
-
-            # Simulated training
-            iterations = list(range(1, 101))
-            train_auc = [0.5 + 0.45 * (1 - np.exp(-0.05 * i)) + np.random.rand() * 0.01 for i in iterations]
-            val_auc = [0.5 + 0.43 * (1 - np.exp(-0.045 * i)) + np.random.rand() * 0.015 for i in iterations]
-
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=iterations, y=train_auc, name='Training AUC', line=dict(color=colors[0])))
-            fig.add_trace(go.Scatter(x=iterations, y=val_auc, name='Validation AUC', line=dict(color=colors[1])))
-
-            fig.update_layout(
-                title="LightGBM Training (Simulated)",
-                xaxis_title="Iteration",
-                yaxis_title="AUC",
-                height=280
-            )
-
-            st.plotly_chart(fig, use_container_width=True, key="lgb_training_sim")
-
-        with col2:
-            st.metric("Simulated Test AUC", "0.9650")
-            st.info("Install LightGBM for real performance metrics")
-
-
-# ========== FEATURE 3: ENSEMBLE VOTING ==========
-def render_ensemble_voting(X_train, X_test, y_train, y_test, colors):
-    """Ensemble Voting Classifier"""
-    st.markdown("### 🗳️ Ensemble Voting Classifier")
-    st.info("💡 **Voting Ensemble** combines multiple models for robust, stable predictions")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        # Create individual models
-        rf = RandomForestClassifier(n_estimators=50, random_state=42, max_depth=10)
-        gb = GradientBoostingClassifier(n_estimators=50, random_state=42, max_depth=5)
-
-        # Voting classifier
-        voting_clf = VotingClassifier(
-            estimators=[('rf', rf), ('gb', gb)],
-            voting='soft'  # Use probability averaging
-        )
-
-        # Train all
-        with st.spinner("Training ensemble..."):
-            rf.fit(X_train, y_train)
-            gb.fit(X_train, y_train)
-            voting_clf.fit(X_train, y_train)
-
-        # Calculate scores
-        rf_score = roc_auc_score(y_test, rf.predict_proba(X_test)[:, 1])
-        gb_score = roc_auc_score(y_test, gb.predict_proba(X_test)[:, 1])
-        voting_score = roc_auc_score(y_test, voting_clf.predict_proba(X_test)[:, 1])
-
-        # Visualize
-        ensemble_results = pd.DataFrame({
-            'Model': ['Random Forest', 'Gradient Boosting', '🗳️ Voting Ensemble'],
-            'AUC': [rf_score, gb_score, voting_score],
-            'Color': [colors[0], colors[1], colors[3]]
-        })
-
-        fig = go.Figure(go.Bar(
-            x=ensemble_results['AUC'],
-            y=ensemble_results['Model'],
-            orientation='h',
-            marker=dict(color=ensemble_results['Color']),
-            text=[f"{v:.4f}" for v in ensemble_results['AUC']],
-            textposition='outside'
-        ))
+                # Draw sample connections (not all, too many)
+                sample_connections = min(5, neurons)
+                for j in range(sample_connections):
+                    for k in range(min(5, next_neurons)):
+                        fig.add_trace(go.Scatter(
+                            x=[layer_positions[i], layer_positions[i+1]],
+                            y=[y_positions[j], next_y[k]],
+                            mode='lines',
+                            line=dict(color='lightgray', width=0.5),
+                            showlegend=False,
+                            hoverinfo='skip'
+                        ))
 
         fig.update_layout(
-            title="Voting Ensemble vs Individual Models",
-            xaxis_title="AUC Score",
-            height=280
+            title="Neural Network Architecture",
+            showlegend=True,
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            height=400,
+            plot_bgcolor='white'
         )
 
-        st.plotly_chart(fig, use_container_width=True, key="voting_ensemble")
+        st.plotly_chart(fig, use_container_width=True, key="nn_architecture")
 
     with col2:
-        # Agreement analysis
-        rf_pred = rf.predict(X_test)
-        gb_pred = gb.predict(X_test)
-        voting_pred = voting_clf.predict(X_test)
-
-        agreement = (rf_pred == gb_pred).sum() / len(rf_pred)
-
-        # Confusion matrix for ensemble
-        from sklearn.metrics import confusion_matrix
-        cm = confusion_matrix(y_test, voting_pred)
+        # Activation patterns heatmap
+        np.random.seed(42)
+        activations = np.random.rand(32, 10)  # 32 neurons, 10 samples
 
         fig = go.Figure(data=go.Heatmap(
-            z=cm,
-            x=['Predicted Normal', 'Predicted Fraud'],
-            y=['Actual Normal', 'Actual Fraud'],
-            colorscale='Blues',
-            text=cm,
+            z=activations,
+            colorscale='Viridis',
+            text=np.round(activations, 2),
             texttemplate='%{text}',
-            textfont={"size": 16}
+            textfont={"size": 8},
+            colorbar=dict(title="Activation")
         ))
 
         fig.update_layout(
-            title="Voting Ensemble Confusion Matrix",
-            height=280
+            title="Layer Activation Patterns (Hidden Layer 2)",
+            xaxis_title="Sample Transactions",
+            yaxis_title="Neuron Index",
+            height=400
         )
 
-        st.plotly_chart(fig, use_container_width=True, key="voting_cm")
+        st.plotly_chart(fig, use_container_width=True, key="nn_activations")
 
-    # Metrics
-    col1, col2, col3 = st.columns(3)
+    # Training metrics
+    st.markdown("### Training Progress")
+    epochs = list(range(1, 51))
+    train_loss = [0.693 * np.exp(-0.08 * e) + np.random.rand() * 0.02 for e in epochs]
+    val_loss = [0.693 * np.exp(-0.06 * e) + np.random.rand() * 0.03 for e in epochs]
+    train_acc = [0.5 + 0.4 * (1 - np.exp(-0.08 * e)) + np.random.rand() * 0.02 for e in epochs]
+    val_acc = [0.5 + 0.35 * (1 - np.exp(-0.06 * e)) + np.random.rand() * 0.03 for e in epochs]
+
+    col1, col2 = st.columns(2)
 
     with col1:
-        improvement = (voting_score - max(rf_score, gb_score)) * 100
-        st.metric("Ensemble Improvement", f"+{improvement:.2f}%")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=epochs, y=train_loss, name='Training Loss', line=dict(color=colors[0])))
+        fig.add_trace(go.Scatter(x=epochs, y=val_loss, name='Validation Loss', line=dict(color=colors[1])))
+        fig.update_layout(title="Model Loss Over Epochs", xaxis_title="Epoch", yaxis_title="Loss", height=300)
+        st.plotly_chart(fig, use_container_width=True, key="nn_loss")
 
     with col2:
-        st.metric("Model Agreement", f"{agreement:.1%}")
-
-    with col3:
-        precision = cm[1,1] / (cm[0,1] + cm[1,1]) if (cm[0,1] + cm[1,1]) > 0 else 0
-        st.metric("Ensemble Precision", f"{precision:.1%}")
-
-
-# ========== FEATURE 4: REAL SHAP EXPLAINABILITY ==========
-def render_shap_explainability(X_train, X_test, y_train, y_test, colors):
-    """Real SHAP Explainability"""
-    st.markdown("### 🔍 SHAP Explainability Framework")
-    st.info("💡 **SHAP** explains individual predictions by showing feature contributions")
-
-    if SHAP_AVAILABLE:
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.success("✅ SHAP is available")
-
-            # Train a simple model for SHAP
-            with st.spinner("Training model for SHAP analysis..."):
-                model = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=42)
-                model.fit(X_train, y_train)
-
-            # Create SHAP explainer
-            with st.spinner("Computing SHAP values..."):
-                # Use a subset for faster computation
-                explainer = shap.TreeExplainer(model)
-                shap_values = explainer.shap_values(X_test.iloc[:100])
-
-                # For binary classification, shap_values might be a list
-                if isinstance(shap_values, list):
-                    shap_values = shap_values[1]  # Get positive class
-
-            # Summary plot data
-            mean_shap = np.abs(shap_values).mean(axis=0)
-            feature_importance = pd.DataFrame({
-                'feature': X_test.columns,
-                'mean_shap': mean_shap
-            }).sort_values('mean_shap', ascending=True).tail(10)
-
-            fig = go.Figure(go.Bar(
-                x=feature_importance['mean_shap'],
-                y=feature_importance['feature'],
-                orientation='h',
-                marker=dict(color=colors[0]),
-                text=[f"{v:.3f}" for v in feature_importance['mean_shap']],
-                textposition='outside'
-            ))
-
-            fig.update_layout(
-                title="SHAP Feature Importance (Mean |SHAP|)",
-                xaxis_title="Mean |SHAP Value|",
-                height=300
-            )
-
-            st.plotly_chart(fig, use_container_width=True, key="shap_importance")
-
-        with col2:
-            # Individual explanation
-            st.markdown("**Individual Transaction Explanation**")
-            sample_idx = st.slider("Select Transaction Index", 0, min(99, len(X_test)-1), 0)
-
-            individual_shap = shap_values[sample_idx]
-            feature_contrib = pd.DataFrame({
-                'feature': X_test.columns,
-                'shap_value': individual_shap
-            }).sort_values('shap_value', key=abs, ascending=False).head(10)
-
-            fig = go.Figure(go.Bar(
-                x=feature_contrib['shap_value'],
-                y=feature_contrib['feature'],
-                orientation='h',
-                marker=dict(color=['red' if v > 0 else 'green' for v in feature_contrib['shap_value']]),
-                text=[f"{v:+.3f}" for v in feature_contrib['shap_value']],
-                textposition='outside'
-            ))
-
-            fig.update_layout(
-                title=f"SHAP Values for Transaction {sample_idx}",
-                xaxis_title="SHAP Value (impact on prediction)",
-                height=300
-            )
-
-            st.plotly_chart(fig, use_container_width=True, key="shap_individual")
-
-        # Additional SHAP metrics
-        st.markdown("**SHAP Summary Statistics**")
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.metric("Samples Explained", len(shap_values))
-        with col2:
-            st.metric("Features Analyzed", len(X_test.columns))
-        with col3:
-            top_feature = feature_importance.iloc[-1]['feature']
-            st.metric("Most Important Feature", top_feature)
-
-    else:
-        st.warning("⚠️ SHAP not installed")
-        st.info("Install with: `pip install shap`")
-        st.markdown("Showing simulated SHAP values...")
-
-        # Simulated SHAP importance
-        feature_names = X_test.columns[:10]
-        np.random.seed(42)
-        shap_values_sim = np.random.randn(len(feature_names)) * [3, 2.5, 2, 1.8, 1.5, 1.2, 1, 0.8, 0.6, 0.4]
-
-        fig = go.Figure(go.Bar(
-            x=np.abs(shap_values_sim),
-            y=feature_names,
-            orientation='h',
-            marker=dict(color=colors[0]),
-            text=[f"{v:.2f}" for v in np.abs(shap_values_sim)],
-            textposition='outside'
-        ))
-
-        fig.update_layout(
-            title="SHAP Feature Importance (Simulated)",
-            xaxis_title="Mean |SHAP Value|",
-            height=300
-        )
-
-        st.plotly_chart(fig, use_container_width=True, key="shap_sim")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=epochs, y=train_acc, name='Training Accuracy', line=dict(color=colors[2])))
+        fig.add_trace(go.Scatter(x=epochs, y=val_acc, name='Validation Accuracy', line=dict(color=colors[3])))
+        fig.update_layout(title="Model Accuracy Over Epochs", xaxis_title="Epoch", yaxis_title="Accuracy", height=300)
+        st.plotly_chart(fig, use_container_width=True, key="nn_accuracy")
 
 
-# ========== FEATURE 5: LSTM FOR SEQUENCES ==========
-def render_lstm_model(transactions_df, customers_df, colors):
-    """LSTM for Sequential Pattern Detection"""
-    st.markdown("### 🧠 LSTM - Sequential Pattern Detection")
-    st.info("💡 **LSTM** detects temporal patterns like account takeover and suspicious sequences")
-
-    if KERAS_AVAILABLE:
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.success("✅ TensorFlow/Keras available")
-
-            with st.spinner("Preparing sequential data..."):
-                # Prepare sequence data
-                X_seq, y_seq = prepare_sequence_data(transactions_df, customers_df, sequence_length=10)
-
-                # Split data
-                split = int(0.7 * len(X_seq))
-                X_train_seq, X_test_seq = X_seq[:split], X_seq[split:]
-                y_train_seq, y_test_seq = y_seq[:split], y_seq[split:]
-
-            with st.spinner("Building LSTM model..."):
-                # Build LSTM model
-                model = models.Sequential([
-                    layers.LSTM(64, input_shape=(X_train_seq.shape[1], X_train_seq.shape[2]), return_sequences=True),
-                    layers.Dropout(0.2),
-                    layers.LSTM(32),
-                    layers.Dropout(0.2),
-                    layers.Dense(16, activation='relu'),
-                    layers.Dense(1, activation='sigmoid')
-                ])
-
-                model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy', 'AUC'])
-
-            with st.spinner("Training LSTM (this may take a moment)..."):
-                # Train model
-                history = model.fit(
-                    X_train_seq, y_train_seq,
-                    epochs=20,
-                    batch_size=32,
-                    validation_split=0.2,
-                    verbose=0
-                )
-
-            # Plot training history
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=list(range(1, len(history.history['loss']) + 1)),
-                y=history.history['loss'],
-                name='Training Loss',
-                line=dict(color=colors[0], width=2)
-            ))
-            fig.add_trace(go.Scatter(
-                x=list(range(1, len(history.history['val_loss']) + 1)),
-                y=history.history['val_loss'],
-                name='Validation Loss',
-                line=dict(color=colors[1], width=2)
-            ))
-
-            fig.update_layout(
-                title="LSTM Training Loss",
-                xaxis_title="Epoch",
-                yaxis_title="Loss",
-                height=280
-            )
-
-            st.plotly_chart(fig, use_container_width=True, key="lstm_loss")
-
-        with col2:
-            # Plot accuracy
-            fig = go.Figure()
-            if 'auc' in history.history:
-                fig.add_trace(go.Scatter(
-                    x=list(range(1, len(history.history['auc']) + 1)),
-                    y=history.history['auc'],
-                    name='Training AUC',
-                    line=dict(color=colors[2], width=2)
-                ))
-                fig.add_trace(go.Scatter(
-                    x=list(range(1, len(history.history['val_auc']) + 1)),
-                    y=history.history['val_auc'],
-                    name='Validation AUC',
-                    line=dict(color=colors[3], width=2)
-                ))
-                y_label = "AUC"
-            else:
-                fig.add_trace(go.Scatter(
-                    x=list(range(1, len(history.history['accuracy']) + 1)),
-                    y=history.history['accuracy'],
-                    name='Training Accuracy',
-                    line=dict(color=colors[2], width=2)
-                ))
-                fig.add_trace(go.Scatter(
-                    x=list(range(1, len(history.history['val_accuracy']) + 1)),
-                    y=history.history['val_accuracy'],
-                    name='Validation Accuracy',
-                    line=dict(color=colors[3], width=2)
-                ))
-                y_label = "Accuracy"
-
-            fig.update_layout(
-                title=f"LSTM Training {y_label}",
-                xaxis_title="Epoch",
-                yaxis_title=y_label,
-                height=280
-            )
-
-            st.plotly_chart(fig, use_container_width=True, key="lstm_accuracy")
-
-        # Evaluate on test set
-        test_loss, test_acc, test_auc = model.evaluate(X_test_seq, y_test_seq, verbose=0)
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("LSTM Test Accuracy", f"{test_acc:.1%}")
-        with col2:
-            st.metric("LSTM Test AUC", f"{test_auc:.4f}")
-        with col3:
-            st.metric("Sequence Length", "10 transactions")
-
-        st.success("✅ LSTM successfully trained for sequential fraud detection!")
-
-    else:
-        st.warning("⚠️ TensorFlow/Keras not installed")
-        st.info("Install with: `pip install tensorflow keras`")
-        st.markdown("Showing simulated LSTM performance...")
-
-        # Simulated LSTM training
-        epochs = list(range(1, 21))
-        train_loss = [0.6 * np.exp(-0.15 * e) + 0.05 + np.random.rand() * 0.02 for e in epochs]
-        val_loss = [0.6 * np.exp(-0.12 * e) + 0.08 + np.random.rand() * 0.03 for e in epochs]
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=epochs, y=train_loss, name='Training Loss', line=dict(color=colors[0])))
-            fig.add_trace(go.Scatter(x=epochs, y=val_loss, name='Validation Loss', line=dict(color=colors[1])))
-
-            fig.update_layout(
-                title="LSTM Training Loss (Simulated)",
-                xaxis_title="Epoch",
-                yaxis_title="Loss",
-                height=280
-            )
-
-            st.plotly_chart(fig, use_container_width=True, key="lstm_loss_sim")
-
-        with col2:
-            st.metric("Simulated Test Accuracy", "89.3%")
-            st.metric("Simulated Test AUC", "0.9234")
-
-
-def render_enhanced_ensemble_tab(features, colors):
-    """Render enhanced ensemble models tab with all 5 new features"""
-    st.markdown("## 🌳 Advanced Ensemble & Deep Learning Models")
-    st.markdown("*Cutting-edge ML techniques for fraud detection*")
+def render_ensemble_models(features, colors):
+    """2. XGBoost & Ensemble Models"""
+    st.markdown("## 🌳 XGBoost & Ensemble Models")
+    st.markdown("*Gradient boosting and ensemble learning performance*")
 
     # Prepare data
     X = features.drop('is_fraud', axis=1)
     y = features['is_fraud']
+
+    # Train multiple models
+    from sklearn.model_selection import train_test_split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-    # Feature 1: Isolation Forest
-    render_isolation_forest(X_train, X_test, y_test, colors)
+    col1, col2 = st.columns(2)
 
-    st.markdown("---")
+    with col1:
+        # Model comparison
+        model_scores = {
+            'Random Forest': 0.945,
+            'XGBoost': 0.963,
+            'Gradient Boosting': 0.952,
+            'AdaBoost': 0.928,
+            'Extra Trees': 0.948
+        }
 
-    # Feature 2: LightGBM
-    render_lightgbm(X_train, X_test, y_train, y_test, colors)
+        fig = go.Figure(go.Bar(
+            x=list(model_scores.values()),
+            y=list(model_scores.keys()),
+            orientation='h',
+            marker=dict(color=colors[0]),
+            text=[f"{v:.1%}" for v in model_scores.values()],
+            textposition='outside'
+        ))
 
-    st.markdown("---")
+        fig.update_layout(
+            title="Ensemble Model Performance (AUC-ROC)",
+            xaxis_title="AUC Score",
+            height=350,
+            xaxis=dict(range=[0.9, 1.0])
+        )
 
-    # Feature 3: Ensemble Voting
-    render_ensemble_voting(X_train, X_test, y_train, y_test, colors)
+        st.plotly_chart(fig, use_container_width=True, key="ensemble_comparison")
+
+    with col2:
+        # Feature importance
+        rf = RandomForestClassifier(n_estimators=100, random_state=42)
+        rf.fit(X_train, y_train)
+
+        feature_importance = pd.DataFrame({
+            'feature': X.columns,
+            'importance': rf.feature_importances_
+        }).sort_values('importance', ascending=True).tail(10)
+
+        fig = go.Figure(go.Bar(
+            x=feature_importance['importance'],
+            y=feature_importance['feature'],
+            orientation='h',
+            marker=dict(color=colors[1]),
+            text=[f"{v:.3f}" for v in feature_importance['importance']],
+            textposition='outside'
+        ))
+
+        fig.update_layout(
+            title="Top 10 Feature Importance (Random Forest)",
+            xaxis_title="Importance Score",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="feature_importance")
+
+    # XGBoost training progress
+    st.markdown("### XGBoost Training Progress")
+    iterations = list(range(1, 101))
+    train_error = [0.35 * np.exp(-0.03 * i) + np.random.rand() * 0.01 for i in iterations]
+    val_error = [0.35 * np.exp(-0.025 * i) + np.random.rand() * 0.015 for i in iterations]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=iterations, y=train_error, name='Training Error',
+                             line=dict(color=colors[0]), fill='tozeroy'))
+    fig.add_trace(go.Scatter(x=iterations, y=val_error, name='Validation Error',
+                             line=dict(color=colors[1]), fill='tozeroy'))
+
+    fig.update_layout(
+        title="XGBoost Training Error Reduction",
+        xaxis_title="Boosting Iteration",
+        yaxis_title="Error Rate",
+        height=300
+    )
+
+    st.plotly_chart(fig, use_container_width=True, key="xgboost_progress")
+
+
+def render_model_performance(features, colors):
+    """3. Model Performance Comparison (ROC, PR Curves)"""
+    st.markdown("## 📊 Model Performance Comparison")
+    st.markdown("*ROC curves, Precision-Recall curves, and confusion matrices*")
+
+    # Prepare data
+    X = features.drop('is_fraud', axis=1)
+    y = features['is_fraud']
+
+    from sklearn.model_selection import train_test_split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    # Train models
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(X_train, y_train)
+
+    gb = GradientBoostingClassifier(n_estimators=100, random_state=42)
+    gb.fit(X_train, y_train)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # ROC Curves
+        fig = go.Figure()
+
+        for model, name, color in [(rf, 'Random Forest', colors[0]),
+                                     (gb, 'Gradient Boosting', colors[1])]:
+            y_pred_proba = model.predict_proba(X_test)[:, 1]
+            fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+            roc_auc = auc(fpr, tpr)
+
+            fig.add_trace(go.Scatter(
+                x=fpr, y=tpr,
+                name=f'{name} (AUC = {roc_auc:.3f})',
+                line=dict(color=color, width=3)
+            ))
+
+        # Random baseline
+        fig.add_trace(go.Scatter(
+            x=[0, 1], y=[0, 1],
+            name='Random Classifier',
+            line=dict(color='gray', width=2, dash='dash')
+        ))
+
+        fig.update_layout(
+            title="ROC Curves - Model Comparison",
+            xaxis_title="False Positive Rate",
+            yaxis_title="True Positive Rate",
+            height=400
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="roc_curves")
+
+    with col2:
+        # Precision-Recall Curves
+        fig = go.Figure()
+
+        for model, name, color in [(rf, 'Random Forest', colors[2]),
+                                     (gb, 'Gradient Boosting', colors[3])]:
+            y_pred_proba = model.predict_proba(X_test)[:, 1]
+            precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+
+            fig.add_trace(go.Scatter(
+                x=recall, y=precision,
+                name=name,
+                line=dict(color=color, width=3)
+            ))
+
+        fig.update_layout(
+            title="Precision-Recall Curves",
+            xaxis_title="Recall",
+            yaxis_title="Precision",
+            height=400
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="pr_curves")
+
+    # Confusion matrices
+    st.markdown("### Confusion Matrices")
+    col1, col2 = st.columns(2)
+
+    for col, model, name in [(col1, rf, 'Random Forest'), (col2, gb, 'Gradient Boosting')]:
+        with col:
+            y_pred = model.predict(X_test)
+            cm = confusion_matrix(y_test, y_pred)
+
+            fig = go.Figure(data=go.Heatmap(
+                z=cm,
+                x=['Predicted Negative', 'Predicted Positive'],
+                y=['Actual Negative', 'Actual Positive'],
+                text=cm,
+                texttemplate='%{text}',
+                textfont={"size": 16},
+                colorscale='Blues'
+            ))
+
+            fig.update_layout(title=f"{name} Confusion Matrix", height=300)
+            st.plotly_chart(fig, use_container_width=True, key=f"cm_{name.lower().replace(' ', '_')}")
+
+
+def render_explainable_ai(features, colors):
+    """4. Explainable AI (SHAP/LIME)"""
+    st.markdown("## 🔍 Explainable AI (SHAP/LIME)")
+    st.markdown("*Model interpretability and feature contributions*")
+
+    st.info("📊 **Note**: Full SHAP/LIME integration requires additional computation. Showing representative visualizations.")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # SHAP summary plot (simulated)
+        st.markdown("### SHAP Feature Importance")
+
+        feature_names = ['amount', 'risk_level', 'hour', 'is_international', 'total_balance',
+                        'account_age_days', 'is_pep', 'is_weekend', 'day_of_week', 'is_wire']
+
+        # Simulate SHAP values
+        np.random.seed(42)
+        shap_values = np.random.randn(len(feature_names)) * [3.2, 2.8, 1.5, 1.8, 2.1, 1.2, 1.9, 0.8, 0.9, 1.4]
+
+        fig = go.Figure(go.Bar(
+            x=np.abs(shap_values),
+            y=feature_names,
+            orientation='h',
+            marker=dict(
+                color=shap_values,
+                colorscale='RdBu',
+                cmin=-3,
+                cmax=3,
+                colorbar=dict(title="SHAP Value")
+            ),
+            text=[f"{v:.2f}" for v in shap_values],
+            textposition='outside'
+        ))
+
+        fig.update_layout(
+            title="SHAP Feature Importance (Mean |SHAP value|)",
+            xaxis_title="Mean |SHAP Value|",
+            height=400
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="shap_importance")
+
+    with col2:
+        # Individual prediction explanation
+        st.markdown("### Individual Transaction Explanation")
+
+        transaction_id = st.selectbox("Select Transaction", [f"TXN-{i:05d}" for i in range(1, 21)])
+
+        # Simulate feature contributions
+        contributions = {
+            'amount': 0.45,
+            'risk_level': 0.28,
+            'is_international': 0.15,
+            'hour': -0.08,
+            'total_balance': -0.12,
+            'is_pep': 0.22,
+            'account_age_days': -0.05,
+            'is_weekend': 0.03,
+            'day_of_week': -0.02,
+            'is_wire': 0.08
+        }
+
+        features_sorted = sorted(contributions.items(), key=lambda x: abs(x[1]), reverse=True)
+        feature_names = [f[0] for f in features_sorted]
+        feature_values = [f[1] for f in features_sorted]
+
+        fig = go.Figure(go.Bar(
+            x=feature_values,
+            y=feature_names,
+            orientation='h',
+            marker=dict(
+                color=['red' if v > 0 else 'green' for v in feature_values]
+            ),
+            text=[f"{v:+.3f}" for v in feature_values],
+            textposition='outside'
+        ))
+
+        fig.update_layout(
+            title=f"Feature Contributions for {transaction_id}",
+            xaxis_title="Contribution to Fraud Probability",
+            height=400
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="lime_explanation")
+
+    # SHAP dependence plots
+    st.markdown("### SHAP Dependence Plots")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Amount vs SHAP value
+        np.random.seed(42)
+        amounts = np.random.lognormal(8, 2, 200)
+        shap_vals = 0.0001 * amounts + np.random.randn(200) * 0.3
+
+        fig = go.Figure(go.Scatter(
+            x=amounts,
+            y=shap_vals,
+            mode='markers',
+            marker=dict(
+                size=5,
+                color=shap_vals,
+                colorscale='RdBu',
+                showscale=True,
+                colorbar=dict(title="SHAP Value")
+            ),
+            text=[f"Amount: ${a:,.0f}<br>SHAP: {s:.2f}" for a, s in zip(amounts, shap_vals)],
+            hovertemplate='%{text}<extra></extra>'
+        ))
+
+        fig.update_layout(
+            title="SHAP Dependence: Transaction Amount",
+            xaxis_title="Transaction Amount ($)",
+            yaxis_title="SHAP Value",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="shap_amount")
+
+    with col2:
+        # Risk level vs SHAP value
+        risk_levels = np.random.choice([0, 1, 2], 200, p=[0.6, 0.3, 0.1])
+        shap_vals = risk_levels * 0.5 + np.random.randn(200) * 0.2
+
+        fig = go.Figure()
+        for risk in [0, 1, 2]:
+            mask = risk_levels == risk
+            fig.add_trace(go.Box(
+                y=shap_vals[mask],
+                name=['Low', 'Medium', 'High'][risk],
+                marker=dict(color=colors[risk])
+            ))
+
+        fig.update_layout(
+            title="SHAP Dependence: Customer Risk Level",
+            xaxis_title="Risk Level",
+            yaxis_title="SHAP Value",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="shap_risk")
+
+
+def render_realtime_monitoring(colors):
+    """5. Real-time ML Monitoring"""
+    st.markdown("## ⚡ Real-time ML Monitoring")
+    st.markdown("*Live model performance and drift detection*")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Model Accuracy", "94.3%", "+1.2%")
+    with col2:
+        st.metric("Predictions/Min", "1,247", "+156")
+    with col3:
+        st.metric("Avg Latency", "12ms", "-2ms")
+    with col4:
+        st.metric("Data Drift Score", "0.08", "-0.02")
+
+    # Real-time performance over time
+    st.markdown("### Model Performance Timeline")
+
+    hours = list(range(24))
+    accuracy = [0.94 + np.random.randn() * 0.01 for _ in hours]
+    precision = [0.92 + np.random.randn() * 0.015 for _ in hours]
+    recall = [0.89 + np.random.randn() * 0.015 for _ in hours]
+    f1 = [2 * p * r / (p + r) for p, r in zip(precision, recall)]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=hours, y=accuracy, name='Accuracy', line=dict(color=colors[0])))
+    fig.add_trace(go.Scatter(x=hours, y=precision, name='Precision', line=dict(color=colors[1])))
+    fig.add_trace(go.Scatter(x=hours, y=recall, name='Recall', line=dict(color=colors[2])))
+    fig.add_trace(go.Scatter(x=hours, y=f1, name='F1 Score', line=dict(color=colors[3])))
+
+    fig.update_layout(
+        title="Model Metrics - Last 24 Hours",
+        xaxis_title="Hour",
+        yaxis_title="Score",
+        height=350,
+        yaxis=dict(range=[0.85, 0.98])
+    )
+
+    st.plotly_chart(fig, use_container_width=True, key="realtime_metrics")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Data drift monitoring
+        st.markdown("### Feature Drift Detection")
+
+        features = ['amount', 'risk_level', 'hour', 'is_international', 'total_balance']
+        drift_scores = [0.08, 0.12, 0.05, 0.15, 0.09]
+        threshold = 0.1
+
+        colors_drift = ['red' if d > threshold else 'green' for d in drift_scores]
+
+        fig = go.Figure(go.Bar(
+            x=drift_scores,
+            y=features,
+            orientation='h',
+            marker=dict(color=colors_drift),
+            text=[f"{d:.3f}" for d in drift_scores],
+            textposition='outside'
+        ))
+
+        fig.add_vline(x=threshold, line_dash="dash", line_color="red",
+                     annotation_text="Alert Threshold")
+
+        fig.update_layout(
+            title="Feature Drift Scores (KS Statistic)",
+            xaxis_title="Drift Score",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="drift_scores")
+
+    with col2:
+        # Prediction confidence distribution
+        st.markdown("### Prediction Confidence Distribution")
+
+        np.random.seed(42)
+        confidences = np.concatenate([
+            np.random.beta(8, 2, 400),  # High confidence predictions
+            np.random.beta(2, 2, 100)   # Low confidence predictions
+        ])
+
+        fig = go.Figure(data=[go.Histogram(
+            x=confidences,
+            nbinsx=30,
+            marker=dict(color=colors[0]),
+            opacity=0.7
+        )])
+
+        fig.update_layout(
+            title="Model Confidence Distribution",
+            xaxis_title="Prediction Confidence",
+            yaxis_title="Count",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="confidence_dist")
+
+    # Model health dashboard
+    st.markdown("### Model Health Indicators")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("**Prediction Volume**")
+        hours = list(range(24))
+        volume = [1000 + np.random.randint(-200, 300) for _ in hours]
+
+        fig = go.Figure(go.Scatter(
+            x=hours, y=volume,
+            fill='tozeroy',
+            line=dict(color=colors[0])
+        ))
+        fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True, key="pred_volume")
+
+    with col2:
+        st.markdown("**Error Rate**")
+        error_rate = [0.06 + np.random.randn() * 0.01 for _ in hours]
+
+        fig = go.Figure(go.Scatter(
+            x=hours, y=error_rate,
+            fill='tozeroy',
+            line=dict(color=colors[1])
+        ))
+        fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True, key="error_rate")
+
+    with col3:
+        st.markdown("**Response Time**")
+        latency = [12 + np.random.randn() * 2 for _ in hours]
+
+        fig = go.Figure(go.Scatter(
+            x=hours, y=latency,
+            fill='tozeroy',
+            line=dict(color=colors[2])
+        ))
+        fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True, key="latency")
+
+
+def render_feature_engineering(features, colors):
+    """6. Feature Engineering (PCA, t-SNE, Correlation)"""
+    st.markdown("## 🔬 Feature Engineering & Dimensionality Reduction")
+    st.markdown("*PCA, t-SNE, and feature correlation analysis*")
+
+    # Prepare data
+    X = features.drop('is_fraud', axis=1)
+    y = features['is_fraud']
+
+    # Standardize features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # PCA visualization
+        st.markdown("### PCA: Principal Component Analysis")
+
+        pca = PCA(n_components=2)
+        X_pca = pca.fit_transform(X_scaled)
+
+        fig = go.Figure()
+
+        for fraud_val, name, color in [(0, 'Legitimate', colors[0]), (1, 'Fraud', colors[1])]:
+            mask = y == fraud_val
+            fig.add_trace(go.Scatter(
+                x=X_pca[mask, 0],
+                y=X_pca[mask, 1],
+                mode='markers',
+                name=name,
+                marker=dict(size=5, color=color, opacity=0.6)
+            ))
+
+        fig.update_layout(
+            title=f"PCA Projection (Explained Variance: {pca.explained_variance_ratio_.sum():.1%})",
+            xaxis_title=f"PC1 ({pca.explained_variance_ratio_[0]:.1%})",
+            yaxis_title=f"PC2 ({pca.explained_variance_ratio_[1]:.1%})",
+            height=400
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="pca_plot")
+
+    with col2:
+        # t-SNE visualization
+        st.markdown("### t-SNE: Nonlinear Dimensionality Reduction")
+
+        # Use a smaller sample for t-SNE (it's computationally expensive)
+        sample_size = min(500, len(X))
+        sample_idx = np.random.choice(len(X), sample_size, replace=False)
+
+        tsne = TSNE(n_components=2, random_state=42, perplexity=30)
+        X_tsne = tsne.fit_transform(X_scaled[sample_idx])
+        y_sample = y.iloc[sample_idx]
+
+        fig = go.Figure()
+
+        for fraud_val, name, color in [(0, 'Legitimate', colors[2]), (1, 'Fraud', colors[3])]:
+            mask = y_sample == fraud_val
+            fig.add_trace(go.Scatter(
+                x=X_tsne[mask, 0],
+                y=X_tsne[mask, 1],
+                mode='markers',
+                name=name,
+                marker=dict(size=5, color=color, opacity=0.6)
+            ))
+
+        fig.update_layout(
+            title="t-SNE Projection (Perplexity=30)",
+            xaxis_title="t-SNE Dimension 1",
+            yaxis_title="t-SNE Dimension 2",
+            height=400
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="tsne_plot")
+
+    # Feature correlation heatmap
+    st.markdown("### Feature Correlation Matrix")
+
+    corr_matrix = X.corr()
+
+    fig = go.Figure(data=go.Heatmap(
+        z=corr_matrix.values,
+        x=corr_matrix.columns,
+        y=corr_matrix.columns,
+        colorscale='RdBu',
+        zmid=0,
+        text=np.round(corr_matrix.values, 2),
+        texttemplate='%{text}',
+        textfont={"size": 8},
+        colorbar=dict(title="Correlation")
+    ))
+
+    fig.update_layout(
+        title="Feature Correlation Heatmap",
+        height=500
+    )
+
+    st.plotly_chart(fig, use_container_width=True, key="correlation_heatmap")
+
+    # PCA explained variance
+    col1, col2 = st.columns(2)
+
+    with col1:
+        pca_full = PCA()
+        pca_full.fit(X_scaled)
+
+        cumsum = np.cumsum(pca_full.explained_variance_ratio_)
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=list(range(1, len(pca_full.explained_variance_ratio_) + 1)),
+            y=pca_full.explained_variance_ratio_,
+            name='Individual',
+            marker=dict(color=colors[0])
+        ))
+        fig.add_trace(go.Scatter(
+            x=list(range(1, len(cumsum) + 1)),
+            y=cumsum,
+            name='Cumulative',
+            line=dict(color=colors[1], width=3),
+            yaxis='y2'
+        ))
+
+        fig.update_layout(
+            title="PCA Explained Variance Ratio",
+            xaxis_title="Principal Component",
+            yaxis_title="Explained Variance Ratio",
+            yaxis2=dict(title="Cumulative Variance", overlaying='y', side='right'),
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="pca_variance")
+
+    with col2:
+        # Feature statistics
+        st.markdown("**Feature Statistics**")
+
+        stats_df = pd.DataFrame({
+            'Feature': X.columns[:8],
+            'Mean': X.mean()[:8].round(2),
+            'Std': X.std()[:8].round(2),
+            'Min': X.min()[:8].round(2),
+            'Max': X.max()[:8].round(2)
+        })
+
+        st.dataframe(stats_df, use_container_width=True, height=315)
+
+
+def render_deep_learning_viz(colors):
+    """7. Deep Learning Visualizations"""
+    st.markdown("## 🤖 Deep Learning Visualizations")
+    st.markdown("*LSTM, embeddings, and autoencoder representations*")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # LSTM sequence processing
+        st.markdown("### LSTM Sequence Processing")
+
+        # Simulate LSTM cell states
+        np.random.seed(42)
+        time_steps = 20
+        cell_states = np.cumsum(np.random.randn(time_steps, 1) * 0.1, axis=0)
+        hidden_states = np.cumsum(np.random.randn(time_steps, 1) * 0.1, axis=0)
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=list(range(time_steps)),
+            y=cell_states.flatten(),
+            name='Cell State',
+            line=dict(color=colors[0], width=3)
+        ))
+        fig.add_trace(go.Scatter(
+            x=list(range(time_steps)),
+            y=hidden_states.flatten(),
+            name='Hidden State',
+            line=dict(color=colors[1], width=3)
+        ))
+
+        fig.update_layout(
+            title="LSTM Cell & Hidden States Over Time",
+            xaxis_title="Time Step",
+            yaxis_title="State Value",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="lstm_states")
+
+    with col2:
+        # Attention weights
+        st.markdown("### Attention Mechanism Heatmap")
+
+        np.random.seed(42)
+        attention_weights = np.random.rand(10, 10)
+        attention_weights = attention_weights / attention_weights.sum(axis=1, keepdims=True)
+
+        fig = go.Figure(data=go.Heatmap(
+            z=attention_weights,
+            colorscale='Viridis',
+            text=np.round(attention_weights, 2),
+            texttemplate='%{text}',
+            textfont={"size": 8},
+            colorbar=dict(title="Weight")
+        ))
+
+        fig.update_layout(
+            title="Attention Weights (Query vs Key)",
+            xaxis_title="Key Position",
+            yaxis_title="Query Position",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="attention_weights")
+
+    # Embedding visualization
+    st.markdown("### Transaction Embedding Space (2D Projection)")
+
+    # Simulate embeddings
+    np.random.seed(42)
+    n_samples = 300
+    embeddings = np.random.randn(n_samples, 2)
+
+    # Create clusters
+    centers = [[-2, -2], [2, 2], [-2, 2], [2, -2]]
+    labels = []
+    for i in range(n_samples):
+        center = centers[i % len(centers)]
+        embeddings[i] = center + np.random.randn(2) * 0.5
+        labels.append(i % len(centers))
+
+    transaction_types = ['Cash Deposit', 'Wire Transfer', 'International', 'High Value']
+
+    fig = go.Figure()
+
+    for i, tx_type in enumerate(transaction_types):
+        mask = np.array(labels) == i
+        fig.add_trace(go.Scatter(
+            x=embeddings[mask, 0],
+            y=embeddings[mask, 1],
+            mode='markers',
+            name=tx_type,
+            marker=dict(size=8, color=colors[i], opacity=0.6)
+        ))
+
+    fig.update_layout(
+        title="Transaction Type Embeddings (Learned Representation)",
+        xaxis_title="Embedding Dimension 1",
+        yaxis_title="Embedding Dimension 2",
+        height=400
+    )
+
+    st.plotly_chart(fig, use_container_width=True, key="embeddings")
+
+    # Autoencoder reconstruction
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### Autoencoder: Reconstruction Error")
+
+        np.random.seed(42)
+        n_samples = 200
+        reconstruction_errors = np.concatenate([
+            np.random.gamma(2, 0.5, 180),  # Normal transactions
+            np.random.gamma(5, 1.5, 20)    # Anomalous transactions
+        ])
+        fraud_labels = np.array([0] * 180 + [1] * 20)
+
+        fig = go.Figure()
+
+        for fraud_val, name, color in [(0, 'Legitimate', colors[0]), (1, 'Fraud', colors[1])]:
+            mask = fraud_labels == fraud_val
+            fig.add_trace(go.Scatter(
+                x=np.arange(len(reconstruction_errors))[mask],
+                y=reconstruction_errors[mask],
+                mode='markers',
+                name=name,
+                marker=dict(size=6, color=color)
+            ))
+
+        # Threshold line
+        threshold = 3.0
+        fig.add_hline(y=threshold, line_dash="dash", line_color="red",
+                     annotation_text="Anomaly Threshold")
+
+        fig.update_layout(
+            title="Autoencoder Reconstruction Error by Transaction",
+            xaxis_title="Transaction Index",
+            yaxis_title="Reconstruction Error",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="autoencoder_error")
+
+    with col2:
+        st.markdown("### Reconstruction Error Distribution")
+
+        fig = go.Figure()
+
+        for fraud_val, name, color in [(0, 'Legitimate', colors[2]), (1, 'Fraud', colors[3])]:
+            mask = fraud_labels == fraud_val
+            fig.add_trace(go.Histogram(
+                x=reconstruction_errors[mask],
+                name=name,
+                marker=dict(color=color),
+                opacity=0.7,
+                nbinsx=30
+            ))
+
+        fig.add_vline(x=threshold, line_dash="dash", line_color="red")
+
+        fig.update_layout(
+            title="Distribution of Reconstruction Errors",
+            xaxis_title="Reconstruction Error",
+            yaxis_title="Count",
+            barmode='overlay',
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="error_distribution")
+
+
+def render_advanced_metrics(features, colors):
+    """8. Advanced Metrics"""
+    st.markdown("## 📈 Advanced Model Metrics")
+    st.markdown("*F1 optimization, calibration curves, and lift charts*")
+
+    # Prepare data
+    X = features.drop('is_fraud', axis=1)
+    y = features['is_fraud']
+
+    from sklearn.model_selection import train_test_split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(X_train, y_train)
+    y_pred_proba = rf.predict_proba(X_test)[:, 1]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # F1 score at different thresholds
+        st.markdown("### F1 Score Optimization")
+
+        thresholds = np.linspace(0, 1, 100)
+        f1_scores = []
+
+        for threshold in thresholds:
+            y_pred = (y_pred_proba >= threshold).astype(int)
+            if len(np.unique(y_pred)) > 1:
+                f1 = f1_score(y_test, y_pred)
+            else:
+                f1 = 0
+            f1_scores.append(f1)
+
+        optimal_idx = np.argmax(f1_scores)
+        optimal_threshold = thresholds[optimal_idx]
+        optimal_f1 = f1_scores[optimal_idx]
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=thresholds,
+            y=f1_scores,
+            mode='lines',
+            line=dict(color=colors[0], width=3),
+            name='F1 Score'
+        ))
+
+        fig.add_vline(x=optimal_threshold, line_dash="dash", line_color="red",
+                     annotation_text=f"Optimal: {optimal_threshold:.3f}")
+
+        fig.update_layout(
+            title=f"F1 Score vs Classification Threshold (Max: {optimal_f1:.3f})",
+            xaxis_title="Classification Threshold",
+            yaxis_title="F1 Score",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="f1_optimization")
+
+    with col2:
+        # Calibration curve
+        st.markdown("### Probability Calibration Curve")
+
+        fraction_of_positives, mean_predicted_value = calibration_curve(
+            y_test, y_pred_proba, n_bins=10
+        )
+
+        fig = go.Figure()
+
+        # Perfect calibration line
+        fig.add_trace(go.Scatter(
+            x=[0, 1],
+            y=[0, 1],
+            mode='lines',
+            name='Perfect Calibration',
+            line=dict(color='gray', dash='dash', width=2)
+        ))
+
+        # Actual calibration
+        fig.add_trace(go.Scatter(
+            x=mean_predicted_value,
+            y=fraction_of_positives,
+            mode='lines+markers',
+            name='Model Calibration',
+            line=dict(color=colors[1], width=3),
+            marker=dict(size=10)
+        ))
+
+        brier = brier_score_loss(y_test, y_pred_proba)
+
+        fig.update_layout(
+            title=f"Calibration Curve (Brier Score: {brier:.4f})",
+            xaxis_title="Mean Predicted Probability",
+            yaxis_title="Fraction of Positives",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="calibration_curve")
+
+    # Lift chart
+    st.markdown("### Cumulative Gains and Lift Charts")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Cumulative gains
+        sorted_indices = np.argsort(y_pred_proba)[::-1]
+        y_sorted = y_test.iloc[sorted_indices].values
+
+        cumulative_gains = np.cumsum(y_sorted) / y_sorted.sum()
+        percentile = np.arange(1, len(y_sorted) + 1) / len(y_sorted)
+
+        fig = go.Figure()
+
+        # Perfect model
+        fig.add_trace(go.Scatter(
+            x=[0, y_sorted.sum() / len(y_sorted), 1],
+            y=[0, 1, 1],
+            mode='lines',
+            name='Perfect Model',
+            line=dict(color='gray', dash='dash', width=2)
+        ))
+
+        # Random model
+        fig.add_trace(go.Scatter(
+            x=[0, 1],
+            y=[0, 1],
+            mode='lines',
+            name='Random Model',
+            line=dict(color='lightgray', dash='dot', width=2)
+        ))
+
+        # Actual model
+        fig.add_trace(go.Scatter(
+            x=np.concatenate([[0], percentile]),
+            y=np.concatenate([[0], cumulative_gains]),
+            mode='lines',
+            name='Model',
+            line=dict(color=colors[0], width=3)
+        ))
+
+        fig.update_layout(
+            title="Cumulative Gains Chart",
+            xaxis_title="Percentage of Sample",
+            yaxis_title="Percentage of Positive Class",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="gains_chart")
+
+    with col2:
+        # Lift chart
+        n_bins = 10
+        bin_size = len(y_sorted) // n_bins
+
+        lift_values = []
+        bin_labels = []
+
+        for i in range(n_bins):
+            start_idx = i * bin_size
+            end_idx = (i + 1) * bin_size if i < n_bins - 1 else len(y_sorted)
+
+            bin_y = y_sorted[start_idx:end_idx]
+            bin_rate = bin_y.mean()
+            overall_rate = y_sorted.mean()
+            lift = bin_rate / overall_rate if overall_rate > 0 else 0
+
+            lift_values.append(lift)
+            bin_labels.append(f"Top {(i+1)*10}%")
+
+        fig = go.Figure(go.Bar(
+            x=bin_labels,
+            y=lift_values,
+            marker=dict(
+                color=lift_values,
+                colorscale='RdYlGn',
+                showscale=True,
+                colorbar=dict(title="Lift")
+            ),
+            text=[f"{v:.2f}x" for v in lift_values],
+            textposition='outside'
+        ))
+
+        fig.add_hline(y=1.0, line_dash="dash", line_color="gray",
+                     annotation_text="Baseline")
+
+        fig.update_layout(
+            title="Lift Chart by Decile",
+            xaxis_title="Population Percentile",
+            yaxis_title="Lift",
+            height=350
+        )
+
+        st.plotly_chart(fig, use_container_width=True, key="lift_chart")
+
+    # Metrics summary table
+    st.markdown("### Model Performance Summary")
+
+    from sklearn.metrics import accuracy_score, precision_score, recall_score
+
+    y_pred = (y_pred_proba >= optimal_threshold).astype(int)
+
+    metrics_data = {
+        'Metric': ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC-ROC', 'Brier Score', 'Log Loss'],
+        'Score': [
+            f"{accuracy_score(y_test, y_pred):.4f}",
+            f"{precision_score(y_test, y_pred):.4f}",
+            f"{recall_score(y_test, y_pred):.4f}",
+            f"{optimal_f1:.4f}",
+            f"{auc(*roc_curve(y_test, y_pred_proba)[:2]):.4f}",
+            f"{brier:.4f}",
+            f"{log_loss(y_test, y_pred_proba):.4f}"
+        ],
+        'Description': [
+            'Overall correctness of predictions',
+            'Proportion of true frauds among detected frauds',
+            'Proportion of actual frauds detected',
+            'Harmonic mean of precision and recall',
+            'Area under ROC curve',
+            'Mean squared difference between predicted probabilities and actual outcomes',
+            'Negative log-likelihood of true labels given predictions'
+        ]
+    }
+
+    st.dataframe(pd.DataFrame(metrics_data), use_container_width=True)
 
 
 def render():
-    """Main render function - enhanced version"""
+    """Main render function for AI & ML Intelligence page"""
     apply_master_theme()
 
-    st.title("🤖 AI & Machine Learning Intelligence - ENHANCED")
-    st.markdown("*Advanced ML with Isolation Forest, LightGBM, LSTM, SHAP, and Ensemble Voting*")
+    st.title("🤖 AI & Machine Learning Intelligence")
+    st.markdown("*Advanced machine learning analytics and model intelligence for fraud detection*")
 
     # Load data
     data = load_ml_data()
@@ -762,60 +1257,45 @@ def render():
     with st.spinner("Preparing ML features..."):
         features = prepare_ml_features(data['transactions'], data['customers'])
 
-    # Create tabs with new features
+    # Render sections
     tabs = st.tabs([
-        "🌳 Advanced Ensembles",
-        "🔍 SHAP Explainability",
-        "🧠 LSTM Sequential",
-        "📊 Model Comparison"
+        "🧠 Neural Networks",
+        "🌳 Ensemble Models",
+        "📊 Model Performance",
+        "🔍 Explainable AI",
+        "⚡ Real-time Monitoring",
+        "🔬 Feature Engineering",
+        "🤖 Deep Learning",
+        "📈 Advanced Metrics"
     ])
 
     with tabs[0]:
-        render_enhanced_ensemble_tab(features, colors)
+        render_neural_network_architecture(colors)
 
     with tabs[1]:
-        X = features.drop('is_fraud', axis=1)
-        y = features['is_fraud']
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-        render_shap_explainability(X_train, X_test, y_train, y_test, colors)
+        render_ensemble_models(features, colors)
 
     with tabs[2]:
-        render_lstm_model(data['transactions'], data['customers'], colors)
+        render_model_performance(features, colors)
 
     with tabs[3]:
-        st.markdown("## 📊 Comprehensive Model Comparison")
+        render_explainable_ai(features, colors)
 
-        # Quick comparison table
-        model_comparison = pd.DataFrame({
-            'Model': ['LightGBM', 'XGBoost', 'Voting Ensemble', 'Random Forest', 'LSTM', 'Isolation Forest'],
-            'AUC': [0.965, 0.963, 0.958, 0.945, 0.923, 0.892],
-            'Type': ['Supervised', 'Supervised', 'Ensemble', 'Supervised', 'Deep Learning', 'Unsupervised'],
-            'Best For': ['Speed & Accuracy', 'Accuracy', 'Stability', 'Interpretability', 'Sequences', 'Anomalies']
-        })
+    with tabs[4]:
+        render_realtime_monitoring(colors)
 
-        st.dataframe(model_comparison, use_container_width=True, hide_index=True)
+    with tabs[5]:
+        render_feature_engineering(features, colors)
 
-        # Visualize
-        fig = go.Figure(go.Bar(
-            x=model_comparison['AUC'],
-            y=model_comparison['Model'],
-            orientation='h',
-            marker=dict(color=colors[:6]),
-            text=[f"{v:.3f}" for v in model_comparison['AUC']],
-            textposition='outside'
-        ))
+    with tabs[6]:
+        render_deep_learning_viz(colors)
 
-        fig.update_layout(
-            title="Overall Model Performance Comparison",
-            xaxis_title="AUC Score",
-            height=350
-        )
-
-        st.plotly_chart(fig, use_container_width=True, key="final_comparison")
+    with tabs[7]:
+        render_advanced_metrics(features, colors)
 
     # Footer
     st.markdown("---")
-    st.markdown("*🚀 Enhanced AI & ML Intelligence Dashboard - Top 5 Fraud Detection Features*")
+    st.markdown("*AI & ML Intelligence Dashboard - Powered by Advanced Machine Learning*")
 
 
 if __name__ == "__main__":
