@@ -1841,11 +1841,96 @@ def render_realtime_monitoring(colors):
             np.random.beta(2, 2, 100)   # Low confidence predictions
         ])
 
-        fig = go.Figure(data=[go.Histogram(
-            x=confidences,
-            nbinsx=30,
+        # Enhanced hover for confidence histogram
+        # Create bins and calculate statistics for each bin
+        hist, bin_edges = np.histogram(confidences, bins=30)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+        confidence_hovers = []
+        for count, bin_center, bin_start, bin_end in zip(hist, bin_centers, bin_edges[:-1], bin_edges[1:]):
+            # Confidence level assessment
+            if bin_center >= 0.90:
+                conf_level = "🟢 VERY HIGH CONFIDENCE"
+                conf_color = "#10b981"
+                interpretation = "Model is highly certain about these predictions"
+                action_recommendation = "Generally safe to auto-process with minimal review"
+                reliability = "95-99% reliability"
+            elif bin_center >= 0.75:
+                conf_level = "✅ HIGH CONFIDENCE"
+                conf_color = "#3b82f6"
+                interpretation = "Model has strong confidence in these predictions"
+                action_recommendation = "Can be processed with standard review procedures"
+                reliability = "85-95% reliability"
+            elif bin_center >= 0.60:
+                conf_level = "🟡 MODERATE CONFIDENCE"
+                conf_color = "#eab308"
+                interpretation = "Model is moderately certain about these predictions"
+                action_recommendation = "Recommend enhanced review for these cases"
+                reliability = "70-85% reliability"
+            elif bin_center >= 0.40:
+                conf_level = "🟠 LOW CONFIDENCE"
+                conf_color = "#f59e0b"
+                interpretation = "Model is uncertain about these predictions"
+                action_recommendation = "Requires thorough manual review"
+                reliability = "50-70% reliability"
+            else:
+                conf_level = "🔴 VERY LOW CONFIDENCE"
+                conf_color = "#ef4444"
+                interpretation = "Model has minimal confidence in these predictions"
+                action_recommendation = "CRITICAL: Needs expert analyst review"
+                reliability = "<50% reliability (approaching random guess)"
+
+            # Calculate percentage of total predictions
+            total_predictions = len(confidences)
+            pct_of_total = (count / total_predictions) * 100
+
+            # Business impact calculation
+            if bin_center >= 0.75:
+                review_time = 2  # minutes per case
+                cost_per_case = 5
+            elif bin_center >= 0.60:
+                review_time = 5
+                cost_per_case = 12
+            else:
+                review_time = 10
+                cost_per_case = 25
+
+            total_review_time = count * review_time
+            total_cost = count * cost_per_case
+
+            hover_text = (
+                f"<b style='font-size:14px'>Confidence Range: {bin_start:.2f} - {bin_end:.2f}</b><br><br>"
+                f"<b style='color:{conf_color}'>{conf_level}</b><br>"
+                f"{interpretation}<br><br>"
+                f"<b>📊 Prediction Statistics:</b><br>"
+                f"• Count: <b>{count}</b> predictions<br>"
+                f"• Percentage: <b>{pct_of_total:.1f}%</b> of all predictions<br>"
+                f"• Avg Confidence: <b>{bin_center:.1%}</b><br><br>"
+                f"<b>🎯 Reliability:</b><br>"
+                f"{reliability}<br><br>"
+                f"<b>💼 Review Burden:</b><br>"
+                f"• Est. review time: <b>{review_time} min/case</b><br>"
+                f"• Total time for bin: <b>{total_review_time:.0f} minutes</b><br>"
+                f"• Review cost: <b>${cost_per_case}/case</b><br>"
+                f"• Total cost: <b>${total_cost:,}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"Model confidence scores indicate how certain the AI is<br>"
+                f"about its fraud predictions. Higher confidence scores<br>"
+                f"mean the model has seen similar patterns before and<br>"
+                f"is more reliable. Lower scores need human expertise.<br><br>"
+                f"<b style='color:#059669'>🎯 Recommendation:</b><br>"
+                f"{action_recommendation}"
+            )
+            confidence_hovers.append(hover_text)
+
+        fig = go.Figure(data=[go.Bar(
+            x=bin_centers,
+            y=hist,
+            width=(bin_edges[1] - bin_edges[0]),
             marker=dict(color=colors[0]),
-            opacity=0.7
+            opacity=0.7,
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=confidence_hovers
         )])
 
         fig.update_layout(
@@ -1866,10 +1951,85 @@ def render_realtime_monitoring(colors):
         hours = list(range(24))
         volume = [1000 + np.random.randint(-200, 300) for _ in hours]
 
+        # Enhanced hover for prediction volume
+        volume_hovers = []
+        avg_volume = np.mean(volume)
+        max_volume = max(volume)
+        min_volume = min(volume)
+
+        for hour, vol in zip(hours, volume):
+            # Time of day context
+            if 0 <= hour < 6:
+                time_period = "🌙 Night (Low Activity)"
+                expected_vol = "600-900 predictions/hour"
+            elif 6 <= hour < 12:
+                time_period = "🌅 Morning (Rising Activity)"
+                expected_vol = "900-1200 predictions/hour"
+            elif 12 <= hour < 18:
+                time_period = "☀️ Afternoon (Peak Activity)"
+                expected_vol = "1100-1400 predictions/hour"
+            elif 18 <= hour < 22:
+                time_period = "🌆 Evening (Moderate Activity)"
+                expected_vol = "800-1100 predictions/hour"
+            else:
+                time_period = "🌃 Late Evening (Declining)"
+                expected_vol = "700-1000 predictions/hour"
+
+            # Volume assessment
+            deviation_pct = ((vol - avg_volume) / avg_volume) * 100
+            if vol > avg_volume * 1.3:
+                status = "🔴 UNUSUALLY HIGH"
+                status_color = "#ef4444"
+                assessment = "Volume spike detected - possible bot attack or campaign"
+                action = "ALERT: Monitor for fraud patterns and system capacity"
+            elif vol > avg_volume * 1.1:
+                status = "🟠 ABOVE NORMAL"
+                status_color = "#f59e0b"
+                assessment = "Higher than average transaction volume"
+                action = "Monitor: Check for marketing campaigns or seasonal patterns"
+            elif vol < avg_volume * 0.7:
+                status = "🟡 BELOW NORMAL"
+                status_color = "#eab308"
+                assessment = "Lower than average transaction volume"
+                action = "Check: Verify system connectivity and service health"
+            else:
+                status = "✅ NORMAL"
+                status_color = "#10b981"
+                assessment = "Volume within expected range"
+                action = "Continue normal operations"
+
+            # Capacity calculation
+            system_capacity = 2000  # predictions per hour
+            capacity_used = (vol / system_capacity) * 100
+
+            hover_text = (
+                f"<b style='font-size:14px'>Hour {hour:02d}:00 Prediction Volume</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 Volume Metrics:</b><br>"
+                f"• Current: <b>{vol}</b> predictions/hour<br>"
+                f"• 24h Average: <b>{avg_volume:.0f}</b><br>"
+                f"• Deviation: <b>{deviation_pct:+.1f}%</b><br>"
+                f"• 24h Peak: <b>{max_volume}</b> (Hour {volume.index(max_volume):02d})<br>"
+                f"• 24h Low: <b>{min_volume}</b> (Hour {volume.index(min_volume):02d})<br><br>"
+                f"<b>⏰ Time Context:</b><br>"
+                f"{time_period}<br>"
+                f"Expected: {expected_vol}<br><br>"
+                f"<b>⚙️ System Capacity:</b><br>"
+                f"• Capacity Used: <b>{capacity_used:.1f}%</b><br>"
+                f"• Available: <b>{system_capacity - vol}</b> predictions/hour<br>"
+                f"• Status: <b>{'🟢 Healthy' if capacity_used < 80 else '🔴 Near Limit'}</b><br><br>"
+                f"<b style='color:#059669'>🎯 Action:</b><br>"
+                f"{action}"
+            )
+            volume_hovers.append(hover_text)
+
         fig = go.Figure(go.Scatter(
             x=hours, y=volume,
             fill='tozeroy',
-            line=dict(color=colors[0])
+            line=dict(color=colors[0]),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=volume_hovers
         ))
         fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True, key="pred_volume")
@@ -1878,10 +2038,77 @@ def render_realtime_monitoring(colors):
         st.markdown("**Error Rate**")
         error_rate = [0.06 + np.random.randn() * 0.01 for _ in hours]
 
+        # Enhanced hover for error rate
+        error_hovers = []
+        avg_error = np.mean(error_rate)
+        target_error = 0.05  # 5% target error rate
+
+        for hour, err in zip(hours, error_rate):
+            # Error rate assessment
+            if err > 0.10:
+                status = "🔴 CRITICAL"
+                status_color = "#ef4444"
+                assessment = "Error rate critically high - model degradation"
+                action = "URGENT: Investigate model drift, retrain if needed"
+                severity = "CRITICAL"
+            elif err > 0.08:
+                status = "🟠 HIGH"
+                status_color = "#f59e0b"
+                assessment = "Error rate elevated above acceptable threshold"
+                action = "ALERT: Review recent predictions and data quality"
+                severity = "HIGH"
+            elif err > 0.06:
+                status = "🟡 MODERATE"
+                status_color = "#eab308"
+                assessment = "Error rate slightly above target"
+                action = "MONITOR: Watch for increasing trend"
+                severity = "MODERATE"
+            else:
+                status = "✅ GOOD"
+                status_color = "#10b981"
+                assessment = "Error rate within acceptable range"
+                action = "Continue normal operations"
+                severity = "LOW"
+
+            # Impact calculation
+            hour_predictions = volume[hour]
+            errors_this_hour = int(hour_predictions * err)
+            cost_per_error = 50  # dollars
+            total_error_cost = errors_this_hour * cost_per_error
+
+            # Distance from target
+            vs_target = ((err - target_error) / target_error) * 100
+
+            hover_text = (
+                f"<b style='font-size:14px'>Hour {hour:02d}:00 Error Rate</b><br><br>"
+                f"<b style='color:{status_color}'>{status} - {err:.1%}</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 Error Metrics:</b><br>"
+                f"• Current Rate: <b>{err:.2%}</b><br>"
+                f"• Target Rate: <b>{target_error:.1%}</b><br>"
+                f"• vs Target: <b>{vs_target:+.1f}%</b><br>"
+                f"• 24h Average: <b>{avg_error:.2%}</b><br>"
+                f"• Severity: <b>{severity}</b><br><br>"
+                f"<b>💰 Business Impact:</b><br>"
+                f"• Predictions this hour: <b>{hour_predictions}</b><br>"
+                f"• Estimated errors: <b>{errors_this_hour}</b><br>"
+                f"• Cost per error: <b>${cost_per_error}</b><br>"
+                f"• Total impact: <b>${total_error_cost:,}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"Error rate shows percentage of predictions that are<br>"
+                f"incorrect (both false positives and false negatives).<br>"
+                f"Target is ≤{target_error:.0%} for production quality.<br><br>"
+                f"<b style='color:#059669'>🎯 Action:</b><br>"
+                f"{action}"
+            )
+            error_hovers.append(hover_text)
+
         fig = go.Figure(go.Scatter(
             x=hours, y=error_rate,
             fill='tozeroy',
-            line=dict(color=colors[1])
+            line=dict(color=colors[1]),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=error_hovers
         ))
         fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True, key="error_rate")
@@ -1890,10 +2117,88 @@ def render_realtime_monitoring(colors):
         st.markdown("**Response Time**")
         latency = [12 + np.random.randn() * 2 for _ in hours]
 
+        # Enhanced hover for response time
+        latency_hovers = []
+        avg_latency = np.mean(latency)
+        p95_latency = np.percentile(latency, 95)
+        p99_latency = np.percentile(latency, 99)
+
+        for hour, lat in zip(hours, latency):
+            # Latency assessment
+            if lat > 20:
+                status = "🔴 SLOW"
+                status_color = "#ef4444"
+                assessment = "Response time exceeds SLA - poor user experience"
+                action = "CRITICAL: Investigate performance bottleneck"
+                user_experience = "Poor - Users experiencing delays"
+                sla_status = "BREACH"
+            elif lat > 15:
+                status = "🟠 DEGRADED"
+                status_color = "#f59e0b"
+                assessment = "Response time elevated - approaching SLA limit"
+                action = "WARNING: Monitor system load and optimize"
+                user_experience = "Acceptable - Minor delays noticed"
+                sla_status = "WARNING"
+            elif lat > 10:
+                status = "🟡 MODERATE"
+                status_color = "#eab308"
+                assessment = "Response time within acceptable range"
+                action = "MONITOR: Continue tracking performance"
+                user_experience = "Good - Responsive system"
+                sla_status = "OK"
+            else:
+                status = "✅ FAST"
+                status_color = "#10b981"
+                assessment = "Excellent response time"
+                action = "Optimal performance"
+                user_experience = "Excellent - Real-time response"
+                sla_status = "EXCELLENT"
+
+            # SLA targets
+            sla_target = 15  # ms
+            sla_compliance = lat <= sla_target
+
+            # Performance tier
+            if lat < 10:
+                perf_tier = "⚡ Real-time"
+            elif lat < 50:
+                perf_tier = "🚀 Fast"
+            elif lat < 100:
+                perf_tier = "🏃 Acceptable"
+            else:
+                perf_tier = "🐌 Slow"
+
+            hover_text = (
+                f"<b style='font-size:14px'>Hour {hour:02d}:00 Response Time</b><br><br>"
+                f"<b style='color:{status_color}'>{status} - {lat:.1f}ms</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>⚡ Latency Metrics:</b><br>"
+                f"• Current: <b>{lat:.1f}ms</b><br>"
+                f"• 24h Average: <b>{avg_latency:.1f}ms</b><br>"
+                f"• 95th Percentile: <b>{p95_latency:.1f}ms</b><br>"
+                f"• 99th Percentile: <b>{p99_latency:.1f}ms</b><br><br>"
+                f"<b>🎯 SLA Compliance:</b><br>"
+                f"• Target: <b>≤{sla_target}ms</b><br>"
+                f"• Status: <b>{'✅ COMPLIANT' if sla_compliance else '❌ BREACH'}</b><br>"
+                f"• SLA State: <b>{sla_status}</b><br><br>"
+                f"<b>👤 User Experience:</b><br>"
+                f"{user_experience}<br>"
+                f"Performance Tier: {perf_tier}<br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"Response time measures how quickly the model<br>"
+                f"returns predictions. Lower is better. Target is<br>"
+                f"≤{sla_target}ms for real-time fraud detection.<br><br>"
+                f"<b style='color:#059669'>🎯 Action:</b><br>"
+                f"{action}"
+            )
+            latency_hovers.append(hover_text)
+
         fig = go.Figure(go.Scatter(
             x=hours, y=latency,
             fill='tozeroy',
-            line=dict(color=colors[2])
+            line=dict(color=colors[2]),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=latency_hovers
         ))
         fig.update_layout(height=250, margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True, key="latency")
