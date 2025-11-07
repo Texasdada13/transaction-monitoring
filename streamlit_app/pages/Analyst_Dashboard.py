@@ -134,7 +134,7 @@ def render():
         ))
 
         fig_funnel.update_layout(height=400, showlegend=False)
-        st.plotly_chart(fig_funnel, use_container_width=True)
+        st.plotly_chart(fig_funnel, use_container_width=True, key="analyst_funnel_chart")
 
         # Cost savings
         st.info(f"💰 **Cost Savings**: Manual reviews prevented: 11,915 × $5 = **$59,575/day**")
@@ -182,7 +182,7 @@ def render():
             legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
         )
 
-        st.plotly_chart(fig_decisions, use_container_width=True)
+        st.plotly_chart(fig_decisions, use_container_width=True, key="analyst_decisions_chart")
 
     st.markdown("---")
 
@@ -221,7 +221,7 @@ def render():
         legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
 
     st.markdown("---")
 
