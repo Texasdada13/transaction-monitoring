@@ -100,13 +100,23 @@ def render_neural_network_architecture(colors):
     col1, col2 = st.columns(2)
 
     with col1:
-        # Network architecture visualization
+        # Network architecture visualization with enhanced explainability
         layers = [
-            {'name': 'Input Layer', 'neurons': 12, 'activation': 'None'},
-            {'name': 'Hidden Layer 1', 'neurons': 64, 'activation': 'ReLU'},
-            {'name': 'Hidden Layer 2', 'neurons': 32, 'activation': 'ReLU'},
-            {'name': 'Hidden Layer 3', 'neurons': 16, 'activation': 'ReLU'},
-            {'name': 'Output Layer', 'neurons': 1, 'activation': 'Sigmoid'}
+            {'name': 'Input Layer', 'neurons': 12, 'activation': 'None',
+             'desc': 'Raw transaction features', 'params': 0,
+             'purpose': 'Receives 12 input features (amount, risk_level, time, etc.)'},
+            {'name': 'Hidden Layer 1', 'neurons': 64, 'activation': 'ReLU',
+             'desc': 'Primary feature extraction', 'params': 12*64 + 64,
+             'purpose': 'Learns basic patterns and feature combinations'},
+            {'name': 'Hidden Layer 2', 'neurons': 32, 'activation': 'ReLU',
+             'desc': 'Secondary feature extraction', 'params': 64*32 + 32,
+             'purpose': 'Learns higher-level fraud patterns'},
+            {'name': 'Hidden Layer 3', 'neurons': 16, 'activation': 'ReLU',
+             'desc': 'Pattern consolidation', 'params': 32*16 + 16,
+             'purpose': 'Consolidates patterns into fraud indicators'},
+            {'name': 'Output Layer', 'neurons': 1, 'activation': 'Sigmoid',
+             'desc': 'Fraud probability', 'params': 16*1 + 1,
+             'purpose': 'Outputs fraud probability (0-1)'}
         ]
 
         # Create network diagram
@@ -119,6 +129,27 @@ def render_neural_network_architecture(colors):
             neurons = layer['neurons']
             y_positions = np.linspace(-max_neurons/2, max_neurons/2, neurons)
 
+            # Create enhanced hover text
+            activation_desc = {
+                'None': 'No activation - passes raw values',
+                'ReLU': 'Rectified Linear Unit - max(0, x) for non-linearity',
+                'Sigmoid': 'Sigmoid - converts to probability (0-1)'
+            }[layer['activation']]
+
+            hover_text = (
+                f"<b style='font-size:14px'>{layer['name']}</b><br><br>"
+                f"<b>🔢 Architecture:</b><br>"
+                f"• Neurons: <b>{neurons}</b><br>"
+                f"• Activation: <b>{layer['activation']}</b><br>"
+                f"• Parameters: <b>{layer['params']:,}</b><br><br>"
+                f"<b>💡 Function:</b><br>"
+                f"{layer['desc']}<br><br>"
+                f"<b>🎯 Purpose:</b><br>"
+                f"{layer['purpose']}<br><br>"
+                f"<b>⚙️ Activation Function:</b><br>"
+                f"{activation_desc}"
+            )
+
             # Draw neurons
             fig.add_trace(go.Scatter(
                 x=[layer_positions[i]] * neurons,
@@ -130,8 +161,8 @@ def render_neural_network_architecture(colors):
                     line=dict(width=2, color='white')
                 ),
                 name=layer['name'],
-                text=[f"{layer['name']}<br>{layer['activation']}<br>Neurons: {neurons}"] * neurons,
-                hovertemplate='%{text}<extra></extra>'
+                customdata=[hover_text] * neurons,
+                hovertemplate='%{customdata}<extra></extra>'
             ))
 
             # Draw connections to next layer
@@ -165,9 +196,62 @@ def render_neural_network_architecture(colors):
         st.plotly_chart(fig, use_container_width=True, key="nn_architecture")
 
     with col2:
-        # Activation patterns heatmap
+        # Enhanced Activation patterns heatmap with explainability
         np.random.seed(42)
         activations = np.random.rand(32, 10)  # 32 neurons, 10 samples
+
+        # Create detailed hover texts for each cell
+        hover_texts = []
+        for neuron_idx in range(32):
+            row_hover = []
+            for sample_idx in range(10):
+                activation_val = activations[neuron_idx, sample_idx]
+
+                # Assess activation strength
+                if activation_val >= 0.8:
+                    strength = "🔴 VERY STRONG"
+                    strength_color = "#ef4444"
+                    meaning = "This neuron is highly activated - detected strong pattern"
+                elif activation_val >= 0.6:
+                    strength = "🟠 STRONG"
+                    strength_color = "#f97316"
+                    meaning = "Significant activation - pattern detected"
+                elif activation_val >= 0.4:
+                    strength = "🟡 MODERATE"
+                    strength_color = "#eab308"
+                    meaning = "Moderate activation - weak pattern present"
+                elif activation_val >= 0.2:
+                    strength = "🟢 WEAK"
+                    strength_color = "#10b981"
+                    meaning = "Low activation - minimal pattern"
+                else:
+                    strength = "⚪ MINIMAL"
+                    strength_color = "#6b7280"
+                    meaning = "Nearly inactive - no significant pattern"
+
+                # Calculate neuron statistics
+                neuron_avg = activations[neuron_idx, :].mean()
+                neuron_std = activations[neuron_idx, :].std()
+                deviation = (activation_val - neuron_avg) / neuron_std if neuron_std > 0 else 0
+
+                hover_text = (
+                    f"<b style='font-size:14px'>Neuron #{neuron_idx} - Sample #{sample_idx}</b><br><br>"
+                    f"<b style='color:{strength_color}'>{strength} ACTIVATION</b><br>"
+                    f"{meaning}<br><br>"
+                    f"<b>📊 Activation Metrics:</b><br>"
+                    f"• Activation Value: <b>{activation_val:.3f}</b><br>"
+                    f"• Neuron Avg: <b>{neuron_avg:.3f}</b><br>"
+                    f"• Std Deviation: <b>{neuron_std:.3f}</b><br>"
+                    f"• Z-Score: <b>{deviation:+.2f}σ</b><br><br>"
+                    f"<b>💡 Interpretation:</b><br>"
+                    f"{'Above average response' if activation_val > neuron_avg else 'Below average response'}<br>"
+                    f"Activation is {abs(deviation):.1f} standard deviations {'+above' if deviation > 0 else 'below'} mean<br><br>"
+                    f"<b>🎯 What This Means:</b><br>"
+                    f"ReLU activated: <b>{('Yes - max(0, x) fired' if activation_val > 0 else 'No - below zero threshold')}</b><br>"
+                    f"This neuron {'contributes significantly' if activation_val > 0.5 else 'has minimal impact'} to the prediction"
+                )
+                row_hover.append(hover_text)
+            hover_texts.append(row_hover)
 
         fig = go.Figure(data=go.Heatmap(
             z=activations,
@@ -175,7 +259,9 @@ def render_neural_network_architecture(colors):
             text=np.round(activations, 2),
             texttemplate='%{text}',
             textfont={"size": 8},
-            colorbar=dict(title="Activation")
+            colorbar=dict(title="Activation"),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -187,7 +273,7 @@ def render_neural_network_architecture(colors):
 
         st.plotly_chart(fig, use_container_width=True, key="nn_activations")
 
-    # Training metrics
+    # Enhanced Training metrics with explainability
     st.markdown("### Training Progress")
     epochs = list(range(1, 51))
     train_loss = [0.693 * np.exp(-0.08 * e) + np.random.rand() * 0.02 for e in epochs]
@@ -198,16 +284,122 @@ def render_neural_network_architecture(colors):
     col1, col2 = st.columns(2)
 
     with col1:
+        # Enhanced Training Loss hover
+        train_loss_hover = []
+        for epoch, t_loss, v_loss in zip(epochs, train_loss, val_loss):
+            gap = abs(t_loss - v_loss)
+
+            if gap < 0.02:
+                overfitting_status = "✅ GOOD FIT"
+                overfitting_note = "Train and validation losses are close - good generalization"
+            elif gap < 0.05:
+                overfitting_status = "🟡 SLIGHT OVERFITTING"
+                overfitting_note = "Small gap emerging - monitor closely"
+            else:
+                overfitting_status = "🔴 OVERFITTING"
+                overfitting_note = "Large gap - model may be memorizing training data"
+
+            # Convergence assessment
+            if epoch > 10:
+                recent_change = abs(train_loss[epoch-1] - train_loss[max(0, epoch-6)])
+                if recent_change < 0.01:
+                    convergence = "📉 CONVERGED"
+                    conv_note = "Loss has stabilized"
+                else:
+                    convergence = "📊 STILL LEARNING"
+                    conv_note = "Loss still decreasing"
+            else:
+                convergence = "🚀 EARLY TRAINING"
+                conv_note = "Rapid initial learning phase"
+
+            hover_text = (
+                f"<b style='font-size:14px'>Epoch {epoch}</b><br><br>"
+                f"<b>📊 Loss Metrics:</b><br>"
+                f"• Training Loss: <b>{t_loss:.4f}</b><br>"
+                f"• Validation Loss: <b>{v_loss:.4f}</b><br>"
+                f"• Gap: <b>{gap:.4f}</b><br><br>"
+                f"<b>{overfitting_status}</b><br>"
+                f"{overfitting_note}<br><br>"
+                f"<b>{convergence}</b><br>"
+                f"{conv_note}"
+            )
+            train_loss_hover.append(hover_text)
+
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=epochs, y=train_loss, name='Training Loss', line=dict(color=colors[0])))
-        fig.add_trace(go.Scatter(x=epochs, y=val_loss, name='Validation Loss', line=dict(color=colors[1])))
+        fig.add_trace(go.Scatter(
+            x=epochs, y=train_loss, name='Training Loss',
+            line=dict(color=colors[0]),
+            customdata=train_loss_hover,
+            hovertemplate='%{customdata}<extra></extra>'
+        ))
+        fig.add_trace(go.Scatter(
+            x=epochs, y=val_loss, name='Validation Loss',
+            line=dict(color=colors[1]),
+            customdata=train_loss_hover,
+            hovertemplate='%{customdata}<extra></extra>'
+        ))
         fig.update_layout(title="Model Loss Over Epochs", xaxis_title="Epoch", yaxis_title="Loss", height=300)
         st.plotly_chart(fig, use_container_width=True, key="nn_loss")
 
     with col2:
+        # Enhanced Training Accuracy hover
+        train_acc_hover = []
+        for epoch, t_acc, v_acc in zip(epochs, train_acc, val_acc):
+            gap = abs(t_acc - v_acc)
+
+            if v_acc >= 0.90:
+                perf_badge = "⭐ EXCELLENT"
+                perf_color = "#10b981"
+                perf_note = "Outstanding validation performance"
+            elif v_acc >= 0.85:
+                perf_badge = "✅ VERY GOOD"
+                perf_color = "#3b82f6"
+                perf_note = "Strong validation performance"
+            elif v_acc >= 0.80:
+                perf_badge = "🟡 GOOD"
+                perf_color = "#eab308"
+                perf_note = "Acceptable validation performance"
+            else:
+                perf_badge = "⚠️ NEEDS IMPROVEMENT"
+                perf_color = "#ef4444"
+                perf_note = "Consider model tuning or more training"
+
+            # Generalization gap
+            if gap < 0.03:
+                gen_status = "✅ Good Generalization"
+            elif gap < 0.06:
+                gen_status = "🟡 Moderate Gap"
+            else:
+                gen_status = "🔴 Poor Generalization"
+
+            hover_text = (
+                f"<b style='font-size:14px'>Epoch {epoch}</b><br><br>"
+                f"<b style='color:{perf_color}'>{perf_badge}</b><br>"
+                f"{perf_note}<br><br>"
+                f"<b>📊 Accuracy Metrics:</b><br>"
+                f"• Training Acc: <b>{t_acc:.1%}</b><br>"
+                f"• Validation Acc: <b>{v_acc:.1%}</b><br>"
+                f"• Gap: <b>{gap:.1%}</b><br><br>"
+                f"<b>🎯 Generalization:</b><br>"
+                f"{gen_status}<br><br>"
+                f"<b>💡 Fraud Detection:</b><br>"
+                f"Model correctly classifies <b>{v_acc:.1%}</b> of validation transactions"
+            )
+            train_acc_hover.append(hover_text)
+
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=epochs, y=train_acc, name='Training Accuracy', line=dict(color=colors[2])))
-        fig.add_trace(go.Scatter(x=epochs, y=val_acc, name='Validation Accuracy', line=dict(color=colors[3])))
+        fig.add_trace(go.Scatter(
+            x=epochs, y=train_acc, name='Training Accuracy',
+            line=dict(color=colors[2]),
+            customdata=train_acc_hover,
+            hovertemplate='%{customdata}<extra></extra>'
+        ))
+        fig.add_trace(go.Scatter(
+            x=epochs, y=val_acc, name='Validation Accuracy',
+            line=dict(color=colors[3]),
+            customdata=train_acc_hover,
+            hovertemplate='%{customdata}<extra></extra>'
+        ))
         fig.update_layout(title="Model Accuracy Over Epochs", xaxis_title="Epoch", yaxis_title="Accuracy", height=300)
         st.plotly_chart(fig, use_container_width=True, key="nn_accuracy")
 
