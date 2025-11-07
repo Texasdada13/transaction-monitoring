@@ -347,6 +347,65 @@ def render():
         st.subheader("🧠 Rule Performance Matrix")
         st.caption("X: Trigger Frequency | Y: Precision | Size: Rule Weight")
 
+        # Enhanced hover texts for bubble chart
+        bubble_hover_texts = []
+        for _, row in rule_performance_df.iterrows():
+            precision = row['precision']
+            frequency = row['trigger_frequency']
+            weight = row['rule_weight']
+            fp_rate = row['false_positive_rate']
+            fraud_count = row['confirmed_fraud_count']
+
+            # Assess rule effectiveness
+            if precision > 0.90 and frequency > 300:
+                status = "🏆 ELITE PERFORMER"
+                status_color = "#10b981"
+                insight = "High precision + high volume = maximum impact"
+            elif precision > 0.85 and frequency > 200:
+                status = "⭐ STRONG PERFORMER"
+                status_color = "#22c55e"
+                insight = "Solid performance across precision and volume"
+            elif precision > 0.75:
+                status = "✅ RELIABLE"
+                status_color = "#3b82f6"
+                insight = "Good precision, consistent detection"
+            elif frequency > 350:
+                status = "🟡 HIGH VOLUME"
+                status_color = "#f59e0b"
+                insight = "High trigger rate - consider precision optimization"
+            else:
+                status = "📊 BASELINE"
+                status_color = "#6b7280"
+                insight = "Standard performance - monitor for improvements"
+
+            # Calculate efficiency score
+            efficiency = (precision * 100) / max(fp_rate * 100, 1)
+
+            # Estimate business value
+            avg_fraud_value = 12400
+            prevented_loss = fraud_count * avg_fraud_value
+            investigation_cost = int(frequency * fp_rate * 50)  # $50 per false positive investigation
+            net_value = prevented_loss - investigation_cost
+
+            hover_text = (
+                f"<b style='font-size:14px'>{row['rule_name']}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Performance Metrics:</b><br>"
+                f"• Precision: <b>{precision*100:.1f}%</b><br>"
+                f"• Trigger Frequency: <b>{frequency}</b> cases<br>"
+                f"• Rule Weight: <b>{weight}</b><br>"
+                f"• False Positive Rate: <b>{fp_rate*100:.1f}%</b><br>"
+                f"• Efficiency Score: <b>{efficiency:.1f}</b><br><br>"
+                f"<b>🎯 Detection Impact:</b><br>"
+                f"• Fraud Caught: <b>{fraud_count}</b> cases<br>"
+                f"• Losses Prevented: <b>${prevented_loss:,}</b><br>"
+                f"• Investigation Cost: <b>${investigation_cost:,}</b><br>"
+                f"• Net Value: <b>${net_value:,}</b><br><br>"
+                f"<b>💡 Strategic Insight:</b><br>"
+                f"{insight}"
+            )
+            bubble_hover_texts.append(hover_text)
+
         fig_bubble = go.Figure()
 
         fig_bubble.add_trace(go.Scatter(
@@ -364,7 +423,8 @@ def render():
                 line=dict(width=1, color='white')
             ),
             text=rule_performance_df['rule_name'],
-            hovertemplate='<b>%{text}</b><br>Frequency: %{x}<br>Precision: %{y:.1f}%<br><extra></extra>'
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=bubble_hover_texts
         ))
 
         fig_bubble.update_layout(
@@ -395,6 +455,62 @@ def render():
     heatmap_matrix = heatmap_data[['rule_name', 'trigger_frequency_norm', 'precision_norm',
                                      'fpr_norm', 'contribution_norm']].set_index('rule_name')
 
+    # Enhanced hover texts for heatmap
+    heatmap_hover_texts = []
+    metric_names = ['Trigger Frequency', 'Precision', 'False Positive Rate (Inv)', 'Avg Contribution']
+
+    for rule_idx, rule_name in enumerate(heatmap_matrix.index):
+        row_hovers = []
+        rule_data = heatmap_data[heatmap_data['rule_name'] == rule_name].iloc[0]
+
+        for metric_idx, metric_name in enumerate(metric_names):
+            norm_value = heatmap_matrix.iloc[rule_idx, metric_idx]
+
+            # Get actual values
+            if metric_name == 'Trigger Frequency':
+                actual_value = rule_data['trigger_frequency']
+                display = f"{int(actual_value)} cases"
+            elif metric_name == 'Precision':
+                actual_value = rule_data['precision']
+                display = f"{actual_value*100:.1f}%"
+            elif metric_name == 'False Positive Rate (Inv)':
+                actual_value = rule_data['false_positive_rate']
+                display = f"{actual_value*100:.1f}% FP rate"
+            else:  # Avg Contribution
+                actual_value = rule_data['avg_contribution']
+                display = f"{actual_value:.1f}%"
+
+            # Assess performance
+            if norm_value > 0.75:
+                status = "🟢 EXCELLENT"
+                status_color = "#10b981"
+                insight = "Top-tier performance in this metric"
+            elif norm_value > 0.50:
+                status = "🟡 GOOD"
+                status_color = "#f59e0b"
+                insight = "Above average performance"
+            elif norm_value > 0.25:
+                status = "🟠 FAIR"
+                status_color = "#f97316"
+                insight = "Below average - consider improvement"
+            else:
+                status = "🔴 NEEDS ATTENTION"
+                status_color = "#ef4444"
+                insight = "Low performance - prioritize optimization"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{rule_name}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Metric: {metric_name}</b><br>"
+                f"• Actual Value: <b>{display}</b><br>"
+                f"• Normalized Score: <b>{norm_value:.2f}</b><br><br>"
+                f"<b>💡 Assessment:</b><br>"
+                f"{insight}"
+            )
+            row_hovers.append(hover_text)
+
+        heatmap_hover_texts.append(row_hovers)
+
     fig_heatmap = go.Figure(data=go.Heatmap(
         z=heatmap_matrix.values,
         x=['Trigger Frequency', 'Precision', 'False Positive Rate (Inv)', 'Avg Contribution'],
@@ -403,7 +519,9 @@ def render():
         text=np.round(heatmap_matrix.values, 2),
         texttemplate='%{text}',
         textfont={"size": 10},
-        colorbar=dict(title="Performance Score")
+        colorbar=dict(title="Performance Score"),
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=heatmap_hover_texts
     ))
 
     fig_heatmap.update_layout(
@@ -857,6 +975,51 @@ def render():
                 'Type': ['Revenue', 'Revenue', 'Cost', 'Cost']
             })
 
+            # Enhanced hover texts for ROI chart
+            roi_hover_texts = []
+            total_revenue = roi_data[roi_data['Type'] == 'Revenue']['Annual Value'].sum()
+            total_cost = abs(roi_data[roi_data['Type'] == 'Cost']['Annual Value'].sum())
+
+            for _, row in roi_data.iterrows():
+                value = row['Annual Value']
+                category = row['Category']
+                cat_type = row['Type']
+
+                if cat_type == 'Revenue':
+                    status = "💰 BENEFIT"
+                    status_color = "#10b981"
+                    percentage = (value / total_revenue) * 100
+                    insight = f"Contributes {percentage:.1f}% of total ML benefits"
+
+                    if category == 'Fraud Prevented':
+                        detail = f"Based on {int(value/12400)} fraud cases prevented at avg ${12400:,} per case"
+                    else:  # Labor Savings
+                        detail = f"Automation reduces manual review workload by ~$650K annually"
+                else:  # Cost
+                    status = "💸 INVESTMENT"
+                    status_color = "#ef4444"
+                    percentage = (abs(value) / total_cost) * 100
+                    insight = f"Represents {percentage:.1f}% of total ML investment"
+
+                    if category == 'Implementation Cost':
+                        detail = f"One-time infrastructure, training, and deployment costs"
+                    else:  # Operating Cost
+                        detail = f"Ongoing costs: cloud compute, maintenance, monitoring"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{category}</b><br><br>"
+                    f"<b style='color:{status_color}'>{status}</b><br><br>"
+                    f"<b>📊 Financial Impact:</b><br>"
+                    f"• Annual Value: <b>${abs(value):,.0f}</b><br>"
+                    f"• Share of {cat_type}: <b>{percentage:.1f}%</b><br>"
+                    f"• Monthly: <b>${abs(value)/12:,.0f}</b><br><br>"
+                    f"<b>💡 Details:</b><br>"
+                    f"{detail}<br><br>"
+                    f"<b>🎯 Strategic Insight:</b><br>"
+                    f"{insight}"
+                )
+                roi_hover_texts.append(hover_text)
+
             fig_roi = go.Figure()
 
             colors_roi = [colors['success'] if t == 'Revenue' else colors['danger']
@@ -867,7 +1030,9 @@ def render():
                 y=roi_data['Annual Value'],
                 marker=dict(color=colors_roi),
                 text=[f"${abs(v/1000000):.1f}M" for v in roi_data['Annual Value']],
-                textposition='outside'
+                textposition='outside',
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=roi_hover_texts
             ))
 
             fig_roi.update_layout(
@@ -893,6 +1058,72 @@ def render():
                 'Manual Only': [87.5, 45, 5.50, 24.8]
             })
 
+            # Enhanced hover texts for comparison chart
+            ml_hover_texts = []
+            manual_hover_texts = []
+
+            for idx, row in comparison_data.iterrows():
+                metric = row['Metric']
+                ml_val = row['ML System']
+                manual_val = row['Manual Only']
+
+                # Calculate improvement
+                if metric in ['Accuracy', 'Speed (tx/min)']:
+                    improvement = ((ml_val - manual_val) / manual_val) * 100
+                    better = "higher is better"
+                else:  # Cost and False Positives
+                    improvement = ((manual_val - ml_val) / manual_val) * 100
+                    better = "lower is better"
+
+                # ML System hover
+                if improvement > 50:
+                    status_ml = "🏆 MAJOR ADVANTAGE"
+                    status_color_ml = "#10b981"
+                elif improvement > 20:
+                    status_ml = "⭐ STRONG ADVANTAGE"
+                    status_color_ml = "#22c55e"
+                else:
+                    status_ml = "✅ ADVANTAGE"
+                    status_color_ml = "#3b82f6"
+
+                ml_hover = (
+                    f"<b style='font-size:14px'>AI/ML System</b><br><br>"
+                    f"<b style='color:{status_color_ml}'>{status_ml}</b><br><br>"
+                    f"<b>📊 {metric}:</b><br>"
+                    f"• ML Value: <b>{ml_val}</b><br>"
+                    f"• Manual Value: <b>{manual_val}</b><br>"
+                    f"• Improvement: <b>{improvement:.1f}%</b><br><br>"
+                    f"<b>💡 Insight:</b><br>"
+                    f"ML system performs {improvement:.1f}% better ({better})<br>"
+                    f"Automated processing delivers superior results"
+                )
+                ml_hover_texts.append(ml_hover)
+
+                # Manual System hover
+                status_manual = "📊 BASELINE"
+                status_color_manual = "#6b7280"
+
+                if metric == 'Accuracy':
+                    insight = f"Manual review achieves {manual_val}% accuracy but is labor-intensive"
+                elif metric == 'Speed (tx/min)':
+                    insight = f"Manual processing limited to {int(manual_val)} transactions/min"
+                elif metric == 'Cost per Review':
+                    insight = f"Manual review costs ${manual_val} per transaction vs ${ml_val} with ML"
+                else:  # False Positives
+                    insight = f"Manual-only approach has {manual_val}% false positive rate"
+
+                manual_hover = (
+                    f"<b style='font-size:14px'>Manual Only System</b><br><br>"
+                    f"<b style='color:{status_color_manual}'>{status_manual}</b><br><br>"
+                    f"<b>📊 {metric}:</b><br>"
+                    f"• Manual Value: <b>{manual_val}</b><br>"
+                    f"• ML Value: <b>{ml_val}</b><br>"
+                    f"• Gap: <b>{improvement:.1f}%</b><br><br>"
+                    f"<b>💡 Context:</b><br>"
+                    f"{insight}"
+                )
+                manual_hover_texts.append(manual_hover)
+
             fig_comparison = go.Figure()
 
             fig_comparison.add_trace(go.Scatter(
@@ -901,7 +1132,9 @@ def render():
                 name='AI/ML System',
                 mode='lines+markers',
                 line=dict(color=colors['primary'], width=3),
-                marker=dict(size=12)
+                marker=dict(size=12),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=ml_hover_texts
             ))
 
             fig_comparison.add_trace(go.Scatter(
@@ -910,14 +1143,16 @@ def render():
                 name='Manual Only',
                 mode='lines+markers',
                 line=dict(color=colors['secondary'], width=3),
-                marker=dict(size=12)
+                marker=dict(size=12),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=manual_hover_texts
             ))
 
             fig_comparison.update_layout(
                 title="Operational Efficiency Comparison",
                 yaxis_title="Performance Index",
                 height=350,
-                hovermode='x unified'
+                hovermode='closest'
             )
 
             st.plotly_chart(fig_comparison, use_container_width=True, key="exec_ml_comparison")
