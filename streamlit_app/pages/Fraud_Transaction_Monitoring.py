@@ -7,6 +7,7 @@ Search transactions, investigate accounts, and analyze fraud detection module ou
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
@@ -906,5 +907,5 @@ def render():
                 st.warning("Please enter an account ID")
 
 
-if __name__ == "__main__" or True:
+if __name__ == "__main__":
     render()
