@@ -61,7 +61,7 @@ def render():
     colors = get_chart_colors()
 
     # Real-Time Transaction Heatmap
-    st.subheader("Real-Time Transaction Heatmap")
+    st.subheader("🤖 AI Transaction Pattern Intelligence")
     st.caption("Shows when suspicious transactions cluster throughout the week")
 
     fig_heatmap_time = go.Figure(data=go.Heatmap(
@@ -97,7 +97,7 @@ def render():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("Time-to-Resolution Analysis")
+        st.subheader("⚡ ML Resolution Efficiency Analytics")
         st.caption("How quickly flagged transactions are reviewed by risk level")
 
         fig_resolution = go.Figure()
@@ -127,7 +127,7 @@ def render():
             st.markdown(f"- **{risk_level}:** {avg_time:.1f} minutes")
 
     with col2:
-        st.subheader("Resolution Time Distribution")
+        st.subheader("📊 AI-Powered Resolution Metrics")
 
         fig_dist = go.Figure()
 
@@ -156,7 +156,7 @@ def render():
     st.markdown("---")
 
     # Merchant Category Risk Profile
-    st.subheader("Merchant Category Risk Profile")
+    st.subheader("🎯 AI Merchant Risk Intelligence")
     st.caption("Risk scores and fraud rates across different merchant categories")
 
     col1, col2 = st.columns([1, 1])

@@ -85,7 +85,7 @@ def render():
     # st.markdown("---")
 
  # Recent Alerts Summary
-    st.markdown("## 🚨 Recent High-Risk Alerts")
+    st.markdown("## ⚡ AI Real-Time Risk Alert Stream")
 
     recent_alerts = pd.DataFrame({
         'Time': ['10 min ago', '25 min ago', '1 hr ago', '2 hr ago', '3 hr ago'],
@@ -116,7 +116,7 @@ def render():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("📉 Transaction Processing Funnel")
+        st.subheader("🤖 AI-Powered Transaction Flow Intelligence")
 
         funnel_data = pd.DataFrame({
             'Stage': ['Total Transactions', 'Auto-Cleared', 'Manual Review', 'Rejected', 'Fraud Confirmed'],
@@ -138,7 +138,7 @@ def render():
         st.info(f"💰 **Cost Savings**: Manual reviews prevented: 11,915 × $5 = **$59,575/day**")
 
     with col2:
-        st.subheader("📊 Analyst Decision Trends (30 Days)")
+        st.subheader("🧠 ML-Enhanced Analyst Decision Analytics")
 
         fig_decisions = go.Figure()
 
@@ -242,7 +242,7 @@ def render():
     # st.markdown("---")
 
     # System Activity Timeline
-    st.markdown("## 📈 Transaction Activity (Last 24 Hours)")
+    st.markdown("## 📊 AI Predictive Activity Intelligence")
 
     # Generate sample time series data
     hours = pd.date_range(end=datetime.now(), periods=24, freq='H')
@@ -286,20 +286,20 @@ def render():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("### 📊 Transaction Monitoring")
-        st.markdown("Real-time transaction monitoring with live alerts and automated decision-making.")
+        st.markdown("### 🤖 AI Transaction Intelligence")
+        st.markdown("Real-time AI-powered transaction monitoring with automated decision intelligence.")
         if st.button("Open Transaction Monitor", use_container_width=True):
             st.info("Navigate using sidebar to Transaction Monitoring System")
 
     with col2:
-        st.markdown("### 🔍 Scenario Analysis")
-        st.markdown("Deep-dive analysis of 13 fraud scenarios with detailed rule breakdowns.")
+        st.markdown("### 🧠 AI Scenario Intelligence")
+        st.markdown("ML-driven analysis of 13 fraud scenarios with AI-powered rule intelligence.")
         if st.button("View Fraud Scenarios", use_container_width=True):
             st.info("Navigate using sidebar to Fraud Scenario Analysis")
 
     with col3:
-        st.markdown("### 📈 Rule Performance")
-        st.markdown("Analyze fraud detection rule effectiveness with advanced metrics.")
+        st.markdown("### 📊 AI Rule Performance Intelligence")
+        st.markdown("ML-powered fraud detection rule analysis with predictive performance metrics.")
         if st.button("Analyze Rules", use_container_width=True):
             st.info("Navigate using sidebar to Rule Performance Analytics")
 

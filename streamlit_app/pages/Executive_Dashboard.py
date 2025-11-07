@@ -87,7 +87,7 @@ def render():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("Rule Contribution Analysis ")
+        st.subheader("🤖 AI Rule Impact Intelligence")
         st.caption("Shows which rules catch the most confirmed fraud")
 
         fig_treemap = go.Figure(go.Treemap(
@@ -106,7 +106,7 @@ def render():
         st.plotly_chart(fig_treemap, use_container_width=True)
 
     with col2:
-        st.subheader("Rule Effectiveness Bubble Chart")
+        st.subheader("🧠 ML Effectiveness Optimization Matrix")
         st.caption("X: Trigger Frequency | Y: Precision | Size: Rule Weight")
 
         fig_bubble = go.Figure()
@@ -141,7 +141,7 @@ def render():
     st.markdown("---") 
 
     # Rule Effectiveness Matrix (Heatmap)
-    st.subheader("Rule Performance Matrix ")
+    st.subheader("📊 AI Performance Intelligence Dashboard")
     st.caption("Quick visual identification of high-performing and underperforming rules")
 
     # Prepare heatmap data

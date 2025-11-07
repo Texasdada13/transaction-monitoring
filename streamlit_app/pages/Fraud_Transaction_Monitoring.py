@@ -32,7 +32,7 @@ def format_timestamp(timestamp_str):
 
 # def render_transaction_search():
 #     """Render transaction search interface"""
-#     st.markdown("### 🔍 Transaction Search")
+#     st.markdown("### 🔍 AI-Powered Transaction Intelligence Search")
 
 #     with st.form("transaction_search"):
 #         col1, col2 = st.columns(2)
@@ -138,7 +138,7 @@ def format_timestamp(timestamp_str):
 
 def render_transaction_search():
     """Render transaction search interface"""
-    st.markdown("### 🔍 Transaction Search")
+    st.markdown("### 🔍 AI-Powered Transaction Intelligence Search")
 
     with st.form("transaction_search"):
         col1, col2 = st.columns(2)
@@ -210,7 +210,7 @@ def render_transaction_search():
 
             # Risk Score Distribution (Histogram)
             with viz_col1:
-                st.markdown("#### Risk Score Distribution")
+                st.markdown("#### 📊 ML Risk Distribution Analytics")
                 fig_dist = go.Figure()
                 fig_dist.add_trace(go.Histogram(
                     x=risk_scores,
@@ -228,7 +228,7 @@ def render_transaction_search():
 
             # Amount vs Risk (Scatter)
             with viz_col2:
-                st.markdown("#### Transaction Amount vs Risk Score")
+                st.markdown("#### 📈 AI Risk-Value Correlation Intelligence")
                 fig_scatter = go.Figure()
                 fig_scatter.add_trace(go.Scatter(
                     x=amounts,
@@ -304,7 +304,7 @@ def render_transaction_search():
 
 def render_module_breakdown(transaction_id: str):
     """Render fraud detection module breakdown"""
-    st.markdown(f"### 🔬 Module Breakdown - {transaction_id}")
+    st.markdown(f"### 🔬 AI Module Intelligence Breakdown - {transaction_id}")
 
     client = get_api_client()
 
@@ -330,7 +330,7 @@ def render_module_breakdown(transaction_id: str):
             st.info("No fraud detection modules were triggered for this transaction")
             return
 
-        st.markdown("#### Triggered Fraud Detection Modules")
+        st.markdown("#### ⚡ AI-Triggered Detection Modules")
 
         # Create DataFrame
         df = pd.DataFrame(modules)
@@ -372,7 +372,7 @@ def render_module_breakdown(transaction_id: str):
             )
 
         # Summary chart
-        st.markdown("#### Module Weight Distribution")
+        st.markdown("#### 🎯 ML Module Weight Intelligence")
         fig = px.bar(
             df,
             x="weight",
@@ -534,7 +534,7 @@ def render_account_risk_timeline(account_id: str, time_range: str = "7d"):
 
 def render_account_investigation(account_id: str):
     """Render comprehensive account investigation"""
-    st.markdown(f"### 👤 Account Investigation - {account_id}")
+    st.markdown(f"### 👤 AI Account Intelligence Investigation - {account_id}")
 
     client = get_api_client()
 
@@ -568,7 +568,7 @@ def render_account_investigation(account_id: str):
         st.divider()
 
         # Risk Score Timeline
-        st.markdown("### 📉 Account Risk Score Timeline")
+        st.markdown("### 📊 AI Risk Timeline Intelligence")
 
         # Time range selector for timeline
         timeline_col1, timeline_col2 = st.columns([2, 1])
