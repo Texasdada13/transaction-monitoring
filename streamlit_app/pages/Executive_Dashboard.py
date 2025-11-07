@@ -442,6 +442,396 @@ def render():
 
     st.markdown("---")
 
+    # Executive Decision Framework
+    st.markdown("## 🎯 Executive Decision Framework")
+    st.markdown("**Strategic Guidance: From Data to Action**")
+
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 25px; border-radius: 15px; color: white; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: white;">📊 How to Use This Dashboard for Strategic Decisions</h3>
+        <p style="font-size: 15px; line-height: 1.8; margin: 15px 0;">
+            This dashboard transforms fraud detection data into actionable intelligence. Each metric,
+            trend, and alert is designed to support specific executive decisions. Use this framework
+            to navigate from observation to action.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    decision_tab1, decision_tab2, decision_tab3 = st.tabs([
+        "🎯 Decision Matrix",
+        "🔍 Fraud Profiling",
+        "💼 Resource Allocation"
+    ])
+
+    with decision_tab1:
+        st.markdown("### Strategic Decision Matrix")
+        st.markdown("**What You See → Why It Matters → What To Do**")
+
+        decision_matrix = pd.DataFrame({
+            "Observation": [
+                "Fraud prevented: $2.3M today",
+                "False positive rate: 6.2%",
+                "Review queue: 632 cases",
+                "California VPN fraud +45%",
+                "Crypto merchant fraud: 28.9%",
+                "Detection accuracy: 94.2%"
+            ],
+            "Implication": [
+                "System ROI: $2.3M saved vs. $59K operating cost = 39:1 ratio",
+                "Acceptable range (target: 5-8%). Analyst productivity optimal",
+                "Backlog forming. Current resolution: 45 min/case = 474 analyst hours",
+                "Regional fraud ring likely. Organized criminal activity",
+                "High-risk merchant category. Industry-wide vulnerability",
+                "Strong performance but 5.8% fraud still escapes (potential $140K/day exposure)"
+            ],
+            "Decision Required": [
+                "✓ Maintain current investment. Report ROI to board",
+                "✓ No action. Monitor weekly. Alert if exceeds 8%",
+                "⚠️ Deploy 2 additional analysts OR adjust thresholds to reduce queue",
+                "🔴 Enable enhanced CA screening. Consider temp transaction limits",
+                "🔴 Restrict crypto merchants OR increase monitoring/hold times",
+                "✓ Investigate false negatives. Consider additional rule deployment"
+            ],
+            "Priority": ["Low", "Low", "Medium", "High", "High", "Medium"]
+        })
+
+        st.dataframe(
+            decision_matrix,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Priority": st.column_config.TextColumn("Priority", width="small")
+            }
+        )
+
+        st.markdown("---")
+        st.markdown("### 🎯 Immediate Action Items (Next 24-48 Hours)")
+
+        action_col1, action_col2 = st.columns(2)
+
+        with action_col1:
+            st.markdown("""
+            <div style="background: #fee2e2; padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">
+                <h4 style="color: #991b1b; margin-top: 0;">🔴 Critical Actions</h4>
+                <ol style="color: #7f1d1d; line-height: 2;">
+                    <li><strong>California Fraud Ring:</strong> Deploy regional fraud specialist.
+                        Review all CA transactions >$5K manually for 48 hours.</li>
+                    <li><strong>Cryptocurrency Merchants:</strong> Emergency policy meeting with risk team.
+                        Consider temporary hold period (24-48 hrs) for crypto transactions >$1K.</li>
+                    <li><strong>Account Takeover Wave:</strong> Send customer security alerts.
+                        Enable mandatory 2FA for phone number changes.</li>
+                </ol>
+                <p style="margin-top: 15px; font-weight: bold; color: #7f1d1d;">
+                    ⏰ Timeline: Implement within 24 hours
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with action_col2:
+            st.markdown("""
+            <div style="background: #fef3c7; padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b;">
+                <h4 style="color: #92400e; margin-top: 0;">🟠 High Priority Actions</h4>
+                <ol style="color: #78350f; line-height: 2;">
+                    <li><strong>Review Queue Backlog:</strong> Allocate 2 FTE from adjacent team
+                        OR adjust auto-clear threshold from 0.30 to 0.35 (reduce queue by ~150 cases).</li>
+                    <li><strong>Payroll BEC Pattern:</strong> Partner with HR to issue company-wide
+                        alert. Implement secondary verification for payroll changes.</li>
+                    <li><strong>False Negative Review:</strong> Schedule rules committee meeting.
+                        Analyze 5.8% escape rate for pattern gaps.</li>
+                </ol>
+                <p style="margin-top: 15px; font-weight: bold; color: #78350f;">
+                    ⏰ Timeline: Implement within 48-72 hours
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with decision_tab2:
+        st.markdown("### Fraud Profile Analysis")
+        st.markdown("**Recurring Fraud Types & Mitigation Strategies**")
+
+        fraud_profiles = [
+            {
+                "type": "Account Takeover (ATO)",
+                "icon": "🔐",
+                "frequency": "15 cases/day",
+                "avg_loss": "$12,400/incident",
+                "total_exposure": "$186K/day",
+                "trend": "📈 +23% this week",
+                "characteristics": [
+                    "Phone number/SIM changes immediately before large transfers",
+                    "Geographic anomalies (Lagos, Eastern Europe)",
+                    "Device fingerprint changes",
+                    "Off-hours activity (2-4 AM)"
+                ],
+                "root_causes": [
+                    "Phishing campaigns targeting mobile banking users",
+                    "SIM swap social engineering at carriers",
+                    "Credential stuffing from breached databases"
+                ],
+                "mitigation_steps": [
+                    "✓ Implement mandatory 2FA for phone number changes",
+                    "✓ Add 24-hour cooling period for high-risk account changes",
+                    "✓ Partner with carriers to flag SIM swap requests",
+                    "✓ Deploy behavioral biometrics (typing patterns, mouse movements)",
+                    "⚠️ Estimated cost: $85K implementation, $15K/month ongoing",
+                    "💰 Expected reduction: 60-70% of ATO cases"
+                ]
+            },
+            {
+                "type": "Business Email Compromise (BEC)",
+                "icon": "📧",
+                "frequency": "7 cases/week",
+                "avg_loss": "$18,500/incident",
+                "total_exposure": "$130K/week",
+                "trend": "📈 +340% vs. last month",
+                "characteristics": [
+                    "Payroll rerouting requests via email",
+                    "Vendor payment account changes",
+                    "Executive impersonation (CFO, CEO)",
+                    "Urgent language and tight deadlines"
+                ],
+                "root_causes": [
+                    "Email account compromises (phishing)",
+                    "Lack of out-of-band verification",
+                    "No secondary approval workflow"
+                ],
+                "mitigation_steps": [
+                    "✓ Mandate voice/phone verification for payment changes >$5K",
+                    "✓ Implement dual approval for beneficiary additions",
+                    "✓ Deploy email authentication (DMARC, SPF, DKIM)",
+                    "✓ Security awareness training for finance team (quarterly)",
+                    "⚠️ Estimated cost: $12K training, $0 for policy changes",
+                    "💰 Expected reduction: 80-90% of BEC cases"
+                ]
+            },
+            {
+                "type": "Geographic/VPN Fraud",
+                "icon": "🌍",
+                "frequency": "145 cases/day (CA spike)",
+                "avg_loss": "$3,200/incident",
+                "total_exposure": "$464K/day",
+                "trend": "📈 +45% California region",
+                "characteristics": [
+                    "VPN/proxy usage to mask location",
+                    "High-risk countries (Nigeria, Eastern Europe)",
+                    "Multiple accounts from same IP",
+                    "Rapid-fire transaction attempts"
+                ],
+                "root_causes": [
+                    "Organized fraud rings",
+                    "Stolen credential marketplaces",
+                    "Geographic restrictions easily bypassed"
+                ],
+                "mitigation_steps": [
+                    "✓ Enhanced screening for VPN-detected transactions",
+                    "✓ Velocity limits per IP address (5 transactions/hour)",
+                    "✓ Mandatory delays for first transaction after location change",
+                    "✓ Partner with fraud intelligence networks for IP reputation",
+                    "⚠️ Estimated cost: $45K for IP intelligence feeds",
+                    "💰 Expected reduction: 40-50% of geo fraud"
+                ]
+            },
+            {
+                "type": "Merchant Category Fraud",
+                "icon": "💳",
+                "frequency": "Crypto: 89 cases/day",
+                "avg_loss": "$4,700/incident",
+                "total_exposure": "$418K/day",
+                "trend": "🔴 Critical: 8.5% → 28.9% fraud rate",
+                "characteristics": [
+                    "Cryptocurrency merchants highest risk",
+                    "Gaming and digital goods second tier",
+                    "Chargebacks after 30-60 days",
+                    "Stolen card testing"
+                ],
+                "root_causes": [
+                    "Irreversible nature of crypto transactions",
+                    "Limited merchant verification",
+                    "High-value, low-friction purchases"
+                ],
+                "mitigation_steps": [
+                    "✓ Implement 24-48 hour hold for crypto transactions >$1K",
+                    "✓ Require additional verification (ID, selfie) for new crypto customers",
+                    "✓ Partner with crypto exchanges for wallet reputation scoring",
+                    "✓ Consider restricting or exiting high-risk merchant relationships",
+                    "⚠️ Estimated cost: $0 (policy change), potential revenue impact: $200K/month",
+                    "💰 Expected reduction: 70-80% of crypto fraud"
+                ]
+            }
+        ]
+
+        for profile in fraud_profiles:
+            with st.expander(f"{profile['icon']} **{profile['type']}** - {profile['frequency']} | {profile['trend']}", expanded=False):
+                st.markdown(f"**Average Loss:** {profile['avg_loss']} | **Total Daily Exposure:** {profile['total_exposure']}")
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.markdown("#### 📋 Fraud Characteristics")
+                    for char in profile['characteristics']:
+                        st.markdown(f"• {char}")
+
+                    st.markdown("#### 🔍 Root Causes")
+                    for cause in profile['root_causes']:
+                        st.markdown(f"• {cause}")
+
+                with col2:
+                    st.markdown("#### 🛡️ Mitigation Strategy")
+                    for step in profile['mitigation_steps']:
+                        if step.startswith("⚠️"):
+                            st.warning(step)
+                        elif step.startswith("💰"):
+                            st.success(step)
+                        else:
+                            st.markdown(step)
+
+    with decision_tab3:
+        st.markdown("### Resource Allocation Recommendations")
+        st.markdown("**Strategic Investment Priorities Based on ROI**")
+
+        st.markdown("""
+        <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <h4 style="color: #065f46; margin-top: 0;">💰 Current System ROI</h4>
+            <p style="color: #064e3b; font-size: 16px; line-height: 1.8;">
+                <strong>Daily Fraud Prevention:</strong> $2.3M<br>
+                <strong>Operating Cost:</strong> ~$59K/day (analysts + infrastructure)<br>
+                <strong>ROI:</strong> 39:1 (For every $1 spent, $39 in fraud prevented)<br>
+                <strong>Annual Impact:</strong> $839M prevented vs. $21.5M cost = <strong>$817M net benefit</strong>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📊 Recommended Investment Portfolio")
+
+        investments = pd.DataFrame({
+            "Initiative": [
+                "Additional Analyst Team (4 FTE)",
+                "Advanced Behavioral Biometrics",
+                "Enhanced VPN/Proxy Detection",
+                "Cryptocurrency Transaction Holds",
+                "BEC Prevention Training & Tools",
+                "IP Intelligence Feeds",
+                "2FA Enforcement Infrastructure"
+            ],
+            "Cost": [
+                "$400K/year",
+                "$85K + $15K/mo",
+                "$45K/year",
+                "$0 (policy)",
+                "$12K/year",
+                "$45K/year",
+                "$125K one-time"
+            ],
+            "Expected Benefit": [
+                "$290K/year (reduce resolution time)",
+                "$4.1M/year (60% ATO reduction)",
+                "$3.4M/year (40% geo fraud reduction)",
+                "$10.9M/year (75% crypto fraud reduction)",
+                "$5.0M/year (85% BEC reduction)",
+                "$3.4M/year (with enhanced detection)",
+                "$4.1M/year (supports ATO prevention)"
+            ],
+            "ROI": ["0.7:1", "22:1", "76:1", "∞", "417:1", "76:1", "33:1"],
+            "Priority": ["Medium", "High", "High", "Critical", "Critical", "High", "High"],
+            "Timeline": ["Ongoing", "3-4 months", "1 month", "Immediate", "2 weeks", "1 month", "2-3 months"]
+        })
+
+        st.dataframe(
+            investments,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Priority": st.column_config.TextColumn("Priority", width="small"),
+                "Timeline": st.column_config.TextColumn("Timeline", width="small")
+            }
+        )
+
+        st.markdown("---")
+
+        priority_col1, priority_col2, priority_col3 = st.columns(3)
+
+        with priority_col1:
+            st.markdown("""
+            <div style="background: #fee2e2; padding: 15px; border-radius: 8px;">
+                <h5 style="color: #991b1b; margin-top: 0;">🔴 Critical Priority</h5>
+                <ul style="color: #7f1d1d; font-size: 14px;">
+                    <li>Crypto holds (Immediate)</li>
+                    <li>BEC training (2 weeks)</li>
+                </ul>
+                <p style="margin: 10px 0 0 0; font-weight: bold; color: #991b1b;">
+                    Total: $12K<br>
+                    Benefit: $15.9M/year
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with priority_col2:
+            st.markdown("""
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px;">
+                <h5 style="color: #92400e; margin-top: 0;">🟠 High Priority</h5>
+                <ul style="color: #78350f; font-size: 14px;">
+                    <li>Behavioral biometrics</li>
+                    <li>VPN/IP detection</li>
+                    <li>2FA enforcement</li>
+                </ul>
+                <p style="margin: 10px 0 0 0; font-weight: bold; color: #92400e;">
+                    Total: $300K<br>
+                    Benefit: $10.9M/year
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with priority_col3:
+            st.markdown("""
+            <div style="background: #dbeafe; padding: 15px; border-radius: 8px;">
+                <h5 style="color: #1e40af; margin-top: 0;">🔵 Consider</h5>
+                <ul style="color: #1e3a8a; font-size: 14px;">
+                    <li>Additional analysts</li>
+                    <li>Enhanced tools</li>
+                    <li>Advanced AI/ML</li>
+                </ul>
+                <p style="margin: 10px 0 0 0; font-weight: bold; color: #1e40af;">
+                    Total: $400K+<br>
+                    Benefit: Variable
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        st.markdown("### 🎯 90-Day Action Plan")
+
+        st.markdown("""
+        <div style="background: white; padding: 20px; border-radius: 10px; border: 2px solid #e5e7eb;">
+            <h4>Phase 1: Immediate (Week 1-2)</h4>
+            <ul style="line-height: 2;">
+                <li>✓ Implement cryptocurrency transaction holds (policy change)</li>
+                <li>✓ Deploy BEC awareness training for finance team</li>
+                <li>✓ Enable California enhanced screening</li>
+                <li>✓ Send customer security alerts for account changes</li>
+            </ul>
+
+            <h4>Phase 2: Short-term (Week 3-8)</h4>
+            <ul style="line-height: 2;">
+                <li>⚡ Procure and deploy IP intelligence feeds</li>
+                <li>⚡ Begin 2FA enforcement infrastructure build</li>
+                <li>⚡ Evaluate behavioral biometrics vendors (RFP)</li>
+                <li>⚡ Establish partnerships with carriers for SIM swap alerts</li>
+            </ul>
+
+            <h4>Phase 3: Medium-term (Week 9-12)</h4>
+            <ul style="line-height: 2;">
+                <li>🔄 Deploy behavioral biometrics pilot program</li>
+                <li>🔄 Roll out mandatory 2FA for account changes</li>
+                <li>🔄 Complete enhanced VPN detection integration</li>
+                <li>🔄 Review fraud reduction metrics and adjust strategy</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
     st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Using enhanced synthetic data for demonstration")
 
 if __name__ == "__main__" or True:
