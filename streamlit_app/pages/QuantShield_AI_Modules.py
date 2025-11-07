@@ -8,12 +8,17 @@ information about what each module detects, how it works, and its severity.
 import streamlit as st
 from streamlit_app.api_client import get_api_client
 import plotly.graph_objects as go
+from styles.theme import apply_theme, COLORS
+
+
+# Apply theme
+apply_theme()
 
 
 def render():
     """Render the Module Catalog page"""
-    st.title("Fraud Detection Module Catalog")
-    st.markdown("### Complete overview of all 25+ fraud detection modules")
+    st.title("AI Powered Threat Detection Suite")
+    st.markdown("### Comprehensive Index of 25+ Modules for Financial fraud detection")
 
     # Get API client
     client = get_api_client()

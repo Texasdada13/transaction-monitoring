@@ -12,7 +12,10 @@ from datetime import datetime
 from typing import Dict, Any
 
 from streamlit_app.api_client import get_api_client
+from styles.theme import apply_theme, COLORS
 
+# Apply theme
+apply_theme()
 
 def format_currency(amount):
     """Format amount as currency"""
@@ -266,7 +269,7 @@ def render():
     """Render the Geographic Fraud Heatmap page"""
 
     # Header
-    st.markdown("# 🗺️ Geographic Fraud Heatmap")
+    st.markdown("# Geospatial AI Mapping")
     st.markdown("Global fraud activity visualization and geographic risk analysis")
 
     # Time range selector
@@ -305,13 +308,13 @@ def render():
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Overview statistics
-        st.markdown("### 🌍 Geographic Overview")
+        st.markdown("### Regional Exposure Overview")
         render_geographic_stats(geo_data)
 
         st.divider()
 
         # World map
-        st.markdown("### 🗺️ Global Fraud Risk Distribution")
+        st.markdown("### Global Threat Dispersion Index")
         render_world_map(geo_data)
 
         st.divider()
@@ -320,17 +323,17 @@ def render():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("### 📊 Top Fraud Countries")
+            st.markdown("### High-Risk Jurisdiction Ranking")
             render_top_countries_chart(geo_data)
 
         with col2:
-            st.markdown("### 🎯 Risk Level Distribution")
+            st.markdown("### Risk Distribution")
             render_country_risk_levels(geo_data)
 
         st.divider()
 
         # Scatter plot
-        st.markdown("### 📈 Fraud Rate Analysis")
+        st.markdown("### Threat Incidence Analytics")
         render_fraud_rate_scatter(geo_data)
 
         st.divider()
@@ -341,7 +344,7 @@ def render():
 
         # Insights
         st.divider()
-        st.markdown("### 💡 Geographic Insights")
+        st.markdown("### Geospatial Intelligence")
 
         data = geo_data.get("data", [])
         if data:

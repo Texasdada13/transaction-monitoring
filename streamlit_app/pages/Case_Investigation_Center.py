@@ -13,7 +13,10 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
 from streamlit_app.api_client import get_api_client
+from styles.theme import apply_theme, COLORS
 
+# Apply theme
+apply_theme()
 
 def format_currency(amount):
     """Format amount as currency"""
@@ -31,7 +34,7 @@ def format_timestamp(timestamp_str):
 
 def render_transaction_search():
     """Render transaction search interface"""
-    st.markdown("### 🔍 Transaction Search")
+    st.markdown("### Transaction Scanner")
 
     with st.form("transaction_search"):
         col1, col2 = st.columns(2)
@@ -454,7 +457,7 @@ def render():
     """Render the Investigation Tools page"""
 
     # Header
-    st.markdown("# 🔍 Investigation Tools")
+    st.markdown("# 🔍 Case Investigation Center")
     st.markdown("Deep-dive investigation features for fraud analysts")
 
     st.divider()
@@ -481,7 +484,7 @@ def render():
 
     # Quick access section
     st.divider()
-    st.markdown("### ⚡ Quick Access")
+    st.markdown("### Case Shortcuts")
 
     col1, col2 = st.columns(2)
 

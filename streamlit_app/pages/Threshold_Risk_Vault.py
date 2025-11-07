@@ -12,7 +12,10 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 from streamlit_app.api_client import get_api_client
+from styles.theme import apply_theme, COLORS
 
+# Apply theme
+apply_theme()
 
 def format_currency(amount):
     """Format amount as currency"""
@@ -342,8 +345,8 @@ def render():
     """Render the Limit Violation Alerts page"""
 
     # Header
-    st.markdown("# 🔔 Limit Violation Alerts")
-    st.markdown("Monitor and manage account limit violations")
+    st.markdown("# Limit Monitoring & Breach Alerts")
+    st.markdown("Real-Time Surveillance of Account Threshold Breaches and High-Risk Spikes")
 
     # Configuration
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
@@ -398,7 +401,7 @@ def render():
         st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Overview statistics
-        st.markdown("### 📊 Violation Overview")
+        st.markdown("### Breach Summary Statistics")
         render_violation_stats(violation_data)
 
         st.divider()
@@ -407,17 +410,17 @@ def render():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("### 🎯 Severity Distribution")
+            st.markdown("### Violation Spectrum")
             render_severity_distribution(violation_data)
 
         with col2:
-            st.markdown("### 📋 Violation Types")
+            st.markdown("### Categorized Breachs")
             render_violation_type_breakdown(violation_data)
 
         st.divider()
 
         # Timeline
-        st.markdown("### ⏱️ Violation Timeline")
+        st.markdown("### Chronology & Spike Detection")
         render_violation_timeline(violation_data)
 
         st.divider()
@@ -433,7 +436,7 @@ def render():
 
         # Insights
         st.divider()
-        st.markdown("### 💡 Violation Insights")
+        st.markdown("### Breach Intelligence & Predictive Signals")
 
         violations = violation_data.get("violations", [])
         severity_breakdown = violation_data.get("severity_breakdown", {})
