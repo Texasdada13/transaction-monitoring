@@ -17,6 +17,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+import sklearn
 from datetime import datetime, timedelta
 from pathlib import Path
 from sklearn.decomposition import PCA
