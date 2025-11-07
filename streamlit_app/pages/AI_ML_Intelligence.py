@@ -1250,8 +1250,15 @@ def render():
         st.error("Unable to load data. Please ensure compliance_dataset/ exists with required CSV files.")
         return
 
-    # Get theme colors
-    colors = get_chart_colors()
+    # Get theme colors with fallback
+    try:
+        colors = get_chart_colors()
+        # Ensure it's a list/array with at least some colors
+        if not colors or len(colors) == 0:
+            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
+    except:
+        # Fallback colors if get_chart_colors() fails
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
 
     # Prepare ML features
     with st.spinner("Preparing ML features..."):
