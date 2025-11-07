@@ -12,55 +12,23 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from streamlit_app.api_client import get_api_client, is_authenticated, get_user_info, logout
+from streamlit_app.theme import apply_master_theme, render_logo
 
 # Page configuration
 st.set_page_config(
-    page_title="Fraud Detection Dashboard",
+    page_title="Arriba Advisors - Transaction Screening",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1f77b4;
-        margin-bottom: 1rem;
-    }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
-    }
-    .alert-high {
-        background-color: #ffcccc;
-        padding: 0.5rem;
-        border-radius: 0.3rem;
-        border-left: 4px solid #ff0000;
-    }
-    .alert-medium {
-        background-color: #fff3cd;
-        padding: 0.5rem;
-        border-radius: 0.3rem;
-        border-left: 4px solid #ffa500;
-    }
-    .alert-low {
-        background-color: #d1ecf1;
-        padding: 0.5rem;
-        border-radius: 0.3rem;
-        border-left: 4px solid #17a2b8;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply master theme
+apply_master_theme()
 
 
 def login_page():
     """Display login page"""
-    st.markdown('<div class="main-header">🛡️ Fraud Detection System</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🛡️ Arriba Advisors Transaction Screening System</div>', unsafe_allow_html=True)
     st.markdown("### Login to Dashboard")
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -108,7 +76,11 @@ def main_dashboard():
 
     # Sidebar
     with st.sidebar:
-        st.markdown("### 🛡️ Fraud Detection")
+        # Logo
+        render_logo(location="sidebar")
+
+        st.markdown("### 🛡️ Arriba Advisors")
+        st.markdown("**Transaction Screening System**")
 
         # User info
         user_info = get_user_info()
@@ -118,12 +90,22 @@ def main_dashboard():
         st.divider()
 
         # Navigation
-        st.markdown("### Navigation")
+        st.markdown("### 📍 Navigation")
 
-        page = st.radio(
+        # Professional navigation structure
+        page = st.selectbox(
             "Select Page",
-            ["🚨 Real-Time Monitoring", "📊 Risk Analytics", "🔍 Investigation Tools", "📚 Module Catalog", "🏥 System Health"],
-            label_visibility="collapsed"
+            [
+                "🏠 Analyst Dashboard",
+                "📊 Fraud Transaction Monitoring",
+                "📈 Rule Performance Analytics",
+                "🔍 Scenario Analysis",
+                "⚙️ Operational Analytics",
+                "🌍 Geo Analytics",
+                "💼 Executive Dashboard"
+            ],
+            index=0,  # Default to Analyst Dashboard
+            label_visibility="visible"
         )
 
         st.divider()
@@ -134,21 +116,28 @@ def main_dashboard():
             st.session_state.clear()
             st.rerun()
 
-    # Main content
-    if page == "🚨 Real-Time Monitoring":
-        from streamlit_app.pages import real_time_monitoring
-        real_time_monitoring.render()
-    elif page == "📊 Risk Analytics":
-        from streamlit_app.pages import risk_analytics
-        risk_analytics.render()
-    elif page == "🔍 Investigation Tools":
-        from streamlit_app.pages import investigation_tools
-        investigation_tools.render()
-    elif page == "📚 Module Catalog":
-        from streamlit_app.pages import module_catalog
-        module_catalog.render()
-    elif page == "🏥 System Health":
-        st.info("🏥 System Health page - Coming soon!")
+    # Route to the selected page
+    if page == "🏠 Analyst Dashboard":
+        from streamlit_app.pages import Analyst_Dashboard
+        Analyst_Dashboard.render()
+    elif page == "📊 Fraud Transaction Monitoring":
+        from streamlit_app.pages import Fraud_Transaction_Monitoring
+        Fraud_Transaction_Monitoring.render()
+    elif page == "📈 Rule Performance Analytics":
+        from streamlit_app.pages import Rule_Performance
+        Rule_Performance.render()
+    elif page == "🔍 Scenario Analysis":
+        from streamlit_app.pages import scenario_analysis
+        scenario_analysis.render()
+    elif page == "⚙️ Operational Analytics":
+        from streamlit_app.pages import operational_analytics
+        operational_analytics.render()
+    elif page == "🌍 Geo Analytics":
+        from streamlit_app.pages import Geo_Analytics
+        Geo_Analytics.render()
+    elif page == "💼 Executive Dashboard":
+        from streamlit_app.pages import Executive_Dashboard
+        Executive_Dashboard.render()
 
 
 def main():
