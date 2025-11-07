@@ -99,9 +99,12 @@ def main_dashboard():
                 "🏠 Analyst Dashboard",
                 "📊 Fraud Transaction Monitoring",
                 "📈 Rule Performance Analytics",
+                "🔍 Transaction Review",
                 "🔍 Scenario Analysis",
                 "⚙️ Operational Analytics",
                 "🌍 Geo Analytics",
+                "📋 Compliance & KYC Analytics",
+                "🤖 AI & Machine Learning Intelligence",
                 "💼 Executive Dashboard"
             ],
             index=0,  # Default to Analyst Dashboard
@@ -126,6 +129,9 @@ def main_dashboard():
     elif page == "📈 Rule Performance Analytics":
         from streamlit_app.pages import Rule_Performance
         Rule_Performance.render()
+    elif page == "🔍 Transaction Review":
+        from streamlit_app.pages import Transaction_Review
+        Transaction_Review.render()
     elif page == "🔍 Scenario Analysis":
         from streamlit_app.pages import scenario_analysis
         scenario_analysis.render()
@@ -135,6 +141,12 @@ def main_dashboard():
     elif page == "🌍 Geo Analytics":
         from streamlit_app.pages import Geo_Analytics
         Geo_Analytics.render()
+    elif page == "📋 Compliance & KYC Analytics":
+        from streamlit_app.pages import Compliance_KYC_Analytics
+        Compliance_KYC_Analytics.render()
+    elif page == "🤖 AI & Machine Learning Intelligence":
+        from streamlit_app.pages import AI_ML_Intelligence
+        AI_ML_Intelligence.render()
     elif page == "💼 Executive Dashboard":
         from streamlit_app.pages import Executive_Dashboard
         Executive_Dashboard.render()
