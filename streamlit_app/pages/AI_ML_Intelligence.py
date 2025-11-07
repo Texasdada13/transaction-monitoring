@@ -2659,18 +2659,87 @@ def render_deep_learning_viz(colors):
         cell_states = np.cumsum(np.random.randn(time_steps, 1) * 0.1, axis=0)
         hidden_states = np.cumsum(np.random.randn(time_steps, 1) * 0.1, axis=0)
 
+        # Enhanced hover texts for LSTM states
+        cell_hover_texts = []
+        hidden_hover_texts = []
+
+        for step, cell_val, hidden_val in zip(range(time_steps), cell_states.flatten(), hidden_states.flatten()):
+            # Cell state hover
+            if abs(cell_val) > 0.3:
+                cell_status = "🔴 HIGH MAGNITUDE"
+                cell_color = "#ef4444"
+                cell_insight = "Strong memory retention of past information"
+            elif abs(cell_val) > 0.15:
+                cell_status = "🟡 MODERATE"
+                cell_color = "#f59e0b"
+                cell_insight = "Normal memory state"
+            else:
+                cell_status = "🟢 LOW"
+                cell_color = "#10b981"
+                cell_insight = "Minimal memory retention"
+
+            cell_hover = (
+                f"<b style='font-size:14px'>Cell State at Step {step}</b><br><br>"
+                f"<b style='color:{cell_color}'>{cell_status}</b><br><br>"
+                f"<b>📊 State Metrics:</b><br>"
+                f"• Cell Value: <b>{cell_val:.4f}</b><br>"
+                f"• Absolute Magnitude: <b>{abs(cell_val):.4f}</b><br>"
+                f"• Time Step: <b>{step}/{time_steps-1}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{cell_insight}<br>"
+                f"The cell state stores long-term memory across the sequence.<br><br>"
+                f"<b>🧠 LSTM Insight:</b><br>"
+                f"Cell states act as the 'memory tape' of the network,<br>"
+                f"carrying information forward through time steps."
+            )
+            cell_hover_texts.append(cell_hover)
+
+            # Hidden state hover
+            if abs(hidden_val) > 0.3:
+                hidden_status = "🔴 HIGH ACTIVATION"
+                hidden_color = "#ef4444"
+                hidden_insight = "Strong output signal at this time step"
+            elif abs(hidden_val) > 0.15:
+                hidden_status = "🟡 MODERATE"
+                hidden_color = "#f59e0b"
+                hidden_insight = "Normal activation level"
+            else:
+                hidden_status = "🟢 LOW"
+                hidden_color = "#10b981"
+                hidden_insight = "Minimal output signal"
+
+            hidden_hover = (
+                f"<b style='font-size:14px'>Hidden State at Step {step}</b><br><br>"
+                f"<b style='color:{hidden_color}'>{hidden_status}</b><br><br>"
+                f"<b>📊 State Metrics:</b><br>"
+                f"• Hidden Value: <b>{hidden_val:.4f}</b><br>"
+                f"• Absolute Magnitude: <b>{abs(hidden_val):.4f}</b><br>"
+                f"• Time Step: <b>{step}/{time_steps-1}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{hidden_insight}<br>"
+                f"The hidden state represents the immediate output.<br><br>"
+                f"<b>🧠 LSTM Insight:</b><br>"
+                f"Hidden states are the 'working memory' - they capture<br>"
+                f"what's relevant right now for making predictions."
+            )
+            hidden_hover_texts.append(hidden_hover)
+
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=list(range(time_steps)),
             y=cell_states.flatten(),
             name='Cell State',
-            line=dict(color=colors[0], width=3)
+            line=dict(color=colors[0], width=3),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=cell_hover_texts
         ))
         fig.add_trace(go.Scatter(
             x=list(range(time_steps)),
             y=hidden_states.flatten(),
             name='Hidden State',
-            line=dict(color=colors[1], width=3)
+            line=dict(color=colors[1], width=3),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hidden_hover_texts
         ))
 
         fig.update_layout(
@@ -2690,13 +2759,63 @@ def render_deep_learning_viz(colors):
         attention_weights = np.random.rand(10, 10)
         attention_weights = attention_weights / attention_weights.sum(axis=1, keepdims=True)
 
+        # Enhanced hover texts for attention heatmap
+        attention_hover_texts = []
+        for i in range(10):
+            row_hovers = []
+            for j in range(10):
+                weight = attention_weights[i, j]
+
+                if weight >= 0.15:
+                    importance = "🔴 HIGH ATTENTION"
+                    imp_color = "#ef4444"
+                    insight = "Strong focus on this position"
+                    recommendation = "This position is critical for the prediction"
+                elif weight >= 0.10:
+                    importance = "🟡 MODERATE ATTENTION"
+                    imp_color = "#f59e0b"
+                    insight = "Notable but not dominant attention"
+                    recommendation = "This position contributes to the decision"
+                else:
+                    importance = "🟢 LOW ATTENTION"
+                    imp_color = "#10b981"
+                    insight = "Minimal focus on this position"
+                    recommendation = "This position has limited influence"
+
+                # Calculate relative strength
+                max_in_row = attention_weights[i, :].max()
+                relative_strength = (weight / max_in_row * 100) if max_in_row > 0 else 0
+
+                hover_text = (
+                    f"<b style='font-size:14px'>Attention: Query {i} → Key {j}</b><br><br>"
+                    f"<b style='color:{imp_color}'>{importance}</b><br><br>"
+                    f"<b>📊 Attention Metrics:</b><br>"
+                    f"• Weight: <b>{weight:.4f}</b> ({weight*100:.1f}%)<br>"
+                    f"• Relative Strength: <b>{relative_strength:.0f}%</b> of max in row<br>"
+                    f"• Row Sum: <b>{attention_weights[i, :].sum():.3f}</b> (normalized to 1.0)<br><br>"
+                    f"<b>💡 What This Means:</b><br>"
+                    f"{insight}<br>"
+                    f"The model is allocating {weight*100:.1f}% of attention from<br>"
+                    f"position {i} to position {j}.<br><br>"
+                    f"<b>🧠 Attention Insight:</b><br>"
+                    f"{recommendation}<br>"
+                    f"Higher weights indicate stronger relationships between positions.<br><br>"
+                    f"<b>🎯 Context:</b><br>"
+                    f"Attention mechanisms let the model focus on relevant<br>"
+                    f"parts of the input when making predictions."
+                )
+                row_hovers.append(hover_text)
+            attention_hover_texts.append(row_hovers)
+
         fig = go.Figure(data=go.Heatmap(
             z=attention_weights,
             colorscale='Viridis',
             text=np.round(attention_weights, 2),
             texttemplate='%{text}',
             textfont={"size": 8},
-            colorbar=dict(title="Weight")
+            colorbar=dict(title="Weight"),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=attention_hover_texts
         ))
 
         fig.update_layout(
@@ -2730,12 +2849,65 @@ def render_deep_learning_viz(colors):
 
     for i, tx_type in enumerate(transaction_types):
         mask = np.array(labels) == i
+        points_in_cluster = mask.sum()
+        cluster_embeddings = embeddings[mask]
+
+        # Calculate cluster statistics
+        centroid = cluster_embeddings.mean(axis=0)
+        spread = np.std(cluster_embeddings, axis=0).mean()
+
+        # Calculate distance from origin
+        distance_from_origin = np.linalg.norm(centroid)
+
+        # Enhanced hover texts for embeddings
+        embedding_hover_texts = []
+        for idx, (x, y) in enumerate(cluster_embeddings):
+            # Distance from cluster centroid
+            dist_from_centroid = np.sqrt((x - centroid[0])**2 + (y - centroid[1])**2)
+
+            if dist_from_centroid < spread * 0.5:
+                position = "🎯 CORE"
+                pos_color = "#10b981"
+                insight = "Typical example of this transaction type"
+            elif dist_from_centroid < spread * 1.5:
+                position = "🟡 NORMAL"
+                pos_color = "#f59e0b"
+                insight = "Standard variation within cluster"
+            else:
+                position = "🔴 OUTLIER"
+                pos_color = "#ef4444"
+                insight = "Unusual characteristics for this type"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{tx_type} Transaction</b><br><br>"
+                f"<b style='color:{pos_color}'>{position}</b><br><br>"
+                f"<b>📊 Embedding Coordinates:</b><br>"
+                f"• Dimension 1: <b>{x:.3f}</b><br>"
+                f"• Dimension 2: <b>{y:.3f}</b><br>"
+                f"• Distance from Centroid: <b>{dist_from_centroid:.3f}</b><br><br>"
+                f"<b>🎯 Cluster Statistics:</b><br>"
+                f"• Cluster Size: <b>{points_in_cluster}</b> transactions<br>"
+                f"• Centroid: <b>({centroid[0]:.2f}, {centroid[1]:.2f})</b><br>"
+                f"• Average Spread: <b>{spread:.3f}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{insight}<br>"
+                f"This transaction has learned features that place it<br>"
+                f"in the '{tx_type}' region of the embedding space.<br><br>"
+                f"<b>🧠 Embedding Insight:</b><br>"
+                f"The model has learned to separate transaction types<br>"
+                f"by mapping them to different regions. Closer points<br>"
+                f"have similar characteristics."
+            )
+            embedding_hover_texts.append(hover_text)
+
         fig.add_trace(go.Scatter(
-            x=embeddings[mask, 0],
-            y=embeddings[mask, 1],
+            x=cluster_embeddings[:, 0],
+            y=cluster_embeddings[:, 1],
             mode='markers',
             name=tx_type,
-            marker=dict(size=8, color=colors[i], opacity=0.6)
+            marker=dict(size=8, color=colors[i], opacity=0.6),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=embedding_hover_texts
         ))
 
     fig.update_layout(
@@ -2761,20 +2933,81 @@ def render_deep_learning_viz(colors):
         ])
         fraud_labels = np.array([0] * 180 + [1] * 20)
 
+        # Threshold line
+        threshold = 3.0
+
         fig = go.Figure()
 
         for fraud_val, name, color in [(0, 'Legitimate', colors[0]), (1, 'Fraud', colors[1])]:
             mask = fraud_labels == fraud_val
+            indices = np.arange(len(reconstruction_errors))[mask]
+            errors = reconstruction_errors[mask]
+
+            # Enhanced hover texts for autoencoder errors
+            autoencoder_hover_texts = []
+            for idx, error in zip(indices, errors):
+                is_fraud = fraud_labels[idx] == 1
+                actual_label = "Fraudulent" if is_fraud else "Legitimate"
+
+                if error > threshold:
+                    status = "🚨 ANOMALY DETECTED"
+                    status_color = "#ef4444"
+                    insight = "Reconstruction error exceeds threshold"
+                    recommendation = "Flag for investigation - unusual pattern"
+                elif error > threshold * 0.7:
+                    status = "⚠️ ELEVATED ERROR"
+                    status_color = "#f59e0b"
+                    insight = "Close to anomaly threshold"
+                    recommendation = "Monitor - borderline case"
+                else:
+                    status = "✅ NORMAL"
+                    status_color = "#10b981"
+                    insight = "Well-reconstructed transaction"
+                    recommendation = "Typical pattern - low risk"
+
+                # Detection assessment
+                if is_fraud and error > threshold:
+                    detection = "✅ Correctly flagged as anomaly"
+                    det_color = "#10b981"
+                elif is_fraud and error <= threshold:
+                    detection = "❌ Missed fraud (false negative)"
+                    det_color = "#ef4444"
+                elif not is_fraud and error > threshold:
+                    detection = "⚠️ False positive (legitimate flagged)"
+                    det_color = "#f59e0b"
+                else:
+                    detection = "✅ Correctly classified as normal"
+                    det_color = "#10b981"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>Transaction #{idx}</b><br><br>"
+                    f"<b style='color:{status_color}'>{status}</b><br><br>"
+                    f"<b>📊 Reconstruction Metrics:</b><br>"
+                    f"• Error: <b>{error:.3f}</b><br>"
+                    f"• Threshold: <b>{threshold:.1f}</b><br>"
+                    f"• Distance from Threshold: <b>{abs(error - threshold):.3f}</b><br>"
+                    f"• Actual Label: <b>{actual_label}</b><br><br>"
+                    f"<b style='color:{det_color}'>🎯 Detection Result:</b><br>"
+                    f"{detection}<br><br>"
+                    f"<b>💡 What This Means:</b><br>"
+                    f"{insight}<br>"
+                    f"Autoencoders learn normal patterns - high error<br>"
+                    f"indicates the transaction doesn't match learned norms.<br><br>"
+                    f"<b>🔍 Recommendation:</b><br>"
+                    f"{recommendation}"
+                )
+                autoencoder_hover_texts.append(hover_text)
+
             fig.add_trace(go.Scatter(
-                x=np.arange(len(reconstruction_errors))[mask],
-                y=reconstruction_errors[mask],
+                x=indices,
+                y=errors,
                 mode='markers',
                 name=name,
-                marker=dict(size=6, color=color)
+                marker=dict(size=6, color=color),
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=autoencoder_hover_texts
             ))
 
-        # Threshold line
-        threshold = 3.0
         fig.add_hline(y=threshold, line_dash="dash", line_color="red",
                      annotation_text="Anomaly Threshold")
 
@@ -2790,22 +3023,80 @@ def render_deep_learning_viz(colors):
     with col2:
         st.markdown("### Reconstruction Error Distribution")
 
+        # Calculate distribution statistics
+        legit_errors = reconstruction_errors[fraud_labels == 0]
+        fraud_errors = reconstruction_errors[fraud_labels == 1]
+
+        legit_mean = legit_errors.mean()
+        fraud_mean = fraud_errors.mean()
+        legit_std = legit_errors.std()
+        fraud_std = fraud_errors.std()
+
+        # Calculate separation metrics
+        separation = abs(fraud_mean - legit_mean) / ((legit_std + fraud_std) / 2)
+
         fig = go.Figure()
 
-        for fraud_val, name, color in [(0, 'Legitimate', colors[2]), (1, 'Fraud', colors[3])]:
-            mask = fraud_labels == fraud_val
+        for fraud_val, name, color, error_set, mean, std in [
+            (0, 'Legitimate', colors[2], legit_errors, legit_mean, legit_std),
+            (1, 'Fraud', colors[3], fraud_errors, fraud_mean, fraud_std)
+        ]:
+            # Calculate detection metrics
+            above_threshold = (error_set > threshold).sum()
+            below_threshold = (error_set <= threshold).sum()
+            total = len(error_set)
+
+            if fraud_val == 1:
+                detection_rate = (above_threshold / total * 100) if total > 0 else 0
+                status_desc = f"{detection_rate:.0f}% of fraud detected"
+            else:
+                false_positive_rate = (above_threshold / total * 100) if total > 0 else 0
+                status_desc = f"{false_positive_rate:.0f}% false positives"
+
+            # Assess distribution quality
+            if separation > 2.0:
+                quality = "⭐ EXCELLENT SEPARATION"
+                quality_color = "#10b981"
+            elif separation > 1.0:
+                quality = "✅ GOOD SEPARATION"
+                quality_color = "#22c55e"
+            else:
+                quality = "⚠️ POOR SEPARATION"
+                quality_color = "#f59e0b"
+
+            # Enhanced hover text for histogram (single text per trace)
+            hover_text = (
+                f"<b style='font-size:14px'>{name} Transactions</b><br><br>"
+                f"<b style='color:{quality_color}'>{quality}</b><br><br>"
+                f"<b>📊 Distribution Statistics:</b><br>"
+                f"• Mean Error: <b>{mean:.3f}</b><br>"
+                f"• Std Deviation: <b>{std:.3f}</b><br>"
+                f"• Total Count: <b>{total}</b><br>"
+                f"• Above Threshold: <b>{above_threshold}</b><br>"
+                f"• Below Threshold: <b>{below_threshold}</b><br><br>"
+                f"<b>🎯 Threshold Performance:</b><br>"
+                f"{status_desc}<br><br>"
+                f"<b>💡 Distribution Insight:</b><br>"
+                f"Separation metric: <b>{separation:.2f}σ</b><br>"
+                f"Better separation means easier fraud detection.<br><br>"
+                f"<b>🔍 Recommendation:</b><br>"
+                f"{'Threshold is well-positioned' if separation > 1.5 else 'Consider adjusting threshold for better separation'}"
+            )
+
             fig.add_trace(go.Histogram(
-                x=reconstruction_errors[mask],
+                x=error_set,
                 name=name,
                 marker=dict(color=color),
                 opacity=0.7,
-                nbinsx=30
+                nbinsx=30,
+                hovertemplate=f'{name}<br>Error: %{{x:.3f}}<br>Count: %{{y}}<br><br>{hover_text}<extra></extra>'
             ))
 
-        fig.add_vline(x=threshold, line_dash="dash", line_color="red")
+        fig.add_vline(x=threshold, line_dash="dash", line_color="red",
+                     annotation_text=f"Threshold={threshold:.1f}")
 
         fig.update_layout(
-            title="Distribution of Reconstruction Errors",
+            title=f"Distribution of Reconstruction Errors (Separation: {separation:.2f}σ)",
             xaxis_title="Reconstruction Error",
             yaxis_title="Count",
             barmode='overlay',
@@ -2852,13 +3143,77 @@ def render_advanced_metrics(features, colors):
         optimal_threshold = thresholds[optimal_idx]
         optimal_f1 = f1_scores[optimal_idx]
 
+        # Enhanced hover texts for F1 optimization curve
+        f1_hover_texts = []
+        for thresh, f1 in zip(thresholds, f1_scores):
+            # Distance from optimal
+            dist_from_optimal = abs(thresh - optimal_threshold)
+
+            if thresh == thresholds[optimal_idx]:
+                status = "🏆 OPTIMAL THRESHOLD"
+                status_color = "#10b981"
+                insight = "This threshold maximizes the F1 score"
+                recommendation = "Use this threshold for balanced precision & recall"
+            elif dist_from_optimal < 0.05:
+                status = "✅ NEAR OPTIMAL"
+                status_color = "#22c55e"
+                insight = "Close to optimal - minimal F1 loss"
+                recommendation = "Safe threshold choice"
+            elif f1 > optimal_f1 * 0.90:
+                status = "🟡 ACCEPTABLE"
+                status_color = "#f59e0b"
+                insight = "Within 90% of optimal F1"
+                recommendation = "May be used if other constraints exist"
+            else:
+                status = "🔴 SUBOPTIMAL"
+                status_color = "#ef4444"
+                insight = "Significant F1 loss at this threshold"
+                recommendation = "Not recommended - too far from optimal"
+
+            # Calculate precision and recall at this threshold
+            y_pred_at_thresh = (y_pred_proba >= thresh).astype(int)
+            if len(np.unique(y_pred_at_thresh)) > 1:
+                from sklearn.metrics import precision_score, recall_score
+                prec = precision_score(y_test, y_pred_at_thresh)
+                rec = recall_score(y_test, y_pred_at_thresh)
+            else:
+                prec = 0
+                rec = 0
+
+            # F1 loss
+            f1_loss = optimal_f1 - f1
+            f1_loss_pct = (f1_loss / optimal_f1 * 100) if optimal_f1 > 0 else 0
+
+            hover_text = (
+                f"<b style='font-size:14px'>Threshold: {thresh:.3f}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br><br>"
+                f"<b>📊 Performance Metrics:</b><br>"
+                f"• F1 Score: <b>{f1:.4f}</b><br>"
+                f"• Precision: <b>{prec:.4f}</b><br>"
+                f"• Recall: <b>{rec:.4f}</b><br>"
+                f"• Distance from Optimal: <b>{dist_from_optimal:.3f}</b><br>"
+                f"• F1 Loss: <b>{f1_loss:.4f}</b> ({f1_loss_pct:.1f}%)<br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{insight}<br>"
+                f"At this threshold, you get {prec*100:.1f}% precision<br>"
+                f"and {rec*100:.1f}% recall.<br><br>"
+                f"<b>🎯 Recommendation:</b><br>"
+                f"{recommendation}<br><br>"
+                f"<b>⚖️ Trade-off Insight:</b><br>"
+                f"Lower threshold → more detections (higher recall)<br>"
+                f"Higher threshold → fewer false positives (higher precision)"
+            )
+            f1_hover_texts.append(hover_text)
+
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=thresholds,
             y=f1_scores,
             mode='lines',
             line=dict(color=colors[0], width=3),
-            name='F1 Score'
+            name='F1 Score',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=f1_hover_texts
         ))
 
         fig.add_vline(x=optimal_threshold, line_dash="dash", line_color="red",
@@ -2881,16 +3236,90 @@ def render_advanced_metrics(features, colors):
             y_test, y_pred_proba, n_bins=10
         )
 
+        brier = brier_score_loss(y_test, y_pred_proba)
+
+        # Assess Brier score quality
+        if brier < 0.05:
+            brier_quality = "⭐ EXCELLENT"
+            brier_color = "#10b981"
+            brier_insight = "Outstanding probability calibration"
+        elif brier < 0.10:
+            brier_quality = "✅ GOOD"
+            brier_color = "#22c55e"
+            brier_insight = "Good calibration - probabilities are reliable"
+        elif brier < 0.15:
+            brier_quality = "🟡 ACCEPTABLE"
+            brier_color = "#f59e0b"
+            brier_insight = "Acceptable but could be improved"
+        else:
+            brier_quality = "🔴 POOR"
+            brier_color = "#ef4444"
+            brier_insight = "Poor calibration - probabilities unreliable"
+
         fig = go.Figure()
 
-        # Perfect calibration line
+        # Perfect calibration line (with hover)
+        perfect_hover = (
+            "<b style='font-size:14px'>Perfect Calibration</b><br><br>"
+            "<b>💡 What This Means:</b><br>"
+            "When a model predicts 70% probability, exactly 70%<br>"
+            "of those predictions should be positive cases.<br><br>"
+            "<b>🎯 Goal:</b><br>"
+            "Your model's curve should closely follow this line."
+        )
         fig.add_trace(go.Scatter(
             x=[0, 1],
             y=[0, 1],
             mode='lines',
             name='Perfect Calibration',
-            line=dict(color='gray', dash='dash', width=2)
+            line=dict(color='gray', dash='dash', width=2),
+            hovertemplate=f'{perfect_hover}<extra></extra>'
         ))
+
+        # Enhanced hover texts for calibration curve
+        calibration_hover_texts = []
+        for pred_prob, actual_frac in zip(mean_predicted_value, fraction_of_positives):
+            # Calculate calibration error at this bin
+            calibration_error = abs(actual_frac - pred_prob)
+
+            if calibration_error < 0.05:
+                calib_status = "✅ WELL CALIBRATED"
+                calib_color = "#10b981"
+                calib_insight = "Predictions match reality closely"
+            elif calibration_error < 0.10:
+                calib_status = "🟡 ACCEPTABLE"
+                calib_color = "#f59e0b"
+                calib_insight = "Minor deviation from perfect calibration"
+            else:
+                calib_status = "🔴 POORLY CALIBRATED"
+                calib_color = "#ef4444"
+                calib_insight = "Significant calibration error"
+
+            # Determine if over/under confident
+            if actual_frac > pred_prob:
+                confidence_assessment = "Underconfident: model predicts lower probability than actual"
+            elif actual_frac < pred_prob:
+                confidence_assessment = "Overconfident: model predicts higher probability than actual"
+            else:
+                confidence_assessment = "Perfect calibration at this probability bin"
+
+            hover_text = (
+                f"<b style='font-size:14px'>Calibration Bin</b><br><br>"
+                f"<b style='color:{calib_color}'>{calib_status}</b><br><br>"
+                f"<b>📊 Calibration Metrics:</b><br>"
+                f"• Predicted Probability: <b>{pred_prob:.3f}</b> ({pred_prob*100:.1f}%)<br>"
+                f"• Actual Fraction: <b>{actual_frac:.3f}</b> ({actual_frac*100:.1f}%)<br>"
+                f"• Calibration Error: <b>{calibration_error:.3f}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{calib_insight}<br>"
+                f"When model predicts ~{pred_prob*100:.0f}% probability,<br>"
+                f"{actual_frac*100:.0f}% are actually fraudulent.<br><br>"
+                f"<b>🎯 Confidence Assessment:</b><br>"
+                f"{confidence_assessment}<br><br>"
+                f"<b>🔍 Practical Impact:</b><br>"
+                f"{'Probabilities can be trusted for decision-making' if calibration_error < 0.1 else 'Consider recalibrating model (e.g., Platt scaling)'}"
+            )
+            calibration_hover_texts.append(hover_text)
 
         # Actual calibration
         fig.add_trace(go.Scatter(
@@ -2899,13 +3328,13 @@ def render_advanced_metrics(features, colors):
             mode='lines+markers',
             name='Model Calibration',
             line=dict(color=colors[1], width=3),
-            marker=dict(size=10)
+            marker=dict(size=10),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=calibration_hover_texts
         ))
 
-        brier = brier_score_loss(y_test, y_pred_proba)
-
         fig.update_layout(
-            title=f"Calibration Curve (Brier Score: {brier:.4f})",
+            title=f"Calibration Curve (Brier: {brier:.4f} - {brier_quality})",
             xaxis_title="Mean Predicted Probability",
             yaxis_title="Fraction of Positives",
             height=350
@@ -2926,37 +3355,123 @@ def render_advanced_metrics(features, colors):
         cumulative_gains = np.cumsum(y_sorted) / y_sorted.sum()
         percentile = np.arange(1, len(y_sorted) + 1) / len(y_sorted)
 
+        # Calculate key percentile metrics
+        gain_at_10 = cumulative_gains[int(len(cumulative_gains) * 0.10)] if len(cumulative_gains) > 0 else 0
+        gain_at_20 = cumulative_gains[int(len(cumulative_gains) * 0.20)] if len(cumulative_gains) > 0 else 0
+        gain_at_50 = cumulative_gains[int(len(cumulative_gains) * 0.50)] if len(cumulative_gains) > 0 else 0
+
         fig = go.Figure()
 
-        # Perfect model
+        # Perfect model (with hover)
+        perfect_hover = (
+            "<b style='font-size:14px'>Perfect Model</b><br><br>"
+            "<b>💡 What This Means:</b><br>"
+            "A perfect model would capture 100% of fraud cases<br>"
+            "by reviewing only the fraud cases (no wasted effort).<br><br>"
+            "<b>🎯 Goal:</b><br>"
+            "Get as close to this curve as possible."
+        )
         fig.add_trace(go.Scatter(
             x=[0, y_sorted.sum() / len(y_sorted), 1],
             y=[0, 1, 1],
             mode='lines',
             name='Perfect Model',
-            line=dict(color='gray', dash='dash', width=2)
+            line=dict(color='gray', dash='dash', width=2),
+            hovertemplate=f'{perfect_hover}<extra></extra>'
         ))
 
-        # Random model
+        # Random model (with hover)
+        random_hover = (
+            "<b style='font-size:14px'>Random Model</b><br><br>"
+            "<b>💡 What This Means:</b><br>"
+            "A random model (no ML) would catch fraud cases<br>"
+            "proportionally to review volume.<br><br>"
+            "<b>📊 Example:</b><br>"
+            "Review 20% of cases → catch 20% of fraud<br>"
+            "Review 50% of cases → catch 50% of fraud"
+        )
         fig.add_trace(go.Scatter(
             x=[0, 1],
             y=[0, 1],
             mode='lines',
             name='Random Model',
-            line=dict(color='lightgray', dash='dot', width=2)
+            line=dict(color='lightgray', dash='dot', width=2),
+            hovertemplate=f'{random_hover}<extra></extra>'
         ))
+
+        # Enhanced hover texts for actual gains curve
+        gains_hover_texts = []
+        x_values = np.concatenate([[0], percentile])
+        y_values = np.concatenate([[0], cumulative_gains])
+
+        for i, (pct, gain) in enumerate(zip(x_values, y_values)):
+            if i == 0:
+                # First point (0,0)
+                hover_text = (
+                    "<b style='font-size:14px'>Starting Point</b><br><br>"
+                    "Review 0% → Catch 0% fraud"
+                )
+            else:
+                # Calculate improvement over random
+                improvement = gain - pct
+                improvement_pct = (improvement / pct * 100) if pct > 0 else 0
+
+                if improvement > 0.3:
+                    performance = "🏆 EXCEPTIONAL"
+                    perf_color = "#10b981"
+                    insight = "Outstanding fraud concentration"
+                elif improvement > 0.15:
+                    performance = "⭐ EXCELLENT"
+                    perf_color = "#22c55e"
+                    insight = "Strong model performance"
+                elif improvement > 0.05:
+                    performance = "✅ GOOD"
+                    perf_color = "#3b82f6"
+                    insight = "Above-random performance"
+                else:
+                    performance = "🟡 MARGINAL"
+                    perf_color = "#f59e0b"
+                    insight = "Limited improvement over random"
+
+                # Calculate efficiency gain
+                cases_to_review = int(pct * len(y_sorted))
+                fraud_caught = int(gain * y_sorted.sum())
+                total_fraud = int(y_sorted.sum())
+
+                hover_text = (
+                    f"<b style='font-size:14px'>Review Top {pct*100:.0f}% of Cases</b><br><br>"
+                    f"<b style='color:{perf_color}'>{performance}</b><br><br>"
+                    f"<b>📊 Cumulative Gains:</b><br>"
+                    f"• Fraud Caught: <b>{gain*100:.1f}%</b> ({fraud_caught}/{total_fraud} cases)<br>"
+                    f"• Cases Reviewed: <b>{pct*100:.1f}%</b> ({cases_to_review:,} cases)<br>"
+                    f"• Improvement vs Random: <b>+{improvement*100:.1f}pp</b><br><br>"
+                    f"<b>💡 What This Means:</b><br>"
+                    f"{insight}<br>"
+                    f"By reviewing the top {pct*100:.0f}% of cases ranked<br>"
+                    f"by your model, you catch {gain*100:.0f}% of all fraud.<br><br>"
+                    f"<b>💰 Business Value:</b><br>"
+                    f"You catch {improvement_pct:.0f}% more fraud than random<br>"
+                    f"selection at this review volume.<br><br>"
+                    f"<b>🎯 Practical Impact:</b><br>"
+                    f"If analyst capacity limits you to {pct*100:.0f}% review,<br>"
+                    f"you'll catch {fraud_caught} of {total_fraud} fraud cases."
+                )
+
+            gains_hover_texts.append(hover_text)
 
         # Actual model
         fig.add_trace(go.Scatter(
-            x=np.concatenate([[0], percentile]),
-            y=np.concatenate([[0], cumulative_gains]),
+            x=x_values,
+            y=y_values,
             mode='lines',
             name='Model',
-            line=dict(color=colors[0], width=3)
+            line=dict(color=colors[0], width=3),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=gains_hover_texts
         ))
 
         fig.update_layout(
-            title="Cumulative Gains Chart",
+            title=f"Cumulative Gains Chart (10%: {gain_at_10*100:.0f}%, 20%: {gain_at_20*100:.0f}%, 50%: {gain_at_50*100:.0f}%)",
             xaxis_title="Percentage of Sample",
             yaxis_title="Percentage of Positive Class",
             height=350

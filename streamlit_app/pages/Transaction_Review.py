@@ -780,7 +780,32 @@ def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
         "approval": "#2563eb"
     }
 
+    # Enhanced hover for timeline events
     for event in audit_events:
+        event_type_labels = {
+            "system": "⚙️ SYSTEM EVENT",
+            "rule_trigger": "🔔 RULE TRIGGER",
+            "decision": "🎯 DECISION",
+            "analyst_action": "👤 ANALYST ACTION",
+            "note": "📝 NOTE",
+            "approval": "✅ APPROVAL"
+        }
+
+        event_label = event_type_labels.get(event['event_type'], "📌 EVENT")
+        event_color = color_map.get(event['event_type'], '#666666')
+
+        # Build enhanced hover
+        hover_text = (
+            f"<b style='font-size:14px'>{event['event']}</b><br><br>"
+            f"<b style='color:{event_color}'>{event_label}</b><br><br>"
+            f"<b>📊 Event Details:</b><br>"
+            f"• Time: <b>{event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}</b><br>"
+            f"• Actor: <b>{event['actor']}</b><br>"
+            f"• Type: <b>{event['event_type'].replace('_', ' ').title()}</b><br><br>"
+            f"<b>💡 Description:</b><br>"
+            f"{event['description']}"
+        )
+
         fig.add_trace(go.Scatter(
             x=[event['timestamp']],
             y=[event['event']],
@@ -794,11 +819,8 @@ def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
             textposition="top center",
             textfont=dict(size=9),
             name=event['event'],
-            hovertemplate='<b>%{y}</b><br>' +
-                         'Time: %{x}<br>' +
-                         f"Actor: {event['actor']}<br>" +
-                         f"Description: {event['description']}<br>" +
-                         '<extra></extra>'
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=[hover_text]
         ))
 
     fig.update_layout(
@@ -1307,17 +1329,53 @@ def render():
         perf_col1, perf_col2, perf_col3 = st.columns(3)
 
         with perf_col1:
-            st.markdown("#### Precision & Recall")
+            st.markdown("####Precision & Recall")
 
             precision_data = [0.945, 0.932, 0.928, 0.941, 0.938, 0.943, 0.949]
             recall_data = [0.912, 0.905, 0.898, 0.915, 0.908, 0.918, 0.923]
             days_labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+            # Enhanced hover for precision
+            precision_hover_texts = []
+            for day, prec, rec in zip(days_labels, precision_data, recall_data):
+                f1 = 2 * (prec * rec) / (prec + rec)
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b style='color:#3b82f6'>📊 PRECISION</b><br><br>"
+                    f"<b>Metrics:</b><br>"
+                    f"• Precision: <b>{prec:.1%}</b><br>"
+                    f"• Recall: <b>{rec:.1%}</b><br>"
+                    f"• F1 Score: <b>{f1:.1%}</b><br><br>"
+                    f"<b>💡 Meaning:</b><br>"
+                    f"{prec*100:.1f}% of flagged transactions are actually fraud"
+                )
+                precision_hover_texts.append(hover_text)
+
+            # Enhanced hover for recall
+            recall_hover_texts = []
+            for day, prec, rec in zip(days_labels, precision_data, recall_data):
+                f1 = 2 * (prec * rec) / (prec + rec)
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b style='color:#10b981'>📊 RECALL</b><br><br>"
+                    f"<b>Metrics:</b><br>"
+                    f"• Recall: <b>{rec:.1%}</b><br>"
+                    f"• Precision: <b>{prec:.1%}</b><br>"
+                    f"• F1 Score: <b>{f1:.1%}</b><br><br>"
+                    f"<b>💡 Meaning:</b><br>"
+                    f"{rec*100:.1f}% of actual fraud is caught"
+                )
+                recall_hover_texts.append(hover_text)
+
             fig_pr = go.Figure()
             fig_pr.add_trace(go.Scatter(x=days_labels, y=precision_data, name='Precision',
-                                       line=dict(color=colors['primary'], width=3), mode='lines+markers'))
+                                       line=dict(color=colors['primary'], width=3), mode='lines+markers',
+                                       hovertemplate='%{customdata}<extra></extra>',
+                                       customdata=precision_hover_texts))
             fig_pr.add_trace(go.Scatter(x=days_labels, y=recall_data, name='Recall',
-                                       line=dict(color=colors['success'], width=3), mode='lines+markers'))
+                                       line=dict(color=colors['success'], width=3), mode='lines+markers',
+                                       hovertemplate='%{customdata}<extra></extra>',
+                                       customdata=recall_hover_texts))
 
             fig_pr.update_layout(height=250, yaxis=dict(range=[0.85, 1.0]), showlegend=True)
             st.plotly_chart(fig_pr, use_container_width=True, key="txn_pr_metrics")
@@ -1327,9 +1385,32 @@ def render():
 
             fp_rate = [0.068, 0.072, 0.075, 0.065, 0.070, 0.062, 0.058]
 
+            # Enhanced hover for FP rate
+            fp_hover_texts = []
+            for idx, (day, fp) in enumerate(zip(days_labels, fp_rate)):
+                week_avg = sum(fp_rate) / len(fp_rate)
+                if fp < 0.06:
+                    status = "🟢 EXCELLENT"
+                elif fp < 0.07:
+                    status = "✅ GOOD"
+                else:
+                    status = "🟡 ACCEPTABLE"
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b>{status}</b><br><br>"
+                    f"<b>📊 FP Metrics:</b><br>"
+                    f"• FP Rate: <b>{fp:.1%}</b><br>"
+                    f"• Week Avg: <b>{week_avg:.1%}</b><br>"
+                    f"• vs Avg: <b>{(fp-week_avg)*100:+.1f}pp</b>"
+                )
+                fp_hover_texts.append(hover_text)
+
             fig_fp = go.Figure()
             fig_fp.add_trace(go.Scatter(x=days_labels, y=fp_rate, name='FP Rate',
-                                       fill='tozeroy', line=dict(color=colors['danger'], width=3)))
+                                       fill='tozeroy', line=dict(color=colors['danger'], width=3),
+                                       hovertemplate='%{customdata}<extra></extra>',
+                                       customdata=fp_hover_texts))
 
             fig_fp.update_layout(height=250, yaxis=dict(range=[0, 0.1]), showlegend=False)
             st.plotly_chart(fig_fp, use_container_width=True, key="txn_fp_rate")
@@ -1339,9 +1420,27 @@ def render():
 
             throughput = [1180, 1205, 1190, 1225, 1210, 1247, 1265]
 
+            # Enhanced hover for throughput
+            throughput_hover_texts = []
+            for idx, (day, tput) in enumerate(zip(days_labels, throughput)):
+                week_avg = sum(throughput) / len(throughput)
+                change = ((tput - throughput[idx-1]) / throughput[idx-1] * 100) if idx > 0 else 0
+
+                hover_text = (
+                    f"<b style='font-size:14px'>{day}</b><br><br>"
+                    f"<b style='color:#3b82f6'>⚡ THROUGHPUT</b><br><br>"
+                    f"<b>📊 Performance:</b><br>"
+                    f"• Throughput: <b>{tput} tx/min</b><br>"
+                    f"• Week Avg: <b>{week_avg:.0f} tx/min</b><br>"
+                    f"• vs Previous: <b>{change:+.1f}%</b>"
+                )
+                throughput_hover_texts.append(hover_text)
+
             fig_throughput = go.Figure()
             fig_throughput.add_trace(go.Bar(x=days_labels, y=throughput,
-                                           marker=dict(color=colors['info'])))
+                                           marker=dict(color=colors['info']),
+                                           hovertemplate='%{customdata}<extra></extra>',
+                                           customdata=throughput_hover_texts))
 
             fig_throughput.update_layout(height=250, yaxis_title="Transactions/Min")
             st.plotly_chart(fig_throughput, use_container_width=True, key="txn_throughput")
