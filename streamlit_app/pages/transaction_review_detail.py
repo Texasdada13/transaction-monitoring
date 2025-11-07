@@ -540,6 +540,283 @@ def get_risk_color(risk_score):
         return "#DC3545"
 
 
+def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
+    """Render comprehensive audit trail with timeline and event history"""
+    st.markdown("### 📜 Audit Trail & Decision History")
+
+    # Generate mock audit events - in production, fetch from database
+    base_time = datetime.fromisoformat(transaction['timestamp'].replace('Z', '+00:00'))
+
+    audit_events = [
+        {
+            "timestamp": base_time,
+            "event_type": "system",
+            "event": "Transaction Received",
+            "description": f"Transaction {transaction['transaction_id']} received from {transaction.get('account_id', 'Unknown')}",
+            "actor": "System",
+            "details": {
+                "amount": transaction['amount'],
+                "type": transaction['transaction_type'],
+                "direction": transaction['direction']
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(milliseconds=50),
+            "event_type": "system",
+            "event": "Rule Evaluation Started",
+            "description": "Transaction entered fraud detection pipeline",
+            "actor": "Fraud Engine",
+            "details": {
+                "total_rules_checked": 20,
+                "evaluation_mode": "real-time"
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(milliseconds=120),
+            "event_type": "rule_trigger",
+            "event": "Rule Triggered",
+            "description": f"{len(assessment['triggered_rules'])} fraud detection rules triggered",
+            "actor": "Fraud Engine",
+            "details": assessment['triggered_rules']
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(milliseconds=150),
+            "event_type": "system",
+            "event": "Risk Score Calculated",
+            "description": f"Risk score computed: {assessment['risk_score']:.3f}",
+            "actor": "Risk Scoring Engine",
+            "details": {
+                "risk_score": assessment['risk_score'],
+                "total_weight": sum(r['weight'] for r in assessment['triggered_rules'].values()),
+                "decision": assessment['decision']
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(milliseconds=180),
+            "event_type": "decision",
+            "event": "Decision Made",
+            "description": f"Transaction routed to {assessment['decision'].replace('_', ' ').title()}",
+            "actor": "Decision Engine",
+            "details": {
+                "decision": assessment['decision'],
+                "risk_level": "HIGH" if assessment['risk_score'] > 0.6 else "MEDIUM" if assessment['risk_score'] > 0.3 else "LOW",
+                "requires_review": assessment['decision'] == "manual_review"
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(minutes=5),
+            "event_type": "analyst_action",
+            "event": "Assigned to Analyst",
+            "description": "Transaction assigned to fraud analyst for review",
+            "actor": "System",
+            "details": {
+                "analyst_id": "analyst_001",
+                "analyst_name": "Sarah Chen",
+                "queue": "High Priority Queue"
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(minutes=12),
+            "event_type": "analyst_action",
+            "event": "Review Started",
+            "description": "Analyst began transaction review",
+            "actor": "Sarah Chen (analyst_001)",
+            "details": {
+                "session_id": "review_session_123",
+                "ip_address": "10.0.1.45"
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(minutes=15),
+            "event_type": "note",
+            "event": "Note Added",
+            "description": "Analyst added review notes",
+            "actor": "Sarah Chen (analyst_001)",
+            "details": {
+                "note": "Verified with customer via phone. Customer confirmed legitimate international wire transfer for business expansion. Provided invoice and contracts.",
+                "note_type": "investigation"
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(minutes=18),
+            "event_type": "analyst_action",
+            "event": "Customer Contact",
+            "description": "Customer verification call completed",
+            "actor": "Sarah Chen (analyst_001)",
+            "details": {
+                "contact_method": "phone",
+                "phone_number": "***-***-1234",
+                "verification_status": "confirmed",
+                "customer_response": "Legitimate transaction confirmed"
+            }
+        },
+        {
+            "timestamp": base_time + pd.Timedelta(minutes=22),
+            "event_type": "approval",
+            "event": "Transaction Approved",
+            "description": "Transaction approved after manual review",
+            "actor": "Sarah Chen (analyst_001)",
+            "details": {
+                "approval_reason": "Customer verified transaction as legitimate business expense",
+                "supporting_docs": ["invoice_INV-2025-001.pdf", "contract_signed.pdf"],
+                "final_decision": "APPROVED"
+            }
+        }
+    ]
+
+    # Timeline Visualization
+    st.markdown("#### 🕐 Event Timeline")
+
+    # Create timeline chart
+    fig = go.Figure()
+
+    # Color mapping for event types
+    color_map = {
+        "system": "#4472C4",
+        "rule_trigger": "#FF6B6B",
+        "decision": "#FFC107",
+        "analyst_action": "#70AD47",
+        "note": "#9966CC",
+        "approval": "#28A745"
+    }
+
+    for event in audit_events:
+        fig.add_trace(go.Scatter(
+            x=[event['timestamp']],
+            y=[event['event']],
+            mode='markers+text',
+            marker=dict(
+                size=15,
+                color=color_map.get(event['event_type'], '#666666'),
+                line=dict(width=2, color='white')
+            ),
+            text=[f"{event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}"],
+            textposition="top center",
+            textfont=dict(size=9),
+            name=event['event'],
+            hovertemplate='<b>%{y}</b><br>' +
+                         'Time: %{x}<br>' +
+                         f"Actor: {event['actor']}<br>" +
+                         f"Description: {event['description']}<br>" +
+                         '<extra></extra>'
+        ))
+
+    fig.update_layout(
+        title="Transaction Processing Timeline",
+        xaxis_title="Time",
+        yaxis_title="Event",
+        height=400,
+        showlegend=False,
+        hovermode='closest',
+        yaxis=dict(autorange="reversed")
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Detailed Event Log
+    st.markdown("#### 📋 Detailed Event Log")
+
+    # Create tabs for different views
+    tab1, tab2, tab3, tab4 = st.tabs(["All Events", "System Events", "Analyst Actions", "Rule Triggers"])
+
+    with tab1:
+        # All events table
+        for i, event in enumerate(audit_events):
+            event_color = color_map.get(event['event_type'], '#666666')
+
+            with st.expander(
+                f"**{event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}** - {event['event']} ({event['actor']})",
+                expanded=(i == 0)
+            ):
+                col1, col2 = st.columns([1, 3])
+
+                with col1:
+                    st.markdown(f"""
+                    **Event Type:**
+                    <span style='color: {event_color}; font-weight: bold;'>●</span> {event['event_type'].replace('_', ' ').title()}
+
+                    **Actor:**
+                    {event['actor']}
+
+                    **Timestamp:**
+                    {event['timestamp'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]}
+                    """, unsafe_allow_html=True)
+
+                with col2:
+                    st.markdown(f"**Description:**\n\n{event['description']}")
+
+                    if event['details']:
+                        st.markdown("**Details:**")
+                        if isinstance(event['details'], dict):
+                            for key, value in event['details'].items():
+                                if isinstance(value, dict):
+                                    st.json(value)
+                                else:
+                                    st.markdown(f"- **{key.replace('_', ' ').title()}:** {value}")
+
+    with tab2:
+        # System events only
+        system_events = [e for e in audit_events if e['event_type'] == 'system']
+        if system_events:
+            for event in system_events:
+                st.markdown(f"""
+                **{event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}** - {event['event']}
+                *{event['description']}*
+                """)
+        else:
+            st.info("No system events")
+
+    with tab3:
+        # Analyst actions only
+        analyst_events = [e for e in audit_events if e['event_type'] in ['analyst_action', 'note', 'approval']]
+        if analyst_events:
+            for event in analyst_events:
+                icon = "✅" if event['event_type'] == 'approval' else "📝" if event['event_type'] == 'note' else "👤"
+                st.markdown(f"""
+                {icon} **{event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}** - {event['event']}
+                *Actor: {event['actor']}*
+                {event['description']}
+                """)
+                if 'note' in event['details']:
+                    st.info(f"💬 {event['details']['note']}")
+        else:
+            st.info("No analyst actions yet")
+
+    with tab4:
+        # Rule triggers only
+        rule_events = [e for e in audit_events if e['event_type'] == 'rule_trigger']
+        if rule_events:
+            for event in rule_events:
+                st.markdown(f"**{event['timestamp'].strftime('%H:%M:%S.%f')[:-3]}** - {event['event']}")
+                st.markdown(f"*{event['description']}*")
+
+                if isinstance(event['details'], dict):
+                    st.markdown("**Triggered Rules:**")
+                    for rule_name, rule_data in event['details'].items():
+                        st.markdown(f"- 🔴 **{rule_name}** (Weight: {rule_data['weight']:.1f})")
+                        st.markdown(f"  *{rule_data['description']}*")
+        else:
+            st.info("No rules triggered")
+
+    # Analyst Performance Metrics
+    st.markdown("---")
+    st.markdown("#### 📊 Review Metrics")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Review Time", "22 min", delta="-3 min vs avg")
+
+    with col2:
+        st.metric("Analyst Actions", "5 actions", delta="+2 vs avg")
+
+    with col3:
+        st.metric("Customer Contact", "1 call", delta="Required")
+
+    with col4:
+        st.metric("Final Decision", "APPROVED", delta="After verification")
+
+
 def get_mock_all_rules():
     """Get all configured rules for display (mock data for demonstration)"""
     # In production, this would fetch from the API/rules engine
@@ -662,6 +939,10 @@ def render():
 
         # Render decision explanation
         render_decision_explanation(assessment)
+
+        # Render audit trail
+        st.divider()
+        render_audit_trail(transaction, assessment)
 
         # Action buttons
         st.divider()
