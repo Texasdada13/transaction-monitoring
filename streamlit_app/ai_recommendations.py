@@ -256,6 +256,52 @@ Format as: "AI Analysis: [your insight]"
         st.session_state.ai_cache[cache_key] = recommendation
         return recommendation
 
+    def get_ml_performance_insight(self, accuracy: float, precision: float,
+                                   recall: float, auc_roc: float, trend: str = 'stable') -> str:
+        """
+        Get AI insight about ML model performance.
+
+        Args:
+            accuracy: Model accuracy score
+            precision: Model precision score
+            recall: Model recall score
+            auc_roc: AUC-ROC score
+            trend: Performance trend ('improving', 'stable', 'declining')
+
+        Returns:
+            AI-generated ML performance insight
+        """
+        prompt = f"""Analyze these machine learning model performance metrics:
+
+Model Performance:
+- Accuracy: {accuracy:.1%}
+- Precision: {precision:.1%}
+- Recall: {recall:.1%}
+- AUC-ROC: {auc_roc:.3f}
+- Recent Trend: {trend}
+
+Provide a brief 2-3 sentence analysis of the model's performance and any recommendations.
+Format as: "AI Analysis: [your analysis]"
+"""
+
+        cache_key = self._get_cache_key("ml_performance", {
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "auc_roc": auc_roc,
+            "trend": trend
+        })
+
+        if 'ai_cache' not in st.session_state:
+            st.session_state.ai_cache = {}
+
+        if cache_key in st.session_state.ai_cache:
+            return st.session_state.ai_cache[cache_key]
+
+        recommendation = self._call_claude(prompt, max_tokens=200)
+        st.session_state.ai_cache[cache_key] = recommendation
+        return recommendation
+
 
 # Global instance
 _ai_engine = None

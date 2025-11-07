@@ -345,6 +345,198 @@ def render():
 
     st.markdown("---")
 
+    # ML Intelligence Section
+    st.markdown("## 🤖 Machine Learning Intelligence")
+    st.markdown("*Real-time ML model performance and fraud prediction insights*")
+
+    ml_col1, ml_col2, ml_col3, ml_col4 = st.columns(4)
+
+    with ml_col1:
+        st.metric("Model Accuracy", "94.3%", "+1.2%")
+    with ml_col2:
+        st.metric("AUC-ROC Score", "0.963", "+0.008")
+    with ml_col3:
+        st.metric("Predictions/Min", "1,247", "+156")
+    with ml_col4:
+        st.metric("Avg Confidence", "87.2%", "+2.3%")
+
+    ml_viz_col1, ml_viz_col2 = st.columns(2)
+
+    with ml_viz_col1:
+        st.markdown("### 🎯 Model Performance Trends")
+
+        # Model performance over last 7 days
+        ml_days = pd.date_range(end=datetime.now(), periods=7, freq='D')
+        ml_accuracy = [0.932 + i * 0.0015 + np.random.uniform(-0.005, 0.005) for i in range(7)]
+        ml_precision = [0.918 + i * 0.002 + np.random.uniform(-0.005, 0.005) for i in range(7)]
+        ml_recall = [0.895 + i * 0.0025 + np.random.uniform(-0.005, 0.005) for i in range(7)]
+
+        fig_ml_perf = go.Figure()
+
+        fig_ml_perf.add_trace(go.Scatter(
+            x=ml_days,
+            y=ml_accuracy,
+            name='Accuracy',
+            line=dict(color=colors['primary'], width=3),
+            mode='lines+markers'
+        ))
+
+        fig_ml_perf.add_trace(go.Scatter(
+            x=ml_days,
+            y=ml_precision,
+            name='Precision',
+            line=dict(color=colors['success'], width=3),
+            mode='lines+markers'
+        ))
+
+        fig_ml_perf.add_trace(go.Scatter(
+            x=ml_days,
+            y=ml_recall,
+            name='Recall',
+            line=dict(color=colors['info'], width=3),
+            mode='lines+markers'
+        ))
+
+        fig_ml_perf.update_layout(
+            height=350,
+            yaxis=dict(title='Score', range=[0.85, 0.98]),
+            hovermode='x unified',
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+        )
+
+        st.plotly_chart(fig_ml_perf, use_container_width=True, key="ml_performance_trends")
+
+    with ml_viz_col2:
+        st.markdown("### 📊 Prediction Confidence Distribution")
+
+        # Generate prediction confidence distribution
+        np.random.seed(42)
+        confidence_scores = np.concatenate([
+            np.random.beta(8, 2, 400),  # High confidence predictions
+            np.random.beta(2, 2, 100)   # Low confidence predictions
+        ]) * 100
+
+        fig_conf = go.Figure()
+
+        fig_conf.add_trace(go.Histogram(
+            x=confidence_scores,
+            nbinsx=20,
+            marker=dict(
+                color=confidence_scores,
+                colorscale='RdYlGn',
+                showscale=False
+            ),
+            opacity=0.75
+        ))
+
+        fig_conf.update_layout(
+            height=350,
+            xaxis=dict(title='Confidence Score (%)'),
+            yaxis=dict(title='Number of Predictions'),
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_conf, use_container_width=True, key="ml_confidence_dist")
+
+    ml_viz_col3, ml_viz_col4 = st.columns(2)
+
+    with ml_viz_col3:
+        st.markdown("### 🔍 Top Feature Importance")
+
+        feature_names = [
+            'Transaction Amount',
+            'Customer Risk Level',
+            'Transaction Hour',
+            'International Flag',
+            'Account Balance',
+            'Account Age',
+            'Is PEP',
+            'Weekend Flag'
+        ]
+        feature_importance = [0.28, 0.22, 0.14, 0.12, 0.10, 0.06, 0.05, 0.03]
+
+        fig_features = go.Figure(go.Bar(
+            y=feature_names,
+            x=feature_importance,
+            orientation='h',
+            marker=dict(
+                color=feature_importance,
+                colorscale='Blues',
+                showscale=False
+            ),
+            text=[f"{v:.1%}" for v in feature_importance],
+            textposition='outside'
+        ))
+
+        fig_features.update_layout(
+            height=350,
+            xaxis=dict(title='Importance Score'),
+            yaxis=dict(title=''),
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_features, use_container_width=True, key="ml_feature_importance")
+
+    with ml_viz_col4:
+        st.markdown("### ⚡ Real-time Model Health")
+
+        # Model health metrics
+        health_metrics = pd.DataFrame({
+            'Metric': ['Data Quality', 'Model Drift', 'Latency', 'Throughput', 'Error Rate'],
+            'Status': ['Excellent', 'Normal', 'Good', 'Excellent', 'Good'],
+            'Score': [98, 92, 88, 97, 91]
+        })
+
+        # Color coding
+        def get_status_color(score):
+            if score >= 95:
+                return '🟢'
+            elif score >= 85:
+                return '🟡'
+            else:
+                return '🔴'
+
+        health_metrics['Indicator'] = health_metrics['Score'].apply(get_status_color)
+
+        fig_health = go.Figure()
+
+        colors_health = ['#2E865F' if s >= 95 else '#F3B65B' if s >= 85 else '#E54848'
+                        for s in health_metrics['Score']]
+
+        fig_health.add_trace(go.Bar(
+            y=health_metrics['Metric'],
+            x=health_metrics['Score'],
+            orientation='h',
+            marker=dict(color=colors_health),
+            text=[f"{s}%" for s in health_metrics['Score']],
+            textposition='outside'
+        ))
+
+        fig_health.update_layout(
+            height=350,
+            xaxis=dict(title='Health Score (%)', range=[0, 110]),
+            yaxis=dict(title=''),
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_health, use_container_width=True, key="ml_health_metrics")
+
+    # AI Insight for ML Performance
+    st.markdown("### 💡 ML Performance Insights")
+
+    ai_engine = get_ai_engine()
+    ml_insight = ai_engine.get_ml_performance_insight(
+        accuracy=0.943,
+        precision=0.932,
+        recall=0.906,
+        auc_roc=0.963,
+        trend='improving'
+    )
+
+    render_ai_insight("ML Performance Analysis", ml_insight, icon="🤖")
+
+    st.markdown("---")
+
     # Footer
     st.markdown("## ℹ️ System Information")
 

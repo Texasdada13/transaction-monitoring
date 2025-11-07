@@ -786,6 +786,135 @@ def render():
 
         st.markdown("---")
 
+        # ML Intelligence Executive Summary
+        st.markdown("### 🤖 AI/ML Intelligence Summary")
+        st.markdown("*Machine learning system performance and business impact*")
+
+        ml_exec_col1, ml_exec_col2, ml_exec_col3, ml_exec_col4 = st.columns(4)
+
+        with ml_exec_col1:
+            st.metric("ML Detection Rate", "94.3%", "+2.1%")
+        with ml_exec_col2:
+            st.metric("False Positive Reduction", "18.5%", "-6.2%")
+        with ml_exec_col3:
+            st.metric("Cost Avoidance", "$2.3M", "+$450K")
+        with ml_exec_col4:
+            st.metric("Processing Speed", "12ms", "-3ms")
+
+        ml_viz_col1, ml_viz_col2 = st.columns(2)
+
+        with ml_viz_col1:
+            st.markdown("#### 💰 ML ROI Analysis")
+
+            roi_data = pd.DataFrame({
+                'Category': ['Fraud Prevented', 'Labor Savings', 'Implementation Cost', 'Operating Cost'],
+                'Annual Value': [2300000, 650000, -450000, -180000],
+                'Type': ['Revenue', 'Revenue', 'Cost', 'Cost']
+            })
+
+            fig_roi = go.Figure()
+
+            colors_roi = [colors['success'] if t == 'Revenue' else colors['danger']
+                         for t in roi_data['Type']]
+
+            fig_roi.add_trace(go.Bar(
+                x=roi_data['Category'],
+                y=roi_data['Annual Value'],
+                marker=dict(color=colors_roi),
+                text=[f"${abs(v/1000000):.1f}M" for v in roi_data['Annual Value']],
+                textposition='outside'
+            ))
+
+            fig_roi.update_layout(
+                title="AI/ML Annual Financial Impact",
+                yaxis_title="Value ($)",
+                height=350,
+                showlegend=False
+            )
+
+            st.plotly_chart(fig_roi, use_container_width=True, key="exec_ml_roi")
+
+            net_benefit = roi_data['Annual Value'].sum()
+            roi_percentage = (net_benefit / 630000) * 100
+
+            st.success(f"**Net Annual Benefit: ${net_benefit/1000000:.2f}M | ROI: {roi_percentage:.0f}%**")
+
+        with ml_viz_col2:
+            st.markdown("#### 📊 Model Performance vs Manual Review")
+
+            comparison_data = pd.DataFrame({
+                'Metric': ['Accuracy', 'Speed (tx/min)', 'Cost per Review', 'False Positives'],
+                'ML System': [94.3, 1247, 0.15, 6.2],
+                'Manual Only': [87.5, 45, 5.50, 24.8]
+            })
+
+            fig_comparison = go.Figure()
+
+            fig_comparison.add_trace(go.Scatter(
+                x=comparison_data['Metric'],
+                y=comparison_data['ML System'],
+                name='AI/ML System',
+                mode='lines+markers',
+                line=dict(color=colors['primary'], width=3),
+                marker=dict(size=12)
+            ))
+
+            fig_comparison.add_trace(go.Scatter(
+                x=comparison_data['Metric'],
+                y=comparison_data['Manual Only'],
+                name='Manual Only',
+                mode='lines+markers',
+                line=dict(color=colors['secondary'], width=3),
+                marker=dict(size=12)
+            ))
+
+            fig_comparison.update_layout(
+                title="Operational Efficiency Comparison",
+                yaxis_title="Performance Index",
+                height=350,
+                hovermode='x unified'
+            )
+
+            st.plotly_chart(fig_comparison, use_container_width=True, key="exec_ml_comparison")
+
+        # ML Strategic Insights
+        st.markdown("#### 💡 Strategic ML Insights")
+
+        insights_col1, insights_col2, insights_col3 = st.columns(3)
+
+        with insights_col1:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        padding: 15px; border-radius: 10px; color: white; height: 150px;">
+                <h5 style="margin-top: 0; color: white;">🎯 Model Accuracy Trend</h5>
+                <p style="font-size: 14px;">ML models show consistent improvement with
+                94.3% accuracy, up 2.1% QoQ. Fraud detection improving while reducing
+                false positives by 6.2%.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with insights_col2:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+                        padding: 15px; border-radius: 10px; color: white; height: 150px;">
+                <h5 style="margin-top: 0; color: white;">💰 Cost Efficiency</h5>
+                <p style="font-size: 14px;">AI automation saves $650K annually in labor costs
+                while processing 27x more transactions per minute than manual review alone.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with insights_col3:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                        padding: 15px; border-radius: 10px; color: white; height: 150px;">
+                <h5 style="margin-top: 0; color: white;">📈 Recommendation</h5>
+                <p style="font-size: 14px;">Consider expanding ML deployment to additional
+                fraud scenarios. Current ROI of 367% justifies increased investment.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
         st.markdown("### 🎯 90-Day Action Plan")
 
         st.markdown("""

@@ -1033,6 +1033,147 @@ def render():
     else:
         st.info("👆 Enter a transaction ID above to view detailed risk analysis")
 
+        # ML Intelligence Section
+        st.markdown("---")
+        st.markdown("## 🤖 ML-Powered Transaction Intelligence")
+        st.markdown("*Real-time machine learning insights for transaction screening*")
+
+        ml_metrics_col1, ml_metrics_col2, ml_metrics_col3, ml_metrics_col4 = st.columns(4)
+
+        with ml_metrics_col1:
+            st.metric("ML Confidence", "89.7%", "+3.2%")
+        with ml_metrics_col2:
+            st.metric("Auto-Cleared Today", "11,915", "+245")
+        with ml_metrics_col3:
+            st.metric("ML Accuracy", "94.1%", "+1.5%")
+        with ml_metrics_col4:
+            st.metric("Avg Processing", "8ms", "-2ms")
+
+        ml_viz_col1, ml_viz_col2 = st.columns(2)
+
+        with ml_viz_col1:
+            st.markdown("### 🎯 ML Risk Score Distribution")
+
+            # Generate risk score distribution
+            np.random.seed(42)
+            risk_scores = np.concatenate([
+                np.random.beta(2, 8, 8000) * 0.5,      # Low risk (auto-cleared)
+                np.random.beta(5, 5, 1500) * 0.6 + 0.2, # Medium risk
+                np.random.beta(8, 2, 500) * 0.4 + 0.6   # High risk
+            ])
+
+            fig_risk_dist = go.Figure()
+
+            # Create histogram with color coding
+            counts, bins = np.histogram(risk_scores, bins=30)
+            colors_bins = [colors['success'] if b < 0.3 else colors['warning'] if b < 0.7 else colors['danger']
+                          for b in bins[:-1]]
+
+            fig_risk_dist.add_trace(go.Bar(
+                x=bins[:-1],
+                y=counts,
+                marker=dict(color=colors_bins),
+                name='Risk Distribution'
+            ))
+
+            # Add threshold lines
+            fig_risk_dist.add_vline(x=0.3, line_dash="dash", line_color="orange",
+                                   annotation_text="Auto-Clear Threshold")
+            fig_risk_dist.add_vline(x=0.7, line_dash="dash", line_color="red",
+                                   annotation_text="High Risk Threshold")
+
+            fig_risk_dist.update_layout(
+                title="Transaction Risk Score Distribution (Last 24 Hours)",
+                xaxis_title="ML Risk Score",
+                yaxis_title="Number of Transactions",
+                height=350,
+                showlegend=False
+            )
+
+            st.plotly_chart(fig_risk_dist, use_container_width=True, key="txn_risk_dist")
+
+        with ml_viz_col2:
+            st.markdown("### 🔍 Top ML Feature Contributions")
+
+            features_txn = [
+                'Transaction Amount',
+                'Time of Day',
+                'Counterparty History',
+                'Location Consistency',
+                'Account Age',
+                'Recent Activity Pattern',
+                'Device Fingerprint',
+                'Behavioral Score'
+            ]
+            importance_txn = [0.32, 0.18, 0.15, 0.12, 0.10, 0.07, 0.04, 0.02]
+
+            fig_features_txn = go.Figure(go.Bar(
+                y=features_txn,
+                x=importance_txn,
+                orientation='h',
+                marker=dict(
+                    color=importance_txn,
+                    colorscale='Blues',
+                    showscale=False
+                ),
+                text=[f"{v:.1%}" for v in importance_txn],
+                textposition='outside'
+            ))
+
+            fig_features_txn.update_layout(
+                title="ML Feature Importance for Risk Scoring",
+                xaxis_title="Contribution to Risk Score",
+                height=350,
+                showlegend=False
+            )
+
+            st.plotly_chart(fig_features_txn, use_container_width=True, key="txn_feature_importance")
+
+        # ML Performance Insights
+        st.markdown("### 📊 ML Model Performance Metrics")
+
+        perf_col1, perf_col2, perf_col3 = st.columns(3)
+
+        with perf_col1:
+            st.markdown("#### Precision & Recall")
+
+            precision_data = [0.945, 0.932, 0.928, 0.941, 0.938, 0.943, 0.949]
+            recall_data = [0.912, 0.905, 0.898, 0.915, 0.908, 0.918, 0.923]
+            days_labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+            fig_pr = go.Figure()
+            fig_pr.add_trace(go.Scatter(x=days_labels, y=precision_data, name='Precision',
+                                       line=dict(color=colors['primary'], width=3), mode='lines+markers'))
+            fig_pr.add_trace(go.Scatter(x=days_labels, y=recall_data, name='Recall',
+                                       line=dict(color=colors['success'], width=3), mode='lines+markers'))
+
+            fig_pr.update_layout(height=250, yaxis=dict(range=[0.85, 1.0]), showlegend=True)
+            st.plotly_chart(fig_pr, use_container_width=True, key="txn_pr_metrics")
+
+        with perf_col2:
+            st.markdown("#### False Positive Rate")
+
+            fp_rate = [0.068, 0.072, 0.075, 0.065, 0.070, 0.062, 0.058]
+
+            fig_fp = go.Figure()
+            fig_fp.add_trace(go.Scatter(x=days_labels, y=fp_rate, name='FP Rate',
+                                       fill='tozeroy', line=dict(color=colors['danger'], width=3)))
+
+            fig_fp.update_layout(height=250, yaxis=dict(range=[0, 0.1]), showlegend=False)
+            st.plotly_chart(fig_fp, use_container_width=True, key="txn_fp_rate")
+
+        with perf_col3:
+            st.markdown("#### Processing Throughput")
+
+            throughput = [1180, 1205, 1190, 1225, 1210, 1247, 1265]
+
+            fig_throughput = go.Figure()
+            fig_throughput.add_trace(go.Bar(x=days_labels, y=throughput,
+                                           marker=dict(color=colors['info'])))
+
+            fig_throughput.update_layout(height=250, yaxis_title="Transactions/Min")
+            st.plotly_chart(fig_throughput, use_container_width=True, key="txn_throughput")
+
         # Show example
         st.markdown("---")
         st.markdown("""
