@@ -437,12 +437,12 @@ Track your progress:
 - [x] Executive_Dashboard.py (1/1 chart) ✅
 - [x] Geo_Analytics.py (3/3 charts) ✅
 - [x] Transaction_Review.py (3/3 charts) ✅
-- [x] operational_analytics.py (2/6 charts) 🟡 Partial
+- [x] operational_analytics.py (5/5 charts) ✅ Complete
 - [x] AI_ML_Intelligence.py (5/30+ charts) 🟡 Partial - Key charts enhanced
 - [x] Compliance_KYC_Analytics.py (2/17 charts) 🟡 Partial - Critical charts enhanced
 - [x] scenario_analysis.py (2 core charts × 13 scenarios = 26 instances) ✅ Core visualizations enhanced
 
-### Overall Progress: **~25% complete** (35+ out of ~140 charts)
+### Overall Progress: **~28% complete** (38+ out of ~140 charts)
 
 ### Recently Enhanced (Current Session):
 - **AI & ML Intelligence** - 5 critical ML charts:
@@ -459,6 +459,13 @@ Track your progress:
 - **Scenario Analysis** - 2 core visualizations across 13 fraud scenarios:
   - Rule Weight Contribution Chart (counterfactual analysis and severity assessment)
   - Transaction Amount Timeline (statistical anomaly detection with deviation metrics)
+
+- **Operational Analytics** - 5/5 charts (COMPLETE):
+  - Transaction Flow Heatmap (time-based risk patterns with period context)
+  - Investigation Velocity Box Plot (SLA compliance tracking by risk level)
+  - Case Resolution Histogram (speed categorization with distribution metrics)
+  - Merchant Risk Radar Chart (category risk assessment with fraud analysis)
+  - Merchant Fraud Rate Bar Chart (financial impact and benchmark comparisons)
 
 ---
 
