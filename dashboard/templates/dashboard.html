@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Detection Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1>Fraud Detection & Transaction Monitoring</h1>
+                <div class="header-meta">
+                    <span id="current-time"></span>
+                    <span class="refresh-indicator" id="refresh-indicator">
+                        <span class="pulse"></span> Live
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="tab-navigation">
+            <button class="tab-button active" data-tab="control-room">
+                Control Room
+                <span class="tab-subtitle">Risk Officer / Analyst</span>
+            </button>
+            <button class="tab-button" data-tab="executive-summary">
+                Executive Summary
+                <span class="tab-subtitle">Leadership / Stakeholder</span>
+            </button>
+        </nav>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- CONTROL ROOM TAB -->
+            <div id="control-room" class="tab-panel active">
+                <div class="dashboard-grid">
+                    <!-- Real-time Metrics KPIs -->
+                    <section class="metrics-panel">
+                        <h2>Real-time Metrics</h2>
+                        <div class="kpi-grid">
+                            <div class="kpi-card">
+                                <div class="kpi-icon">📊</div>
+                                <div class="kpi-content">
+                                    <span class="kpi-value" id="txs-today">-</span>
+                                    <span class="kpi-label">Transactions Today</span>
+                                </div>
+                            </div>
+                            <div class="kpi-card alert">
+                                <div class="kpi-icon">🚨</div>
+                                <div class="kpi-content">
+                                    <span class="kpi-value" id="alerts-flagged">-</span>
+                                    <span class="kpi-label">Alerts Flagged</span>
+                                </div>
+                            </div>
+                            <div class="kpi-card warning">
+                                <div class="kpi-icon">👁️</div>
+                                <div class="kpi-content">
+                                    <span class="kpi-value" id="manual-reviews">-</span>
+                                    <span class="kpi-label">Manual Reviews In Progress</span>
+                                </div>
+                            </div>
+                            <div class="kpi-card success">
+                                <div class="kpi-icon">💰</div>
+                                <div class="kpi-content">
+                                    <span class="kpi-value" id="fraud-prevented">-</span>
+                                    <span class="kpi-label">Fraud Prevented (Est.)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Risk Score Gauge -->
+                    <section class="chart-panel">
+                        <h2>Risk Score Distribution</h2>
+                        <canvas id="risk-gauge-chart"></canvas>
+                    </section>
+
+                    <!-- Live Transaction Feed -->
+                    <section class="feed-panel">
+                        <h2>Live Transaction Feed</h2>
+                        <div class="feed-controls">
+                            <button class="btn-small" onclick="refreshTransactionFeed()">Refresh</button>
+                        </div>
+                        <div id="transaction-feed" class="transaction-feed">
+                            <!-- Dynamic content -->
+                        </div>
+                    </section>
+
+                    <!-- Manual Review Queue -->
+                    <aside class="review-queue-panel">
+                        <h2>Manual Review Queue</h2>
+                        <div class="queue-header">
+                            <span class="queue-count" id="queue-count">0 items</span>
+                            <span class="sort-label">Sorted by Risk ↓</span>
+                        </div>
+                        <div id="review-queue" class="review-queue">
+                            <!-- Dynamic content -->
+                        </div>
+                    </aside>
+
+                    <!-- Top Triggered Rules -->
+                    <section class="rules-panel">
+                        <h2>Top Triggered Rules</h2>
+                        <div id="triggered-rules" class="rules-list">
+                            <!-- Dynamic content -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- EXECUTIVE SUMMARY TAB -->
+            <div id="executive-summary" class="tab-panel">
+                <div class="executive-grid">
+                    <!-- Summary KPI Panels -->
+                    <section class="summary-kpis">
+                        <h2>Key Performance Indicators</h2>
+                        <div class="period-selector">
+                            <button class="period-btn active" data-period="day">Day</button>
+                            <button class="period-btn" data-period="week">Week</button>
+                            <button class="period-btn" data-period="month">Month</button>
+                            <button class="period-btn" data-period="quarter">Quarter</button>
+                        </div>
+                        <div class="summary-grid">
+                            <div class="summary-card">
+                                <h3>Total Transactions Monitored</h3>
+                                <div class="summary-value" id="exec-total-txs">-</div>
+                                <div class="summary-subtitle">this period</div>
+                            </div>
+                            <div class="summary-card">
+                                <h3>Flagged Transactions</h3>
+                                <div class="summary-value" id="exec-flagged">-</div>
+                                <div class="summary-subtitle" id="exec-flagged-rate">-</div>
+                            </div>
+                            <div class="summary-card highlight">
+                                <h3>Confirmed Frauds Prevented</h3>
+                                <div class="summary-value" id="exec-confirmed">-</div>
+                                <div class="summary-subtitle" id="exec-fraud-value">-</div>
+                            </div>
+                            <div class="summary-card">
+                                <h3>Manual Review Cost</h3>
+                                <div class="summary-value" id="exec-review-cost">-</div>
+                                <div class="summary-subtitle">estimated</div>
+                            </div>
+                            <div class="summary-card success">
+                                <h3>Net Savings</h3>
+                                <div class="summary-value" id="exec-net-savings">-</div>
+                                <div class="summary-subtitle">after review costs</div>
+                            </div>
+                            <div class="summary-card">
+                                <h3>False Positive Rate</h3>
+                                <div class="summary-value" id="exec-fpr">-</div>
+                                <div class="summary-subtitle">target: &lt; 15%</div>
+                            </div>
+                            <div class="summary-card">
+                                <h3>SLA Compliance</h3>
+                                <div class="summary-value" id="exec-sla">-</div>
+                                <div class="summary-subtitle">target: &gt; 95%</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Risk Distribution Chart -->
+                    <section class="chart-panel-large">
+                        <h2>Risk Level Distribution</h2>
+                        <canvas id="risk-distribution-chart"></canvas>
+                    </section>
+
+                    <!-- Trends Chart -->
+                    <section class="chart-panel-large">
+                        <h2>Flagged Transactions Trend</h2>
+                        <canvas id="trends-chart"></canvas>
+                    </section>
+
+                    <!-- Top Risk Contributors -->
+                    <section class="contributors-panel">
+                        <h2>Top Risk Contributors</h2>
+                        <div id="risk-contributors" class="contributors-list">
+                            <!-- Dynamic content -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Transaction Details -->
+    <div id="transaction-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Transaction Details</h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
