@@ -68,6 +68,197 @@ def render():
     # Get standardized chart colors
     colors = get_chart_colors()
 
+    # Executive Alert Notification System
+    st.markdown("## 📨 Executive Alert Center")
+    st.markdown("**Automated Daily Briefing & Critical Notifications**")
+
+    # Alert tabs
+    alert_tab1, alert_tab2, alert_tab3 = st.tabs(["🚨 Critical Alerts", "📊 Daily Summary", "📈 Trend Alerts"])
+
+    with alert_tab1:
+        st.markdown("### Critical Fraud Alerts (Last 24 Hours)")
+        st.markdown("*Auto-sent to: CFO, Chief Risk Officer, VP Compliance*")
+
+        critical_alerts = [
+            {
+                "time": "2 hours ago",
+                "severity": "🔴 CRITICAL",
+                "title": "Coordinated Account Takeover Pattern Detected",
+                "description": "15 accounts showing simultaneous phone number changes followed by large transfers ($187K total). Geographic clustering in Lagos, Nigeria.",
+                "action": "Fraud team investigating. 12 transactions blocked. Customer notifications in progress.",
+                "recipients": "CFO, CRO, VP Fraud Prevention"
+            },
+            {
+                "time": "4 hours ago",
+                "severity": "🟠 HIGH",
+                "title": "Merchant Category Fraud Spike - Cryptocurrency",
+                "description": "Cryptocurrency transactions showing 340% increase in fraud rate (8.5% → 28.9%). $420K in suspicious activity detected.",
+                "action": "Enhanced monitoring enabled. Thresholds adjusted. Analyst team expanded.",
+                "recipients": "CRO, VP Compliance, Director AML"
+            },
+            {
+                "time": "6 hours ago",
+                "severity": "🟠 HIGH",
+                "title": "False Positive Rate Increase - Manual Review Queue",
+                "description": "Review queue increased to 892 cases (41% above normal). False positive rate: 8.7% (target: 6.2%).",
+                "action": "AI threshold optimization in progress. Additional analysts assigned.",
+                "recipients": "VP Operations, CRO"
+            }
+        ]
+
+        for alert in critical_alerts:
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+                        padding: 20px; border-radius: 10px; margin: 15px 0;
+                        border-left: 5px solid {'#ef4444' if 'CRITICAL' in alert['severity'] else '#f97316'};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-weight: bold; font-size: 16px;">{alert['severity']}</span>
+                    <span style="color: #666; font-size: 14px;">⏰ {alert['time']}</span>
+                </div>
+                <h4 style="margin: 10px 0; color: #1f2937;">{alert['title']}</h4>
+                <p style="color: #4b5563; margin: 10px 0; line-height: 1.6;">{alert['description']}</p>
+                <div style="background: white; padding: 12px; border-radius: 5px; margin: 10px 0;">
+                    <strong style="color: #059669;">✓ Action Taken:</strong> {alert['action']}
+                </div>
+                <div style="color: #6b7280; font-size: 13px; margin-top: 10px;">
+                    <strong>📧 Notification Sent To:</strong> {alert['recipients']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with alert_tab2:
+        st.markdown("### Daily Fraud Detection Summary")
+        st.markdown(f"*Automatically sent every morning at 7:00 AM to executive team*")
+        st.markdown(f"**Report Date:** {datetime.now().strftime('%B %d, %Y')}")
+
+        summary_col1, summary_col2, summary_col3 = st.columns(3)
+
+        with summary_col1:
+            st.markdown("""
+            <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">
+                <h3 style="color: #059669; margin: 0;">✓ Prevention Success</h3>
+                <h2 style="color: #047857; margin: 10px 0;">$2.3M</h2>
+                <p style="color: #065f46; margin: 0;">Fraud Prevented (24 hrs)</p>
+                <p style="font-size: 13px; color: #6b7280; margin-top: 8px;">47 fraudulent transactions blocked</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with summary_col2:
+            st.markdown("""
+            <div style="background: #fffbeb; padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #d97706; margin: 0;">⚠️ Under Review</h3>
+                <h2 style="color: #b45309; margin: 10px 0;">632</h2>
+                <p style="color: #92400e; margin: 0;">Manual Reviews Pending</p>
+                <p style="font-size: 13px; color: #6b7280; margin-top: 8px;">Avg. resolution time: 45 min</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with summary_col3:
+            st.markdown("""
+            <div style="background: #eff6ff; padding: 20px; border-radius: 10px; border-left: 4px solid #3b82f6;">
+                <h3 style="color: #2563eb; margin: 0;">📊 System Health</h3>
+                <h2 style="color: #1e40af; margin: 10px 0;">94.2%</h2>
+                <p style="color: #1e3a8a; margin: 0;">Detection Accuracy</p>
+                <p style="font-size: 13px; color: #6b7280; margin-top: 8px;">False positive: 6.2%</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        st.markdown("### 📋 Key Highlights from Past 24 Hours")
+
+        highlights = pd.DataFrame({
+            "Category": ["Geographic Patterns", "Transaction Velocity", "Merchant Risk", "Account Behavior", "Detection Rules"],
+            "Status": ["🔴 Alert", "🟢 Normal", "🟠 Elevated", "🟢 Normal", "🟢 Optimal"],
+            "Metric": [
+                "California VPN fraud +45%",
+                "Average velocity: 3.2 tx/hr",
+                "Crypto fraud rate: 8.5% → 28.9%",
+                "Account takeover: 15 cases",
+                "Top rule precision: 98.1%"
+            ],
+            "Action Required": [
+                "Enhanced CA monitoring active",
+                "No action needed",
+                "Threshold adjusted, monitoring",
+                "Investigations ongoing",
+                "No action needed"
+            ]
+        })
+
+        st.dataframe(
+            highlights,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Status": st.column_config.TextColumn("Status", width="small")
+            }
+        )
+
+    with alert_tab3:
+        st.markdown("### Fraud Pattern & Trend Alerts")
+        st.markdown("*Triggered automatically when trends exceed thresholds*")
+
+        trend_alerts = [
+            {
+                "icon": "📈",
+                "type": "PATTERN ALERT",
+                "color": "#3b82f6",
+                "title": "New Fraud Pattern Detected: Payroll Rerouting via BEC",
+                "details": "7 incidents in past 48 hours. Pattern: HR email compromise → payroll redirect. Average loss per incident: $18,500.",
+                "trend": "Emerging threat - 0 cases last week → 7 cases this week",
+                "recommendation": "Alert HR departments. Implement additional payroll verification step.",
+                "sent_to": "CFO, CISO, VP HR"
+            },
+            {
+                "icon": "🌍",
+                "type": "GEOGRAPHIC ALERT",
+                "color": "#8b5cf6",
+                "title": "Geographic Fraud Spike: California Region",
+                "details": "VPN/proxy fraud in California increased 45% (145 cases vs. 100 baseline). Concentrated in LA and San Francisco metro areas.",
+                "trend": "7-day trend: +12, +8, +15, +22, +18, +31, +45",
+                "recommendation": "Enhanced monitoring for CA transactions. Consider temporary threshold reduction.",
+                "sent_to": "CRO, Regional Risk Managers"
+            },
+            {
+                "icon": "💰",
+                "type": "VOLUME ALERT",
+                "color": "#ec4899",
+                "title": "High-Value Transaction Surge Detected",
+                "details": "Transactions >$50K increased 67% today (89 vs. 53 baseline). 12 flagged for enhanced review.",
+                "trend": "Possibly legitimate - Q4 seasonal pattern observed",
+                "recommendation": "Monitor for 48 hours. Analyst workload increased.",
+                "sent_to": "VP Operations, CRO"
+            }
+        ]
+
+        for alert in trend_alerts:
+            st.markdown(f"""
+            <div style="background: white; padding: 20px; border-radius: 10px; margin: 15px 0;
+                        border-left: 5px solid {alert['color']}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 32px; margin-right: 15px;">{alert['icon']}</span>
+                    <div>
+                        <span style="background: {alert['color']}; color: white; padding: 4px 12px;
+                                     border-radius: 4px; font-size: 12px; font-weight: bold;">
+                            {alert['type']}
+                        </span>
+                    </div>
+                </div>
+                <h4 style="margin: 10px 0; color: #1f2937;">{alert['title']}</h4>
+                <p style="color: #4b5563; margin: 10px 0; line-height: 1.6;"><strong>Details:</strong> {alert['details']}</p>
+                <p style="color: #6b7280; margin: 10px 0;"><strong>Trend:</strong> {alert['trend']}</p>
+                <div style="background: #f0fdf4; padding: 12px; border-radius: 5px; margin: 10px 0; border-left: 3px solid #10b981;">
+                    <strong style="color: #059669;">💡 AI Recommendation:</strong> {alert['recommendation']}
+                </div>
+                <div style="color: #6b7280; font-size: 13px; margin-top: 10px;">
+                    <strong>📧 Alert Sent To:</strong> {alert['sent_to']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
     # Key metrics row
     col1, col2, col3, col4, col5 = st.columns(5)
 
