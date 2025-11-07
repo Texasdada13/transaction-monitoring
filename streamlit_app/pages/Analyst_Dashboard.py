@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
-from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight, render_adaptive_ai_banner
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
  
     # Generate synthetic dataset for visualization
@@ -250,8 +250,7 @@ def render():
 
     st.markdown("---")
 
-    # Adaptive AI Banner
-    render_adaptive_ai_banner()
+
 
     st.markdown("---")
 

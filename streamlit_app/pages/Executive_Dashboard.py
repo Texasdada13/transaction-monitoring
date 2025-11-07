@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
-from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight, render_adaptive_ai_banner
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
 
 # Generate synthetic dataset for visualization
@@ -372,8 +372,6 @@ def render():
 
     st.markdown("---")
 
-    # Adaptive AI Banner
-    render_adaptive_ai_banner()
 
     st.markdown("---")
 
@@ -445,18 +443,6 @@ def render():
     # Executive Decision Framework
     st.markdown("## 🎯 Executive Decision Framework")
     st.markdown("**Strategic Guidance: From Data to Action**")
-
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 25px; border-radius: 15px; color: white; margin: 20px 0;">
-        <h3 style="margin-top: 0; color: white;">📊 How to Use This Dashboard for Strategic Decisions</h3>
-        <p style="font-size: 15px; line-height: 1.8; margin: 15px 0;">
-            This dashboard transforms fraud detection data into actionable intelligence. Each metric,
-            trend, and alert is designed to support specific executive decisions. Use this framework
-            to navigate from observation to action.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
     decision_tab1, decision_tab2, decision_tab3 = st.tabs([
         "🎯 Decision Matrix",

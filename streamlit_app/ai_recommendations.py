@@ -293,27 +293,4 @@ def render_ai_insight(title: str, recommendation: str, icon: str = "🤖"):
     """, unsafe_allow_html=True)
 
 
-def render_adaptive_ai_banner():
-    """Render the Adaptive AI banner section."""
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 25px;
-                border-radius: 15px;
-                margin: 20px 0;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        <div style="display: flex; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 40px; margin-right: 20px;">🧠</div>
-            <div>
-                <h2 style="color: #e0e7ff; margin: 0; font-size: 28px;">Adaptive AI</h2>
-                <h3 style="color: #e0e7ff; margin: 5px 0 0 0; font-weight: normal; font-size: 18px;">
-                    Smarter than Evolving Fraud
-                </h3>
-            </div>
-        </div>
-        <p style="color: #e0e7ff; font-size: 16px; line-height: 1.6; margin: 0;">
-            Our AI isn't static. It constantly learns and adapts to new fraud patterns,
-            mirroring criminals' tactics. This ensures your protection evolves alongside
-            the threats you face, providing cutting-edge defense against emerging fraud schemes.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+
