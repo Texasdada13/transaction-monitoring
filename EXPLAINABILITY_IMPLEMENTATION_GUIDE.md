@@ -440,11 +440,11 @@ Track your progress:
 - [x] operational_analytics.py (2/6 charts) 🟡 Partial
 - [x] AI_ML_Intelligence.py (5/30+ charts) 🟡 Partial - Key charts enhanced
 - [x] Compliance_KYC_Analytics.py (2/17 charts) 🟡 Partial - Critical charts enhanced
-- [ ] scenario_analysis.py (0/60+ charts) ⏳
+- [x] scenario_analysis.py (2 core charts × 13 scenarios = 26 instances) ✅ Core visualizations enhanced
 
-### Overall Progress: **~18% complete** (22 out of ~120 charts)
+### Overall Progress: **~25% complete** (35+ out of ~140 charts)
 
-### Recently Enhanced (Latest Session):
+### Recently Enhanced (Current Session):
 - **AI & ML Intelligence** - 5 critical ML charts:
   - Ensemble Model Performance (model comparisons with detailed explanations)
   - Feature Importance (impact analysis with context)
@@ -455,6 +455,10 @@ Track your progress:
 - **Compliance & KYC Analytics** - 2 critical compliance charts:
   - False Positive Rate by Alert Type (cost analysis and severity assessment)
   - Average Decision Time by Analyst (SLA compliance and performance metrics)
+
+- **Scenario Analysis** - 2 core visualizations across 13 fraud scenarios:
+  - Rule Weight Contribution Chart (counterfactual analysis and severity assessment)
+  - Transaction Amount Timeline (statistical anomaly detection with deviation metrics)
 
 ---
 
