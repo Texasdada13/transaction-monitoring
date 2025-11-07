@@ -60,7 +60,7 @@ def render():
 
     # Header
     render_page_header(
-        title="Rule Performance Analytics",
+        title="Detection Rule Observatory",
         subtitle="Fraud Detection Rule Effectiveness & Optimization Metrics",
         show_logo=False
     )
@@ -72,7 +72,7 @@ def render():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader("🤖 AI Fraud Detection Impact Intelligence")
+        st.subheader("🤖 Detection Impact Scorecard")
         st.caption("Treemap showing confirmed fraud catches by rule")
 
         fig_treemap = go.Figure(go.Treemap(
@@ -91,7 +91,7 @@ def render():
         st.plotly_chart(fig_treemap, use_container_width=True)
 
     with col2:
-        st.subheader("🧠 ML Rule Effectiveness Matrix")
+        st.subheader("🧠 Rule Precision Dashboard")
         st.caption("Bubble chart: Trigger Frequency vs Precision (size = weight)")
 
         fig_bubble = go.Figure()
@@ -126,7 +126,7 @@ def render():
     st.markdown("---")
 
     # Rule Correlation Network
-    st.subheader("🔗 AI Neural Rule Correlation Network")
+    st.subheader("🔗 Detection Rule Nexus")
     st.caption("Shows which rules commonly fire together (typical 5-8 rule patterns)")
 
     # Create network visualization using scatter plot with connecting lines
@@ -190,7 +190,7 @@ def render():
     st.markdown("---")
 
     # Rule Contribution Waterfall
-    st.subheader("📈 AI-Driven Rule Contribution Cascade")
+    st.subheader("📈 Fraud Prevention Cascade")
     st.caption("Shows how each triggered rule contributes to final risk score")
 
     # Sample transaction with rules
@@ -229,7 +229,7 @@ def render():
     st.markdown("---")
 
     # Detailed Rule Performance Table
-    st.subheader("📊 AI Performance Intelligence Metrics")
+    st.subheader("📊 Rule Efficacy Intelligence")
 
     # Format the dataframe for display
     display_df = rule_performance_df.copy()

@@ -533,7 +533,7 @@ def render():
 
     # Header
     render_page_header(
-        title="Fraud Scenario Analysis",
+        title="Attack Pattern Simulator",
         subtitle="Comprehensive Analysis of 13 Fraud Detection Scenarios",
         show_logo=False
     )
