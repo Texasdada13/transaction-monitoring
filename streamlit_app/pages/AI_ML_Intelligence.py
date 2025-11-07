@@ -30,6 +30,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.explainability import get_explainability_engine
 
 
 def load_ml_data():
@@ -236,13 +237,81 @@ def render_ensemble_models(features, colors):
             'Extra Trees': 0.948
         }
 
+        # Enhanced hover texts
+        model_descriptions = {
+            'Random Forest': {
+                'desc': 'Ensemble of decision trees with bootstrap sampling',
+                'strength': 'Excellent for handling non-linear relationships and feature interactions',
+                'use_case': 'General-purpose fraud detection with high interpretability'
+            },
+            'XGBoost': {
+                'desc': 'Gradient boosting with advanced regularization',
+                'strength': 'Industry-leading performance with fast training speed',
+                'use_case': 'Best for production systems requiring highest accuracy'
+            },
+            'Gradient Boosting': {
+                'desc': 'Sequential ensemble building weak learners',
+                'strength': 'Strong predictive power with good generalization',
+                'use_case': 'Balanced performance and training time'
+            },
+            'AdaBoost': {
+                'desc': 'Adaptive boosting focusing on misclassified samples',
+                'strength': 'Simple and effective for binary classification',
+                'use_case': 'Works well with limited training data'
+            },
+            'Extra Trees': {
+                'desc': 'Extremely randomized trees with random splits',
+                'strength': 'Fast training with reduced overfitting',
+                'use_case': 'High-dimensional data with many features'
+            }
+        }
+
+        hover_texts = []
+        for model_name, score in model_scores.items():
+            info = model_descriptions[model_name]
+
+            if score >= 0.960:
+                perf_badge = "⭐ EXCELLENT"
+                perf_color = "#10b981"
+                assessment = "Outstanding performance - Production ready"
+            elif score >= 0.940:
+                perf_badge = "✅ VERY GOOD"
+                perf_color = "#3b82f6"
+                assessment = "Strong performance - Recommended for deployment"
+            elif score >= 0.920:
+                perf_badge = "🟡 GOOD"
+                perf_color = "#f59e0b"
+                assessment = "Acceptable performance - May need tuning"
+            else:
+                perf_badge = "⚠️ MODERATE"
+                perf_color = "#ef4444"
+                assessment = "Consider alternative models or feature engineering"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{model_name}</b><br><br>"
+                f"<b style='color:{perf_color}'>{perf_badge}</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 Performance:</b><br>"
+                f"• AUC-ROC Score: <b>{score:.3f}</b><br>"
+                f"• Percentile: <b>Top {(1-score)*100:.1f}%</b><br><br>"
+                f"<b>🔍 Model Type:</b><br>"
+                f"{info['desc']}<br><br>"
+                f"<b>💪 Key Strength:</b><br>"
+                f"{info['strength']}<br><br>"
+                f"<b>🎯 Best Use Case:</b><br>"
+                f"{info['use_case']}"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=list(model_scores.values()),
             y=list(model_scores.keys()),
             orientation='h',
             marker=dict(color=colors[0]),
             text=[f"{v:.1%}" for v in model_scores.values()],
-            textposition='outside'
+            textposition='outside',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -264,13 +333,73 @@ def render_ensemble_models(features, colors):
             'importance': rf.feature_importances_
         }).sort_values('importance', ascending=True).tail(10)
 
+        # Enhanced hover texts for features
+        feature_explanations = {
+            'amount': 'Transaction dollar amount - Higher amounts often indicate higher fraud risk',
+            'risk_level': 'Customer risk classification (low/medium/high)',
+            'hour': 'Hour of day (0-23) - Unusual hours may indicate fraud',
+            'is_international': 'Whether transaction crosses international borders',
+            'account_age_days': 'Days since account creation - Newer accounts are riskier',
+            'account_balance': 'Current account balance - Impacts transaction legitimacy',
+            'is_pep': 'Politically Exposed Person status - Higher regulatory scrutiny',
+            'is_weekend': 'Weekend transaction flag - Different behavior patterns',
+            'day_of_week': 'Day of week (0-6) - Weekly pattern detection',
+            'is_wire': 'Wire transfer flag - Higher risk transaction type',
+            'is_cash': 'Cash transaction indicator',
+            'is_high_risk': 'High risk transaction flag'
+        }
+
+        hover_texts = []
+        for _, row in feature_importance.iterrows():
+            feature_name = row['feature']
+            importance = row['importance']
+            explanation = feature_explanations.get(feature_name, 'Feature used in fraud prediction model')
+
+            # Calculate relative importance
+            total_importance = feature_importance['importance'].sum()
+            relative_pct = (importance / total_importance) * 100
+
+            if importance > 0.15:
+                impact_badge = "🔴 CRITICAL"
+                impact_color = "#ef4444"
+                impact_note = "Dominant feature - Has major influence on predictions"
+            elif importance > 0.10:
+                impact_badge = "🟠 HIGH"
+                impact_color = "#f59e0b"
+                impact_note = "Strong influence on model decisions"
+            elif importance > 0.05:
+                impact_badge = "🟡 MODERATE"
+                impact_color = "#f59e0b"
+                impact_note = "Notable contribution to predictions"
+            else:
+                impact_badge = "🟢 LOW"
+                impact_color = "#10b981"
+                impact_note = "Minor but measurable impact"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{feature_name}</b><br><br>"
+                f"<b style='color:{impact_color}'>{impact_badge} IMPACT</b><br>"
+                f"{impact_note}<br><br>"
+                f"<b>📊 Importance Metrics:</b><br>"
+                f"• Importance Score: <b>{importance:.4f}</b><br>"
+                f"• Relative Weight: <b>{relative_pct:.1f}%</b> of top 10<br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"{explanation}<br><br>"
+                f"<b>🎯 Model Insight:</b><br>"
+                f"Random Forest uses this feature in <b>{int(importance * 1000)}</b> "
+                f"split decisions across {rf.n_estimators} trees"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=feature_importance['importance'],
             y=feature_importance['feature'],
             orientation='h',
             marker=dict(color=colors[1]),
             text=[f"{v:.3f}" for v in feature_importance['importance']],
-            textposition='outside'
+            textposition='outside',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -423,6 +552,111 @@ def render_explainable_ai(features, colors):
         np.random.seed(42)
         shap_values = np.random.randn(len(feature_names)) * [3.2, 2.8, 1.5, 1.8, 2.1, 1.2, 1.9, 0.8, 0.9, 1.4]
 
+        # Enhanced hover texts for SHAP values
+        shap_explanations = {
+            'amount': {
+                'meaning': 'Transaction dollar amount',
+                'positive': 'Higher amounts push prediction toward fraud',
+                'negative': 'Lower amounts push prediction toward legitimate',
+                'insight': 'Large transactions are strongest fraud indicator'
+            },
+            'risk_level': {
+                'meaning': 'Customer risk classification',
+                'positive': 'High-risk customers increase fraud probability',
+                'negative': 'Low-risk customers decrease fraud probability',
+                'insight': 'Customer history is powerful predictor'
+            },
+            'hour': {
+                'meaning': 'Hour of transaction (0-23)',
+                'positive': 'Unusual hours (late night) indicate potential fraud',
+                'negative': 'Normal business hours suggest legitimate activity',
+                'insight': 'Temporal patterns reveal behavioral anomalies'
+            },
+            'is_international': {
+                'meaning': 'Cross-border transaction flag',
+                'positive': 'International transactions have higher fraud risk',
+                'negative': 'Domestic transactions are typically safer',
+                'insight': 'Geography adds important risk context'
+            },
+            'total_balance': {
+                'meaning': 'Account balance',
+                'positive': 'High balance may enable large fraud',
+                'negative': 'Low balance limits fraud potential',
+                'insight': 'Balance informs feasibility of fraud'
+            },
+            'account_age_days': {
+                'meaning': 'Days since account opening',
+                'positive': 'Older accounts may have established patterns',
+                'negative': 'New accounts are higher risk',
+                'insight': 'Account maturity inversely correlates with fraud'
+            },
+            'is_pep': {
+                'meaning': 'Politically Exposed Person status',
+                'positive': 'PEP status increases scrutiny needs',
+                'negative': 'Non-PEP reduces regulatory concerns',
+                'insight': 'Regulatory risk factor'
+            },
+            'is_weekend': {
+                'meaning': 'Weekend transaction indicator',
+                'positive': 'Weekend activity may be anomalous',
+                'negative': 'Weekday activity more common',
+                'insight': 'Weekly patterns matter for fraud detection'
+            },
+            'day_of_week': {
+                'meaning': 'Specific day of week',
+                'positive': 'Certain days show more fraud',
+                'negative': 'Other days are safer',
+                'insight': 'Day-specific patterns emerge over time'
+            },
+            'is_wire': {
+                'meaning': 'Wire transfer flag',
+                'positive': 'Wire transfers have elevated fraud risk',
+                'negative': 'Non-wire transactions are lower risk',
+                'insight': 'Payment method significantly impacts risk'
+            }
+        }
+
+        hover_texts = []
+        for feature_name, shap_val in zip(feature_names, shap_values):
+            info = shap_explanations.get(feature_name, {})
+            meaning = info.get('meaning', 'Feature contribution to predictions')
+            positive = info.get('positive', 'Increases fraud probability')
+            negative = info.get('negative', 'Decreases fraud probability')
+            insight = info.get('insight', 'Contributes to model decision')
+
+            abs_shap = abs(shap_val)
+
+            if abs_shap > 2.5:
+                impact = "🔴 CRITICAL IMPACT"
+                impact_color = "#ef4444"
+            elif abs_shap > 1.5:
+                impact = "🟠 HIGH IMPACT"
+                impact_color = "#f59e0b"
+            elif abs_shap > 0.8:
+                impact = "🟡 MODERATE IMPACT"
+                impact_color = "#f59e0b"
+            else:
+                impact = "🟢 LOW IMPACT"
+                impact_color = "#10b981"
+
+            hover_text = (
+                f"<b style='font-size:14px'>{feature_name}</b><br><br>"
+                f"<b style='color:{impact_color}'>{impact}</b><br><br>"
+                f"<b>📊 SHAP Value: <b>{shap_val:.3f}</b><br>"
+                f"• Absolute Impact: <b>{abs_shap:.3f}</b><br><br>"
+                f"<b>💡 What This Feature Is:</b><br>"
+                f"{meaning}<br><br>"
+                f"<b>➕ When Positive:</b><br>"
+                f"{positive}<br><br>"
+                f"<b>➖ When Negative:</b><br>"
+                f"{negative}<br><br>"
+                f"<b>🎯 Key Insight:</b><br>"
+                f"{insight}<br><br>"
+                f"<b>📈 Interpretation:</b><br>"
+                f"On average, this feature changes model output by <b>{abs_shap:.2f}</b> units"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=np.abs(shap_values),
             y=feature_names,
@@ -435,7 +669,9 @@ def render_explainable_ai(features, colors):
                 colorbar=dict(title="SHAP Value")
             ),
             text=[f"{v:.2f}" for v in shap_values],
-            textposition='outside'
+            textposition='outside',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.update_layout(
@@ -600,13 +836,63 @@ def render_realtime_monitoring(colors):
 
         colors_drift = ['red' if d > threshold else 'green' for d in drift_scores]
 
+        # Enhanced hover texts for drift detection
+        hover_texts = []
+        for feature, drift_score in zip(features, drift_scores):
+            if drift_score > 0.20:
+                status = "🔴 CRITICAL DRIFT"
+                status_color = "#dc2626"
+                assessment = "Severe distribution shift detected"
+                action = "IMMEDIATE ACTION: Retrain model with recent data"
+            elif drift_score > threshold:
+                status = "🟠 DRIFT DETECTED"
+                status_color = "#f59e0b"
+                assessment = "Significant distribution change"
+                action = "ALERT: Schedule model retraining soon"
+            elif drift_score > 0.05:
+                status = "🟡 MINOR DRIFT"
+                status_color = "#eab308"
+                assessment = "Small distribution shift - within normal bounds"
+                action = "MONITOR: Continue tracking this feature"
+            else:
+                status = "🟢 STABLE"
+                status_color = "#10b981"
+                assessment = "Feature distribution is stable"
+                action = "NO ACTION: Feature performing as expected"
+
+            # Calculate severity percentage
+            severity_pct = (drift_score / 0.20) * 100  # 0.20 = critical level
+            severity_pct = min(severity_pct, 100)
+
+            hover_text = (
+                f"<b style='font-size:14px'>{feature}</b><br><br>"
+                f"<b style='color:{status_color}'>{status}</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 Drift Metrics:</b><br>"
+                f"• KS Statistic: <b>{drift_score:.4f}</b><br>"
+                f"• Alert Threshold: <b>{threshold:.2f}</b><br>"
+                f"• Severity Level: <b>{severity_pct:.0f}%</b><br>"
+                f"• Status: <b>{'OVER THRESHOLD' if drift_score > threshold else 'Within Limits'}</b><br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"The Kolmogorov-Smirnov statistic measures how much the current<br>"
+                f"distribution of '{feature}' differs from the training distribution.<br>"
+                f"Higher values indicate the model may perform poorly on new data.<br><br>"
+                f"<b>🎯 Recommended Action:</b><br>"
+                f"{action}<br><br>"
+                f"<b>📈 Context:</b><br>"
+                f"{'Data patterns have shifted - model assumptions may no longer hold' if drift_score > threshold else 'Feature distribution matches training data - predictions remain reliable'}"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=drift_scores,
             y=features,
             orientation='h',
             marker=dict(color=colors_drift),
             text=[f"{d:.3f}" for d in drift_scores],
-            textposition='outside'
+            textposition='outside',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.add_vline(x=threshold, line_dash="dash", line_color="red",
@@ -1179,6 +1465,61 @@ def render_advanced_metrics(features, colors):
             lift_values.append(lift)
             bin_labels.append(f"Top {(i+1)*10}%")
 
+        # Enhanced hover texts for lift chart
+        hover_texts = []
+        for i, (label, lift) in enumerate(zip(bin_labels, lift_values)):
+            percentile = (i+1) * 10
+
+            if lift >= 3.0:
+                performance = "🏆 EXCEPTIONAL"
+                perf_color = "#10b981"
+                assessment = "Outstanding concentration of fraud cases"
+                business_value = "Highest priority for investigation resources"
+            elif lift >= 2.0:
+                performance = "⭐ EXCELLENT"
+                perf_color = "#3b82f6"
+                assessment = "Strong fraud concentration"
+                business_value = "High-value targets for analyst review"
+            elif lift >= 1.5:
+                performance = "✅ GOOD"
+                perf_color = "#22c55e"
+                assessment = "Above-average fraud detection"
+                business_value = "Worthwhile investigation targets"
+            elif lift >= 1.0:
+                performance = "🟡 MODERATE"
+                perf_color = "#f59e0b"
+                assessment = "Slight improvement over random"
+                business_value = "Secondary priority for review"
+            else:
+                performance = "🔴 POOR"
+                perf_color = "#ef4444"
+                assessment = "Below-average fraud concentration"
+                business_value = "Deprioritize for investigation"
+
+            # Calculate efficiency metrics
+            fraud_concentration = lift * overall_rate * 100
+            efficiency_gain = (lift - 1) * 100
+
+            hover_text = (
+                f"<b style='font-size:14px'>{label} of Predictions</b><br><br>"
+                f"<b style='color:{perf_color}'>{performance}</b><br>"
+                f"{assessment}<br><br>"
+                f"<b>📊 Lift Metrics:</b><br>"
+                f"• Lift Value: <b>{lift:.2f}x</b><br>"
+                f"• Fraud Rate in Bin: <b>{fraud_concentration:.1f}%</b><br>"
+                f"• Overall Fraud Rate: <b>{overall_rate*100:.1f}%</b><br>"
+                f"• Efficiency Gain: <b>+{efficiency_gain:.0f}%</b> vs random<br><br>"
+                f"<b>💡 What This Means:</b><br>"
+                f"By focusing on the {label} of predictions ranked by score,<br>"
+                f"you catch <b>{lift:.1f}x</b> more fraud than reviewing randomly.<br><br>"
+                f"<b>💰 Business Value:</b><br>"
+                f"{business_value}<br><br>"
+                f"<b>🎯 Practical Impact:</b><br>"
+                f"If you review only this decile, you'll find <b>{fraud_concentration:.1f}%</b><br>"
+                f"of transactions are fraudulent (vs {overall_rate*100:.1f}% baseline)"
+            )
+            hover_texts.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=bin_labels,
             y=lift_values,
@@ -1189,7 +1530,9 @@ def render_advanced_metrics(features, colors):
                 colorbar=dict(title="Lift")
             ),
             text=[f"{v:.2f}x" for v in lift_values],
-            textposition='outside'
+            textposition='outside',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=hover_texts
         ))
 
         fig.add_hline(y=1.0, line_dash="dash", line_color="gray",
