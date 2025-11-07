@@ -11,6 +11,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
 
 # Complete fraud scenarios dataset (all 13 scenarios)
@@ -626,6 +627,24 @@ def render():
         
         st.markdown(f"**Reasoning:** {scenario['decision']['reasoning']}")
         st.markdown(f"**Recommended Action:** {scenario['decision']['action']}")
+
+        # AI Analysis
+        st.markdown("---")
+        st.markdown("#### 🤖 AI Analysis")
+
+        ai_engine = get_ai_engine()
+        scenario_insight = ai_engine.get_pattern_insight(
+            pattern_type="fraud_scenario",
+            pattern_data={
+                "scenario_type": scenario['title'],
+                "risk_score": scenario['risk_score'],
+                "outcome": scenario['outcome'],
+                "rules_triggered": len(scenario['triggered_rules']),
+                "confidence": scenario['decision']['confidence']
+            }
+        )
+
+        st.info(scenario_insight)
 
     # Timeline Section
     if show_timeline:

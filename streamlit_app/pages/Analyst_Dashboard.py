@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight, render_adaptive_ai_banner
 
  
     # Generate synthetic dataset for visualization
@@ -306,7 +307,101 @@ def render():
 
     st.markdown("---")
 
- 
+    # Adaptive AI Banner
+    render_adaptive_ai_banner()
+
+    st.markdown("---")
+
+    # AI-Powered Dynamic Threshold Optimization
+    st.markdown("## 🎯 AI-Powered Dynamic Threshold Optimization")
+    st.markdown("**Next-Generation Adaptive Fraud Prevention**")
+
+    st.markdown("""
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #667eea; margin: 15px 0;">
+        <h4 style="color: #667eea; margin-top: 0;">🔮 Intelligent Threshold Management</h4>
+        <p style="margin-bottom: 10px;">
+            Our system continuously monitors fraud patterns and automatically adjusts detection thresholds
+            based on real-time data analysis. This ensures optimal balance between fraud detection and
+            operational efficiency.
+        </p>
+        <h5 style="color: #555; margin-top: 15px;">Dynamic Factors Monitored:</h5>
+        <ul style="color: #666; line-height: 1.8;">
+            <li><strong>Transaction Volume Trends:</strong> Adapts to seasonal peaks and valleys</li>
+            <li><strong>Geographic Risk Shifts:</strong> Responds to emerging high-risk regions</li>
+            <li><strong>Amount Pattern Changes:</strong> Adjusts for inflation and market conditions</li>
+            <li><strong>False Positive Rates:</strong> Optimizes analyst workload</li>
+            <li><strong>Emerging Fraud Patterns:</strong> Learns from new attack vectors</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # AI Recommendations for Current Thresholds
+    threshold_col1, threshold_col2 = st.columns([2, 1])
+
+    with threshold_col1:
+        st.markdown("### 📊 Current Threshold Performance")
+
+        # Mock current threshold metrics
+        current_metrics = pd.DataFrame({
+            'Threshold Type': ['Auto-Clear', 'Manual Review', 'High Priority', 'Critical'],
+            'Current Value': [0.30, 0.60, 0.80, 0.90],
+            'Utilization': [95.2, 4.5, 0.25, 0.05],
+            'Efficiency': [98.5, 87.3, 92.1, 99.2]
+        })
+
+        st.dataframe(
+            current_metrics,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                'Current Value': st.column_config.ProgressColumn(
+                    'Current Value',
+                    min_value=0,
+                    max_value=1,
+                    format='%.2f'
+                ),
+                'Utilization': st.column_config.ProgressColumn(
+                    'Utilization %',
+                    min_value=0,
+                    max_value=100,
+                    format='%.1f%%'
+                ),
+                'Efficiency': st.column_config.ProgressColumn(
+                    'Efficiency %',
+                    min_value=0,
+                    max_value=100,
+                    format='%.1f%%'
+                )
+            }
+        )
+
+    with threshold_col2:
+        st.markdown("### 🤖 AI Recommendations")
+
+        # Get AI recommendation for thresholds
+        ai_engine = get_ai_engine()
+        threshold_rec = ai_engine.get_threshold_recommendation(
+            current_threshold=0.60,
+            recent_stats={
+                'false_positive_rate': 0.062,
+                'detection_rate': 0.942,
+                'queue_size': 632,
+                'avg_time': 45
+            }
+        )
+
+        st.info(threshold_rec)
+
+        # Trend insight
+        fraud_trend = [45, 47, 44, 52, 51, 48, 47]
+        trend_analysis = ai_engine.get_trend_analysis(
+            metric_name="Daily Fraud Detection",
+            trend_data=fraud_trend
+        )
+
+        st.success(trend_analysis)
+
+    st.markdown("---")
 
     # Footer
     st.markdown("## ℹ️ System Information")

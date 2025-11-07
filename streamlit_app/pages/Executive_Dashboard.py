@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight, render_adaptive_ai_banner
 
 
 # Generate synthetic dataset for visualization
@@ -179,6 +180,75 @@ def render():
 
     st.markdown("---")
 
+    # Adaptive AI Banner
+    render_adaptive_ai_banner()
+
+    st.markdown("---")
+
+    # Executive AI Strategy Section
+    st.markdown("## 🎯 AI-Powered Strategic Insights")
+
+    insight_col1, insight_col2 = st.columns(2)
+
+    with insight_col1:
+        st.markdown("### 🔮 Predictive Analytics & Dynamic Thresholds")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    padding: 20px; border-radius: 10px; color: white;">
+            <h4 style="margin-top: 0;">Next-Generation Fraud Prevention</h4>
+            <p style="font-size: 14px; line-height: 1.6;">
+                Our AI continuously analyzes transaction patterns, geographic trends, and
+                emerging fraud vectors to automatically adjust detection thresholds. This
+                ensures optimal protection while minimizing false positives.
+            </p>
+            <ul style="font-size: 13px; line-height: 1.8;">
+                <li>Real-time pattern recognition</li>
+                <li>Adaptive risk scoring</li>
+                <li>Automated threshold optimization</li>
+                <li>Predictive fraud forecasting</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # AI Strategic Recommendation
+        ai_engine = get_ai_engine()
+        strategic_rec = ai_engine.get_pattern_insight(
+            pattern_type="strategic",
+            pattern_data={
+                "fraud_rate_trend": "stable",
+                "false_positive_trend": "declining",
+                "new_patterns_detected": 3,
+                "system_efficiency": 94.2
+            }
+        )
+
+        st.markdown("### 🤖 AI Strategic Recommendation")
+        st.info(strategic_rec)
+
+    with insight_col2:
+        st.markdown("### 📊 Rule Performance Insights")
+
+        # Get top 3 rules
+        top_rules = rule_performance_df.nlargest(3, 'confirmed_fraud_count')
+
+        for idx, row in top_rules.iterrows():
+            rule_insight = ai_engine.get_rule_optimization(
+                rule_name=row['rule_name'],
+                performance={
+                    'precision': row['precision'],
+                    'frequency': row['trigger_frequency'],
+                    'fp_rate': row['false_positive_rate'],
+                    'catches': row['confirmed_fraud_count']
+                }
+            )
+
+            render_ai_insight(
+                title=f"Top Rule: {row['rule_name'][:30]}...",
+                recommendation=rule_insight,
+                icon="⭐"
+            )
+
+    st.markdown("---")
 
     st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Using enhanced synthetic data for demonstration")
 

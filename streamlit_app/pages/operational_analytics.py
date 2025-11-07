@@ -12,6 +12,7 @@ import plotly.express as px
 from datetime import datetime
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
 
 # Generate synthetic dataset for visualization
@@ -224,6 +225,65 @@ def render():
         'fraud_rate': 'Fraud Rate'
     })
     st.dataframe(merchant_display, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+
+    # AI Operational Insights
+    st.markdown("## 🤖 AI Operational Intelligence")
+
+    ops_col1, ops_col2 = st.columns(2)
+
+    with ops_col1:
+        st.markdown("### ⚡ Resolution Efficiency Analysis")
+
+        # Get AI insight on resolution time
+        ai_engine = get_ai_engine()
+
+        avg_resolution_times = {
+            'Low': resolution_data[resolution_data['risk_level'] == 'Low']['resolution_time_minutes'].mean(),
+            'Medium': resolution_data[resolution_data['risk_level'] == 'Medium']['resolution_time_minutes'].mean(),
+            'High': resolution_data[resolution_data['risk_level'] == 'High']['resolution_time_minutes'].mean(),
+            'Critical': resolution_data[resolution_data['risk_level'] == 'Critical']['resolution_time_minutes'].mean()
+        }
+
+        efficiency_insight = ai_engine.get_pattern_insight(
+            pattern_type="operational_efficiency",
+            pattern_data={
+                "avg_times": avg_resolution_times,
+                "workload": "632 pending reviews",
+                "analysts": 8,
+                "peak_hour": "2-4 AM"
+            }
+        )
+
+        render_ai_insight(
+            title="Case Resolution Performance",
+            recommendation=efficiency_insight,
+            icon="📊"
+        )
+
+    with ops_col2:
+        st.markdown("### 🎯 Merchant Risk Insights")
+
+        # Get top risk merchant categories
+        high_risk_merchants = merchant_risk_df.nlargest(2, 'fraud_rate')
+
+        for idx, row in high_risk_merchants.iterrows():
+            merchant_insight = ai_engine.get_pattern_insight(
+                pattern_type="merchant_risk",
+                pattern_data={
+                    "category": row['category'],
+                    "risk_score": int(row['risk_score']),
+                    "fraud_rate": row['fraud_rate'],
+                    "volume": int(row['transaction_volume'])
+                }
+            )
+
+            render_ai_insight(
+                title=f"{row['category']} ({row['fraud_rate']}% fraud rate)",
+                recommendation=merchant_insight,
+                icon="🏪"
+            )
 
     st.markdown("---")
     st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Operational metrics with synthetic data")
