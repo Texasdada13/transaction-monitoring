@@ -438,34 +438,39 @@ Track your progress:
 - [x] Geo_Analytics.py (3/3 charts) ✅
 - [x] Transaction_Review.py (3/3 charts) ✅
 - [x] operational_analytics.py (5/5 charts) ✅ Complete
-- [x] AI_ML_Intelligence.py (5/30+ charts) 🟡 Partial - Key charts enhanced
+- [x] AI_ML_Intelligence.py (12/30+ charts) 🟡 Partial - Core ML charts enhanced (~40%)
 - [x] Compliance_KYC_Analytics.py (2/17 charts) 🟡 Partial - Critical charts enhanced
 - [x] scenario_analysis.py (2 core charts × 13 scenarios = 26 instances) ✅ Core visualizations enhanced
 
-### Overall Progress: **~28% complete** (38+ out of ~140 charts)
+### Overall Progress: **~34% complete** (45+ out of ~140 charts)
 
 ### Recently Enhanced (Current Session):
-- **AI & ML Intelligence** - 5 critical ML charts:
-  - Ensemble Model Performance (model comparisons with detailed explanations)
-  - Feature Importance (impact analysis with context)
-  - SHAP Feature Importance (detailed SHAP value interpretations)
-  - Feature Drift Detection (drift monitoring with actionable alerts)
-  - Lift Chart (business value metrics for fraud detection)
-
-- **Compliance & KYC Analytics** - 2 critical compliance charts:
-  - False Positive Rate by Alert Type (cost analysis and severity assessment)
-  - Average Decision Time by Analyst (SLA compliance and performance metrics)
-
-- **Scenario Analysis** - 2 core visualizations across 13 fraud scenarios:
-  - Rule Weight Contribution Chart (counterfactual analysis and severity assessment)
-  - Transaction Amount Timeline (statistical anomaly detection with deviation metrics)
-
-- **Operational Analytics** - 5/5 charts (COMPLETE):
+- **Operational Analytics** - 5/5 charts (COMPLETE ✅):
   - Transaction Flow Heatmap (time-based risk patterns with period context)
   - Investigation Velocity Box Plot (SLA compliance tracking by risk level)
   - Case Resolution Histogram (speed categorization with distribution metrics)
   - Merchant Risk Radar Chart (category risk assessment with fraud analysis)
   - Merchant Fraud Rate Bar Chart (financial impact and benchmark comparisons)
+
+- **AI & ML Intelligence** - 12/30+ charts (~40% complete):
+  - **Neural Network Section:**
+    - Network Architecture Diagram (layer descriptions, parameter counts, activation functions)
+    - Activation Patterns Heatmap (activation strength, neuron statistics, z-scores)
+    - Training Loss Chart (overfitting detection, convergence assessment)
+    - Training Accuracy Chart (performance badges, generalization analysis)
+  - **Ensemble Models Section:**
+    - Ensemble Model Performance (model comparisons with use cases)
+    - Feature Importance (impact stratification with explanations)
+    - XGBoost Learning Curves (boosting phases, overfitting detection)
+  - **Model Performance Section:**
+    - ROC Curves (AUC assessment, operating points, practical fraud metrics)
+    - Precision-Recall Curves (F1 scores, precision/recall trade-offs)
+  - **Explainable AI Section:**
+    - SHAP Feature Importance (detailed SHAP interpretations)
+  - **Real-time Monitoring Section:**
+    - Feature Drift Detection (KS statistics, drift alerts)
+  - **Advanced Metrics Section:**
+    - Lift Chart (business value, fraud concentration metrics)
 
 ---
 
