@@ -362,5 +362,5 @@ def render():
 
     st.caption("© 2024 Arriba Advisors. All rights reserved. | Real-Time Fraud Detection Platform")
 
-if __name__ == "__main__" or True:
+if __name__ == "__main__":
     render()

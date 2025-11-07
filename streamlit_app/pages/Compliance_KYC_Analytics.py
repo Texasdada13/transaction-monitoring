@@ -408,7 +408,7 @@ def render_audit_trail(data, colors):
     # Audit entries table
     st.markdown("### Recent Audit Entries")
 
-    display_cols = ['timestamp', 'audit_action', 'performed_by', 'entity_type', 'entity_id', 'details']
+    display_cols = ['timestamp', 'audit_action', 'performed_by', 'entity_type', 'entity_id', 'description']
     st.dataframe(
         filtered_audit[display_cols].sort_values('timestamp', ascending=False).head(100),
         use_container_width=True,
