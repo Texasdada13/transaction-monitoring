@@ -16,8 +16,7 @@ from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
- 
-    # Generate synthetic dataset for visualization
+# Generate synthetic dataset for visualization
 np.random.seed(42)
 
 # Rule performance data (20 rules)

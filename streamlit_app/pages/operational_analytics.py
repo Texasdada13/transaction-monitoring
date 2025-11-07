@@ -288,5 +288,5 @@ def render():
     st.markdown("---")
     st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Operational metrics with synthetic data")
 
-if __name__ == "__main__" or True:
+if __name__ == "__main__":
     render()
