@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
+from streamlit_app.explainability import get_explainability_engine
 
 
 # Generate synthetic dataset for visualization
@@ -59,6 +60,50 @@ def render():
     st.subheader("🌐 Geolocation Threat Map")
     st.caption("Device locations remotely triggered across USA using VPN/Proxy")
 
+    # Enhanced map hover with explainability
+    map_hover_texts = []
+    for _, row in usa_vpn_locations.iterrows():
+        state = row['state']
+        fraud_count = row['vpn_fraud_count']
+        intensity = row['intensity']
+
+        # Risk assessment
+        if fraud_count > 100:
+            risk_level = "🔴 CRITICAL"
+            risk_color = "#dc2626"
+            recommendation = "Deploy enhanced monitoring team immediately"
+        elif fraud_count > 50:
+            risk_level = "🟠 HIGH"
+            risk_color = "#f59e0b"
+            recommendation = "Increase screening for this region"
+        elif fraud_count > 20:
+            risk_level = "🟡 MODERATE"
+            risk_color = "#eab308"
+            recommendation = "Standard monitoring with alertness"
+        else:
+            risk_level = "🟢 LOW"
+            risk_color = "#10b981"
+            recommendation = "Normal processing procedures"
+
+        # Estimate financial impact
+        avg_fraud_loss = 3200  # Average VPN/proxy fraud loss
+        total_risk = fraud_count * avg_fraud_loss
+
+        hover_text = (
+            f"<b style='font-size:16px'>{state}</b><br><br>"
+            f"<b style='color:{risk_color}'>{risk_level} RISK</b><br><br>"
+            f"<b>📊 Threat Metrics:</b><br>"
+            f"• VPN/Proxy Fraud Cases: <b>{fraud_count}</b><br>"
+            f"• Intensity Score: <b>{intensity:.2f}</b><br>"
+            f"• National Rank: <b>#{usa_vpn_locations[usa_vpn_locations['vpn_fraud_count'] >= fraud_count].shape[0]}</b><br><br>"
+            f"<b>💰 Financial Impact:</b><br>"
+            f"• Est. Total Exposure: <b>${total_risk:,}</b><br>"
+            f"• Avg per Case: <b>${avg_fraud_loss:,}</b><br><br>"
+            f"<b>🎯 Recommendation:</b><br>"
+            f"{recommendation}"
+        )
+        map_hover_texts.append(hover_text)
+
     fig_usa_map = go.Figure(go.Scattergeo(
         lon=usa_vpn_locations['lon'],
         lat=usa_vpn_locations['lat'],
@@ -73,7 +118,8 @@ def render():
             line=dict(width=1, color='white'),
             sizemode='diameter'
         ),
-        hovertemplate='<b>%{text}</b><br>VPN Fraud Count: %{marker.size:.0f}<br>Intensity: %{marker.color:.2f}<extra></extra>'
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=map_hover_texts
     ))
 
     fig_usa_map.update_layout(
@@ -125,19 +171,65 @@ def render():
 
         fig_behavior_freq = go.Figure()
 
+        # Enhanced hover for normal frequency
+        normal_freq_hover = [
+            f"<b>Time:</b> {time.strftime('%Y-%m-%d %H:%M')}<br>"
+            f"<b>Normal Frequency:</b> {freq} txn/hour<br><br>"
+            f"<b>💡 Meaning:</b> Expected transaction rate<br>"
+            f"<b>📊 Status:</b> Baseline behavior pattern<br>"
+            f"<b>✅ Assessment:</b> Legitimate customer activity"
+            for time, freq in zip(behavioral_timeline['time'], behavioral_timeline['normal_frequency'])
+        ]
+
         fig_behavior_freq.add_trace(go.Scatter(
             x=behavioral_timeline['time'],
             y=behavioral_timeline['normal_frequency'],
             name='Normal Baseline',
             line=dict(color='#10b981', width=2),
-            fill='tonexty'
+            fill='tonexty',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=normal_freq_hover
         ))
+
+        # Enhanced hover for flagged frequency
+        flagged_freq_hover = []
+        for time, normal_freq, flagged_freq in zip(
+            behavioral_timeline['time'],
+            behavioral_timeline['normal_frequency'],
+            behavioral_timeline['flagged_frequency']
+        ):
+            deviation = ((flagged_freq - normal_freq) / normal_freq * 100) if normal_freq > 0 else 0
+
+            if deviation > 200:
+                severity = "🔴 CRITICAL"
+                alert = "Extreme anomaly - potential account takeover"
+            elif deviation > 100:
+                severity = "🟠 HIGH"
+                alert = "Significant spike - investigate immediately"
+            elif deviation > 50:
+                severity = "🟡 MODERATE"
+                alert = "Unusual activity - monitor closely"
+            else:
+                severity = "🟢 LOW"
+                alert = "Minor deviation - within tolerance"
+
+            hover_text = (
+                f"<b>Time:</b> {time.strftime('%Y-%m-%d %H:%M')}<br>"
+                f"<b>Flagged Frequency:</b> {flagged_freq} txn/hour<br>"
+                f"<b>Normal Baseline:</b> {normal_freq} txn/hour<br><br>"
+                f"<b>📊 Deviation:</b> <b>{deviation:+.1f}%</b><br>"
+                f"<b>⚠️ Severity:</b> {severity}<br><br>"
+                f"<b>🎯 Alert:</b> {alert}"
+            )
+            flagged_freq_hover.append(hover_text)
 
         fig_behavior_freq.add_trace(go.Scatter(
             x=behavioral_timeline['time'],
             y=behavioral_timeline['flagged_frequency'],
             name='Flagged Activity',
-            line=dict(color='#ef4444', width=2)
+            line=dict(color='#ef4444', width=2),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=flagged_freq_hover
         ))
 
         fig_behavior_freq.update_layout(
@@ -154,19 +246,66 @@ def render():
 
         fig_behavior_amount = go.Figure()
 
+        # Enhanced hover for normal amounts
+        normal_amt_hover = [
+            f"<b>Time:</b> {time.strftime('%Y-%m-%d %H:%M')}<br>"
+            f"<b>Normal Amount:</b> ${amt:,.2f}<br><br>"
+            f"<b>💡 Meaning:</b> Typical transaction size<br>"
+            f"<b>📊 Profile:</b> Customer's baseline spending<br>"
+            f"<b>✅ Assessment:</b> Expected behavior"
+            for time, amt in zip(behavioral_timeline['time'], behavioral_timeline['normal_amount'])
+        ]
+
         fig_behavior_amount.add_trace(go.Scatter(
             x=behavioral_timeline['time'],
             y=behavioral_timeline['normal_amount'],
             name='Normal Baseline',
-            line=dict(color='#10b981', width=2)
+            line=dict(color='#10b981', width=2),
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=normal_amt_hover
         ))
+
+        # Enhanced hover for flagged amounts
+        flagged_amt_hover = []
+        for time, normal_amt, flagged_amt in zip(
+            behavioral_timeline['time'],
+            behavioral_timeline['normal_amount'],
+            behavioral_timeline['flagged_amount']
+        ):
+            amt_increase = ((flagged_amt - normal_amt) / normal_amt * 100) if normal_amt > 0 else 0
+
+            if amt_increase > 500:
+                risk = "🔴 CRITICAL"
+                assessment = "Extreme amount spike - likely fraud"
+            elif amt_increase > 200:
+                risk = "🟠 HIGH"
+                assessment = "Unusual high-value transaction"
+            elif amt_increase > 100:
+                risk = "🟡 MODERATE"
+                assessment = "Above normal spending - verify"
+            else:
+                risk = "🟢 LOW"
+                assessment = "Slightly elevated - acceptable variance"
+
+            hover_text = (
+                f"<b>Time:</b> {time.strftime('%Y-%m-%d %H:%M')}<br>"
+                f"<b>Flagged Amount:</b> ${flagged_amt:,.2f}<br>"
+                f"<b>Normal Amount:</b> ${normal_amt:,.2f}<br><br>"
+                f"<b>📊 Increase:</b> <b>{amt_increase:+.1f}%</b><br>"
+                f"<b>⚠️ Risk Level:</b> {risk}<br><br>"
+                f"<b>💡 Assessment:</b> {assessment}<br>"
+                f"<b>💰 Potential Loss:</b> ${flagged_amt:,.2f} at risk"
+            )
+            flagged_amt_hover.append(hover_text)
 
         fig_behavior_amount.add_trace(go.Scatter(
             x=behavioral_timeline['time'],
             y=behavioral_timeline['flagged_amount'],
             name='Flagged Activity',
             line=dict(color='#ef4444', width=2),
-            mode='lines+markers'
+            mode='lines+markers',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=flagged_amt_hover
         ))
 
         fig_behavior_amount.update_layout(
