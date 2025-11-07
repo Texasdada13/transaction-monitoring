@@ -169,26 +169,118 @@ def render_alert_queue(alerts):
             st.divider()
 
 
+def get_risk_level_badge(risk_score):
+    """Get risk level badge with emoji and color"""
+    if risk_score < 0.3:
+        return "🟢 **LOW**"
+    elif risk_score < 0.6:
+        return "🟡 **MEDIUM**"
+    elif risk_score < 0.8:
+        return "🟠 **HIGH**"
+    else:
+        return "🔴 **CRITICAL**"
+
+
 def show_transaction_details(alert):
-    """Show detailed transaction information in modal"""
+    """Show detailed transaction information with enhanced characteristics"""
     with st.expander("📋 Transaction Details", expanded=True):
-        col1, col2 = st.columns(2)
+        # Transaction Overview
+        col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.markdown("#### Transaction Info")
+            st.markdown("#### 💳 Transaction Info")
             st.markdown(f"**ID:** {alert['transaction_id']}")
             st.markdown(f"**Amount:** {format_currency(alert['amount'])}")
             st.markdown(f"**Type:** {alert['transaction_type']}")
+            st.markdown(f"**Direction:** {alert.get('direction', 'N/A').upper()}")
             st.markdown(f"**Time:** {format_timestamp(alert['timestamp'])}")
 
         with col2:
-            st.markdown("#### Risk Assessment")
-            st.markdown(f"**Risk Score:** {alert['risk_score']:.2f}")
+            st.markdown("#### 🎯 Risk Assessment")
+            st.markdown(f"**Risk Score:** {alert['risk_score']:.3f}")
+            risk_level = get_risk_level_badge(alert['risk_score'])
+            st.markdown(f"**Risk Level:** {risk_level}")
+            st.markdown(f"**Decision:** {alert.get('decision', 'pending').replace('_', ' ').title()}")
             st.markdown(f"**Assessment ID:** {alert['assessment_id']}")
 
-        st.markdown("#### Triggered Rules")
-        for rule in alert['triggered_rules']:
-            st.markdown(f"- {rule}")
+        with col3:
+            st.markdown("#### 👤 Account Info")
+            st.markdown(f"**Account:** {alert.get('account_id', 'N/A')}")
+            st.markdown(f"**Counterparty:** {alert.get('counterparty_id', 'N/A')}")
+            velocity = alert.get('tx_count_24h', 0)
+            st.markdown(f"**24h Txn Count:** {velocity}")
+
+        # Transaction Characteristics
+        st.markdown("---")
+        st.markdown("#### 📊 Transaction Characteristics")
+
+        char_col1, char_col2, char_col3, char_col4 = st.columns(4)
+
+        with char_col1:
+            st.markdown("**⏰ Timing**")
+            is_odd_hours = alert.get('is_odd_hours', False)
+            is_weekend = alert.get('is_weekend', False)
+            st.markdown(f"- Odd Hours: {'🔴 Yes' if is_odd_hours else '✅ No'}")
+            st.markdown(f"- Weekend: {'🔴 Yes' if is_weekend else '✅ No'}")
+
+        with char_col2:
+            st.markdown("**💰 Amount**")
+            is_high_value = alert['amount'] > 10000
+            is_unusual = alert.get('amount_deviation', 1.0) > 2.0
+            st.markdown(f"- High Value: {'🔴 Yes' if is_high_value else '✅ No'}")
+            st.markdown(f"- Unusual: {'🔴 Yes' if is_unusual else '✅ No'}")
+
+        with char_col3:
+            st.markdown("**🔗 Relationship**")
+            is_new = alert.get('is_new_counterparty', False)
+            is_frequent = alert.get('counterparty_tx_count', 0) > 10
+            st.markdown(f"- New: {'🔴 Yes' if is_new else '✅ No'}")
+            st.markdown(f"- Frequent: {'✅ Yes' if is_frequent else '⚠️ No'}")
+
+        with char_col4:
+            st.markdown("**🌍 Geographic**")
+            is_international = alert.get('is_international', False)
+            country = alert.get('country', 'US')
+            st.markdown(f"- Intl: {'🔴 Yes' if is_international else '✅ No'}")
+            st.markdown(f"- Country: {country}")
+
+        # Triggered Rules with categorization
+        st.markdown("---")
+        st.markdown(f"#### 🚨 Triggered Rules ({len(alert['triggered_rules'])})")
+
+        if alert['triggered_rules']:
+            rule_categories = {
+                'Geographic': [],
+                'Account Takeover': [],
+                'Timing': [],
+                'Amount/Velocity': [],
+                'Pattern': []
+            }
+
+            for rule in alert['triggered_rules']:
+                rule_lower = rule.lower()
+                if any(x in rule_lower for x in ['country', 'geographic', 'international', 'foreign']):
+                    rule_categories['Geographic'].append(rule)
+                elif any(x in rule_lower for x in ['phone', 'takeover', 'device']):
+                    rule_categories['Account Takeover'].append(rule)
+                elif any(x in rule_lower for x in ['odd_hours', 'weekend', 'timing']):
+                    rule_categories['Timing'].append(rule)
+                elif any(x in rule_lower for x in ['amount', 'velocity', 'threshold']):
+                    rule_categories['Amount/Velocity'].append(rule)
+                else:
+                    rule_categories['Pattern'].append(rule)
+
+            for category, rules in rule_categories.items():
+                if rules:
+                    st.markdown(f"**{category}:**")
+                    for rule in rules:
+                        st.markdown(f"  - 🔴 {rule}")
+        else:
+            st.info("No rules triggered")
+
+        st.markdown("---")
+        if st.button("🔍 View Complete Risk Analysis", key=f"full_detail_{alert['transaction_id']}"):
+            st.info(f"Navigate to Transaction Review Detail page with ID: {alert['transaction_id']}")
 
 
 def render_top_rules(rules):
