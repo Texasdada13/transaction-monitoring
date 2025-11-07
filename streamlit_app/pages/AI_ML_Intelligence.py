@@ -95,15 +95,15 @@ def prepare_ml_features(transactions_df, customers_df):
     risk_map = {'low': 0, 'medium': 1, 'high': 2}
     features['risk_level'] = df['current_risk_level'].map(risk_map).fillna(0)
 
-    # Transaction type encoding
-    features['is_international'] = df['transaction_type'].str.contains('International', na=False).astype(int)
-    features['is_wire'] = df['transaction_type'].str.contains('Wire', na=False).astype(int)
-    features['is_cash'] = df['transaction_type'].str.contains('Cash', na=False).astype(int)
+    # Merchant category encoding (using actual column name)
+    features['is_international'] = df['merchant_category'].str.contains('International', na=False).astype(int)
+    features['is_wire'] = df['merchant_category'].str.contains('Wire', na=False).astype(int)
+    features['is_cash'] = df['merchant_category'].str.contains('Cash', na=False).astype(int)
 
-    # Customer features
+    # Customer features (using actual column names)
     features['account_age_days'] = (pd.to_datetime('today') - pd.to_datetime(df['onboarding_date'])).dt.days
-    features['total_balance'] = df['total_balance']
-    features['is_pep'] = (df['PEP_status'] == 'Yes').astype(int)
+    features['account_balance'] = df['account_balance']
+    features['is_pep'] = (df['PEP_status'] == 'Y').astype(int)  # 'Y' means is PEP
 
     # Target variable (simulate fraud labels based on risk factors)
     np.random.seed(42)
@@ -126,7 +126,7 @@ def prepare_sequence_data(transactions_df, customers_df, sequence_length=10):
     features = []
     features.append(df['amount'].values)
     features.append(pd.to_datetime(df['timestamp']).dt.hour.values)
-    features.append(df['transaction_type'].str.contains('International', na=False).astype(int).values)
+    features.append(df['merchant_category'].str.contains('International', na=False).astype(int).values)
 
     feature_matrix = np.column_stack(features)
 
