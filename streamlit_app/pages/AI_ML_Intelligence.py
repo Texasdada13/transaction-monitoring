@@ -909,7 +909,7 @@ def render_model_performance(features, colors):
 
         st.plotly_chart(fig, use_container_width=True, key="pr_curves")
 
-    # Confusion matrices
+    # Enhanced Confusion matrices with explainability
     st.markdown("### Confusion Matrices")
     col1, col2 = st.columns(2)
 
@@ -918,6 +918,97 @@ def render_model_performance(features, colors):
             y_pred = model.predict(X_test)
             cm = confusion_matrix(y_test, y_pred)
 
+            # Calculate metrics
+            tn, fp, fn, tp = cm.ravel()
+            total = tn + fp + fn + tp
+            accuracy = (tp + tn) / total
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+
+            # Create enhanced hover texts for each cell
+            confusion_hover = [
+                [
+                    # True Negative (top-left)
+                    (
+                        f"<b style='font-size:14px'>True Negatives (TN)</b><br><br>"
+                        f"<b style='color:#10b981'>✅ CORRECT PREDICTION</b><br>"
+                        f"Model correctly identified legitimate transactions<br><br>"
+                        f"<b>📊 Cell Value:</b> <b>{tn}</b> transactions<br>"
+                        f"<b>📈 Percentage:</b> <b>{(tn/total)*100:.1f}%</b> of all predictions<br><br>"
+                        f"<b>💡 What This Means:</b><br>"
+                        f"These transactions were legitimate AND the model<br>"
+                        f"correctly classified them as legitimate.<br><br>"
+                        f"<b>🎯 Business Impact:</b><br>"
+                        f"<b>{tn}</b> legitimate transactions processed smoothly<br>"
+                        f"without unnecessary friction or delays.<br><br>"
+                        f"<b>📈 Specificity Contribution:</b><br>"
+                        f"Contributes to <b>{specificity:.1%}</b> specificity<br>"
+                        f"(ability to correctly identify legitimate transactions)"
+                    ),
+                    # False Positive (top-right)
+                    (
+                        f"<b style='font-size:14px'>False Positives (FP)</b><br><br>"
+                        f"<b style='color:#ef4444'>❌ INCORRECT PREDICTION</b><br>"
+                        f"Model incorrectly flagged legitimate transactions<br><br>"
+                        f"<b>📊 Cell Value:</b> <b>{fp}</b> transactions<br>"
+                        f"<b>📈 Percentage:</b> <b>{(fp/total)*100:.1f}%</b> of all predictions<br><br>"
+                        f"<b>💡 What This Means:</b><br>"
+                        f"These transactions were legitimate BUT the model<br>"
+                        f"incorrectly flagged them as fraudulent.<br><br>"
+                        f"<b>💰 Business Cost:</b><br>"
+                        f"<b>{fp}</b> false alarms = ~<b>{fp * 2}</b> hours wasted<br>"
+                        f"Customer friction: <b>{fp}</b> legitimate users inconvenienced<br>"
+                        f"Est. cost: <b>${fp * 50:,}</b> in review time<br><br>"
+                        f"<b>⚠️ Impact:</b><br>"
+                        f"Reduces precision to <b>{precision:.1%}</b><br>"
+                        f"{'🔴 High false positive rate - tune thresholds' if fp/(tp+fp) > 0.15 else '✅ Acceptable false positive rate'}"
+                    )
+                ],
+                [
+                    # False Negative (bottom-left)
+                    (
+                        f"<b style='font-size:14px'>False Negatives (FN)</b><br><br>"
+                        f"<b style='color:#ef4444'>❌ INCORRECT PREDICTION</b><br>"
+                        f"Model missed actual fraud (most critical error)<br><br>"
+                        f"<b>📊 Cell Value:</b> <b>{fn}</b> transactions<br>"
+                        f"<b>📈 Percentage:</b> <b>{(fn/total)*100:.1f}%</b> of all predictions<br><br>"
+                        f"<b>💡 What This Means:</b><br>"
+                        f"These transactions were fraudulent BUT the model<br>"
+                        f"failed to detect them (missed fraud).<br><br>"
+                        f"<b>💰 Business Cost:</b><br>"
+                        f"<b>{fn}</b> missed fraud cases<br>"
+                        f"Est. fraud losses: <b>${fn * 12400:,}</b><br>"
+                        f"Potential chargeback fees: <b>${fn * 25:,}</b><br>"
+                        f"Total impact: <b>${(fn * 12400) + (fn * 25):,}</b><br><br>"
+                        f"<b>🔴 CRITICAL IMPACT:</b><br>"
+                        f"Reduces recall to <b>{recall:.1%}</b><br>"
+                        f"Missing <b>{(fn/(tp+fn))*100:.1f}%</b> of actual fraud<br>"
+                        f"{'⚠️ URGENT: Review detection thresholds' if fn/(tp+fn) > 0.10 else '✅ Acceptable miss rate'}"
+                    ),
+                    # True Positive (bottom-right)
+                    (
+                        f"<b style='font-size:14px'>True Positives (TP)</b><br><br>"
+                        f"<b style='color:#10b981'>✅ CORRECT PREDICTION</b><br>"
+                        f"Model successfully detected fraud<br><br>"
+                        f"<b>📊 Cell Value:</b> <b>{tp}</b> transactions<br>"
+                        f"<b>📈 Percentage:</b> <b>{(tp/total)*100:.1f}%</b> of all predictions<br><br>"
+                        f"<b>💡 What This Means:</b><br>"
+                        f"These transactions were fraudulent AND the model<br>"
+                        f"correctly identified them as fraudulent.<br><br>"
+                        f"<b>💰 Business Value:</b><br>"
+                        f"<b>{tp}</b> fraud cases caught successfully<br>"
+                        f"Losses prevented: <b>${tp * 12400:,}</b><br>"
+                        f"Chargebacks avoided: <b>${tp * 25:,}</b><br>"
+                        f"Total value: <b>${(tp * 12400) + (tp * 25):,}</b><br><br>"
+                        f"<b>🎯 Performance Metrics:</b><br>"
+                        f"• Precision: <b>{precision:.1%}</b> of fraud flags are correct<br>"
+                        f"• Recall: <b>{recall:.1%}</b> of fraud is caught<br>"
+                        f"• Accuracy: <b>{accuracy:.1%}</b> overall correctness"
+                    )
+                ]
+            ]
+
             fig = go.Figure(data=go.Heatmap(
                 z=cm,
                 x=['Predicted Negative', 'Predicted Positive'],
@@ -925,7 +1016,9 @@ def render_model_performance(features, colors):
                 text=cm,
                 texttemplate='%{text}',
                 textfont={"size": 16},
-                colorscale='Blues'
+                colorscale='Blues',
+                hovertemplate='%{customdata}<extra></extra>',
+                customdata=confusion_hover
             ))
 
             fig.update_layout(title=f"{name} Confusion Matrix", height=300)
@@ -1106,6 +1199,143 @@ def render_explainable_ai(features, colors):
         feature_names = [f[0] for f in features_sorted]
         feature_values = [f[1] for f in features_sorted]
 
+        # Enhanced hover texts for LIME explanations
+        lime_feature_details = {
+            'amount': {
+                'description': 'Transaction dollar amount',
+                'positive_meaning': 'Higher amounts INCREASE fraud probability',
+                'negative_meaning': 'Lower amounts DECREASE fraud probability',
+                'context': 'Large transactions are often targeted by fraudsters'
+            },
+            'risk_level': {
+                'description': 'Customer risk classification score',
+                'positive_meaning': 'High-risk customer profile INCREASES fraud probability',
+                'negative_meaning': 'Low-risk customer profile DECREASES fraud probability',
+                'context': 'Based on historical behavior and risk indicators'
+            },
+            'is_international': {
+                'description': 'Whether transaction crosses borders',
+                'positive_meaning': 'International transaction INCREASES fraud risk',
+                'negative_meaning': 'Domestic transaction DECREASES fraud risk',
+                'context': 'Cross-border transactions have higher fraud rates'
+            },
+            'hour': {
+                'description': 'Hour of day when transaction occurred (0-23)',
+                'positive_meaning': 'Unusual time INCREASES fraud suspicion',
+                'negative_meaning': 'Normal business hours DECREASE fraud suspicion',
+                'context': 'Fraudulent transactions often occur outside business hours'
+            },
+            'total_balance': {
+                'description': 'Current account balance',
+                'positive_meaning': 'High balance INCREASES fraud potential',
+                'negative_meaning': 'Low balance DECREASES fraud feasibility',
+                'context': 'Balance affects what fraud is possible'
+            },
+            'is_pep': {
+                'description': 'Politically Exposed Person status',
+                'positive_meaning': 'PEP status INCREASES scrutiny requirements',
+                'negative_meaning': 'Non-PEP DECREASES regulatory concerns',
+                'context': 'PEPs face higher regulatory scrutiny'
+            },
+            'account_age_days': {
+                'description': 'Days since account was opened',
+                'positive_meaning': 'Older account INCREASES trust',
+                'negative_meaning': 'New account INCREASES fraud risk',
+                'context': 'Fraudsters often use newly created accounts'
+            },
+            'is_weekend': {
+                'description': 'Weekend transaction indicator',
+                'positive_meaning': 'Weekend activity MAY be anomalous',
+                'negative_meaning': 'Weekday activity is more typical',
+                'context': 'Weekend patterns differ from normal business activity'
+            },
+            'day_of_week': {
+                'description': 'Specific day of the week',
+                'positive_meaning': 'Unusual day pattern for this customer',
+                'negative_meaning': 'Typical day pattern for this customer',
+                'context': 'Day-of-week patterns reveal behavioral norms'
+            },
+            'is_wire': {
+                'description': 'Wire transfer payment method',
+                'positive_meaning': 'Wire transfer INCREASES fraud risk',
+                'negative_meaning': 'Non-wire payment DECREASES fraud risk',
+                'context': 'Wire transfers are harder to reverse if fraudulent'
+            }
+        }
+
+        lime_hovers = []
+        for feature, value in zip(feature_names, feature_values):
+            details = lime_feature_details.get(feature, {})
+            description = details.get('description', 'Feature contribution')
+            pos_meaning = details.get('positive_meaning', 'Increases fraud probability')
+            neg_meaning = details.get('negative_meaning', 'Decreases fraud probability')
+            context = details.get('context', 'Contributes to model decision')
+
+            # Impact assessment
+            abs_val = abs(value)
+            if abs_val > 0.30:
+                impact_level = "🔴 CRITICAL FACTOR"
+                impact_color = "#ef4444"
+                impact_desc = "Dominates the fraud prediction for this transaction"
+            elif abs_val > 0.15:
+                impact_level = "🟠 HIGH IMPACT"
+                impact_color = "#f59e0b"
+                impact_desc = "Significantly influences the fraud score"
+            elif abs_val > 0.05:
+                impact_level = "🟡 MODERATE IMPACT"
+                impact_color = "#eab308"
+                impact_desc = "Contributes noticeably to the prediction"
+            else:
+                impact_level = "🟢 LOW IMPACT"
+                impact_color = "#10b981"
+                impact_desc = "Minor influence on the prediction"
+
+            # Direction indicator
+            if value > 0:
+                direction = "↗ INCREASES Fraud Probability"
+                direction_color = "#ef4444"
+                direction_icon = "🚨"
+                interpretation = pos_meaning
+            else:
+                direction = "↘ DECREASES Fraud Probability"
+                direction_color = "#10b981"
+                direction_icon = "✅"
+                interpretation = neg_meaning
+
+            # Calculate percentage contribution
+            total_positive = sum(abs(v) for v in feature_values if v > 0)
+            total_negative = sum(abs(v) for v in feature_values if v < 0)
+            if value > 0 and total_positive > 0:
+                pct_contribution = (abs(value) / total_positive) * 100
+            elif value < 0 and total_negative > 0:
+                pct_contribution = (abs(value) / total_negative) * 100
+            else:
+                pct_contribution = 0
+
+            hover_text = (
+                f"<b style='font-size:14px'>{feature.replace('_', ' ').title()}</b><br><br>"
+                f"<b style='color:{impact_color}'>{impact_level}</b><br>"
+                f"{impact_desc}<br><br>"
+                f"<b>📊 Contribution Value:</b> <b>{value:+.3f}</b><br>"
+                f"<b>📈 Magnitude:</b> <b>{abs_val:.3f}</b> (absolute)<br>"
+                f"<b>💯 % of Total:</b> <b>{pct_contribution:.1f}%</b><br><br>"
+                f"<b>🎯 Direction:</b><br>"
+                f"<b style='color:{direction_color}'>{direction_icon} {direction}</b><br><br>"
+                f"<b>💡 What This Feature Is:</b><br>"
+                f"{description}<br><br>"
+                f"<b>🔍 Interpretation:</b><br>"
+                f"{interpretation}<br><br>"
+                f"<b>📚 Context:</b><br>"
+                f"{context}<br><br>"
+                f"<b>🎭 LIME Method:</b><br>"
+                f"LIME (Local Interpretable Model-agnostic Explanations)<br>"
+                f"creates a local linear approximation of the model's<br>"
+                f"decision boundary around this specific transaction,<br>"
+                f"showing how each feature pushed the prediction<br>"
+                f"toward or away from fraud."
+            )
+            lime_hovers.append(hover_text)
+
         fig = go.Figure(go.Bar(
             x=feature_values,
             y=feature_names,
@@ -1114,7 +1344,9 @@ def render_explainable_ai(features, colors):
                 color=['red' if v > 0 else 'green' for v in feature_values]
             ),
             text=[f"{v:+.3f}" for v in feature_values],
-            textposition='outside'
+            textposition='outside',
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=lime_hovers
         ))
 
         fig.update_layout(
@@ -1135,6 +1367,78 @@ def render_explainable_ai(features, colors):
         amounts = np.random.lognormal(8, 2, 200)
         shap_vals = 0.0001 * amounts + np.random.randn(200) * 0.3
 
+        # Enhanced hover texts for SHAP dependence scatter plot
+        shap_amount_hovers = []
+        for amount, shap_val in zip(amounts, shap_vals):
+            # Categorize transaction amount
+            if amount < 1000:
+                amt_category = "Small Transaction"
+                amt_color = "#10b981"
+                amt_note = "Low-value transactions typically have lower fraud risk"
+            elif amount < 5000:
+                amt_category = "Medium Transaction"
+                amt_color = "#3b82f6"
+                amt_note = "Moderate-value transactions require standard scrutiny"
+            elif amount < 20000:
+                amt_category = "Large Transaction"
+                amt_color = "#f59e0b"
+                amt_note = "High-value transactions attract increased fraud attention"
+            else:
+                amt_category = "Very Large Transaction"
+                amt_color = "#ef4444"
+                amt_note = "Very high-value transactions are prime fraud targets"
+
+            # SHAP value interpretation
+            if shap_val > 0.5:
+                shap_status = "🔴 STRONG FRAUD INDICATOR"
+                shap_color = "#ef4444"
+                shap_interpretation = "This amount STRONGLY pushes toward fraud classification"
+            elif shap_val > 0.2:
+                shap_status = "🟠 MODERATE FRAUD INDICATOR"
+                shap_color = "#f59e0b"
+                shap_interpretation = "This amount moderately increases fraud probability"
+            elif shap_val > -0.2:
+                shap_status = "🟡 NEUTRAL IMPACT"
+                shap_color = "#eab308"
+                shap_interpretation = "This amount has minimal impact on fraud prediction"
+            elif shap_val > -0.5:
+                shap_status = "🟢 MODERATE LEGITIMACY INDICATOR"
+                shap_color = "#3b82f6"
+                shap_interpretation = "This amount moderately suggests legitimate transaction"
+            else:
+                shap_status = "✅ STRONG LEGITIMACY INDICATOR"
+                shap_color = "#10b981"
+                shap_interpretation = "This amount STRONGLY indicates legitimate activity"
+
+            # Relationship insight
+            avg_shap_for_range = np.mean([s for a, s in zip(amounts, shap_vals) if abs(a - amount) < amount * 0.2])
+
+            hover_text = (
+                f"<b style='font-size:14px'>Transaction Amount Analysis</b><br><br>"
+                f"<b style='color:{amt_color}'>{amt_category}</b><br>"
+                f"<b>💰 Amount: ${amount:,.2f}</b><br><br>"
+                f"<b style='color:{shap_color}'>{shap_status}</b><br>"
+                f"<b>📊 SHAP Value: {shap_val:.3f}</b><br><br>"
+                f"<b>🔍 What This Point Shows:</b><br>"
+                f"For a transaction of ${amount:,.2f}, the model's fraud<br>"
+                f"prediction is shifted by <b>{shap_val:.3f}</b> units.<br><br>"
+                f"<b>💡 Interpretation:</b><br>"
+                f"{shap_interpretation}<br><br>"
+                f"<b>📈 Pattern Context:</b><br>"
+                f"{amt_note}<br><br>"
+                f"<b>📊 Comparison to Similar Amounts:</b><br>"
+                f"Similar transactions (±20%): <b>{avg_shap_for_range:.3f}</b> avg SHAP<br>"
+                f"Your transaction: <b>{shap_val:.3f}</b><br>"
+                f"{'Above' if shap_val > avg_shap_for_range else 'Below'} average by "
+                f"<b>{abs(shap_val - avg_shap_for_range):.3f}</b><br><br>"
+                f"<b>🎯 Key Insight:</b><br>"
+                f"SHAP Dependence plots show how feature values<br>"
+                f"(amount) relate to their impact on predictions<br>"
+                f"(SHAP value). A positive slope means higher<br>"
+                f"amounts increase fraud probability."
+            )
+            shap_amount_hovers.append(hover_text)
+
         fig = go.Figure(go.Scatter(
             x=amounts,
             y=shap_vals,
@@ -1146,8 +1450,8 @@ def render_explainable_ai(features, colors):
                 showscale=True,
                 colorbar=dict(title="SHAP Value")
             ),
-            text=[f"Amount: ${a:,.0f}<br>SHAP: {s:.2f}" for a, s in zip(amounts, shap_vals)],
-            hovertemplate='%{text}<extra></extra>'
+            hovertemplate='%{customdata}<extra></extra>',
+            customdata=shap_amount_hovers
         ))
 
         fig.update_layout(
@@ -1162,15 +1466,80 @@ def render_explainable_ai(features, colors):
     with col2:
         # Risk level vs SHAP value
         risk_levels = np.random.choice([0, 1, 2], 200, p=[0.6, 0.3, 0.1])
-        shap_vals = risk_levels * 0.5 + np.random.randn(200) * 0.2
+        shap_vals_risk = risk_levels * 0.5 + np.random.randn(200) * 0.2
+
+        # Enhanced hover texts for box plots
+        risk_level_details = {
+            0: {
+                'name': 'Low Risk',
+                'description': 'Customers with established good behavior',
+                'color': '#10b981',
+                'characteristics': 'Long account history, consistent patterns, no red flags',
+                'fraud_rate': '0.5%',
+                'typical_shap': 'Generally negative (reduces fraud probability)'
+            },
+            1: {
+                'name': 'Medium Risk',
+                'description': 'Customers with some concerning patterns',
+                'color': '#f59e0b',
+                'characteristics': 'Moderate history, occasional anomalies, minor flags',
+                'fraud_rate': '3-5%',
+                'typical_shap': 'Mixed (slightly increases fraud probability)'
+            },
+            2: {
+                'name': 'High Risk',
+                'description': 'Customers with significant risk indicators',
+                'color': '#ef4444',
+                'characteristics': 'New accounts, multiple red flags, suspicious behavior',
+                'fraud_rate': '15-25%',
+                'typical_shap': 'Strongly positive (significantly increases fraud probability)'
+            }
+        }
 
         fig = go.Figure()
         for risk in [0, 1, 2]:
             mask = risk_levels == risk
+            shap_subset = shap_vals_risk[mask]
+
+            # Calculate statistics for hover
+            q1 = np.percentile(shap_subset, 25)
+            median = np.median(shap_subset)
+            q3 = np.percentile(shap_subset, 75)
+            mean = np.mean(shap_subset)
+            std = np.std(shap_subset)
+
+            details = risk_level_details[risk]
+
+            # Create hover text for the box plot
+            hover_text = (
+                f"<b style='font-size:14px'>{details['name']} Customers</b><br><br>"
+                f"<b style='color:{details['color']}'>{details['description']}</b><br><br>"
+                f"<b>📊 SHAP Distribution:</b><br>"
+                f"• Mean: <b>{mean:.3f}</b><br>"
+                f"• Median: <b>{median:.3f}</b><br>"
+                f"• Q1 (25%): <b>{q1:.3f}</b><br>"
+                f"• Q3 (75%): <b>{q3:.3f}</b><br>"
+                f"• Std Dev: <b>{std:.3f}</b><br>"
+                f"• Sample Size: <b>{len(shap_subset)} transactions</b><br><br>"
+                f"<b>👥 Customer Characteristics:</b><br>"
+                f"{details['characteristics']}<br><br>"
+                f"<b>📈 Historical Fraud Rate:</b><br>"
+                f"<b>{details['fraud_rate']}</b> of {details['name'].lower()} customers<br><br>"
+                f"<b>💡 SHAP Pattern:</b><br>"
+                f"{details['typical_shap']}<br><br>"
+                f"<b>🎯 What This Box Shows:</b><br>"
+                f"The distribution of SHAP values (model impact)<br>"
+                f"for all {details['name'].lower()} customer transactions.<br>"
+                f"Box shows interquartile range (50% of data),<br>"
+                f"line shows median, whiskers show full range."
+            )
+
             fig.add_trace(go.Box(
-                y=shap_vals[mask],
-                name=['Low', 'Medium', 'High'][risk],
-                marker=dict(color=colors[risk])
+                y=shap_vals_risk[mask],
+                name=details['name'],
+                marker=dict(color=details['color']),
+                hovertext=hover_text,
+                hoverinfo='text'
             ))
 
         fig.update_layout(
@@ -1208,11 +1577,167 @@ def render_realtime_monitoring(colors):
     recall = [0.89 + np.random.randn() * 0.015 for _ in hours]
     f1 = [2 * p * r / (p + r) for p, r in zip(precision, recall)]
 
+    # Create enhanced hover texts for each metric
+    def create_timeline_hover(hour, metric_name, metric_value, all_values):
+        """Create rich hover text for timeline metrics"""
+        # Time of day context
+        if 0 <= hour < 6:
+            time_context = "🌙 Late Night / Early Morning"
+            traffic_note = "Low transaction volume - typically quieter period"
+        elif 6 <= hour < 12:
+            time_context = "🌅 Morning Peak"
+            traffic_note = "Rising activity - business day begins"
+        elif 12 <= hour < 18:
+            time_context = "☀️ Afternoon Peak"
+            traffic_note = "Highest transaction volume period"
+        elif 18 <= hour < 22:
+            time_context = "🌆 Evening"
+            traffic_note = "Moderate activity - winding down"
+        else:
+            time_context = "🌃 Late Evening"
+            traffic_note = "Lower volume - end of day transactions"
+
+        # Performance assessment
+        if metric_value >= 0.93:
+            perf_badge = "⭐ EXCELLENT"
+            perf_color = "#10b981"
+            assessment = "Outstanding performance - model operating optimally"
+        elif metric_value >= 0.90:
+            perf_badge = "✅ GOOD"
+            perf_color = "#3b82f6"
+            assessment = "Solid performance - within acceptable range"
+        elif metric_value >= 0.87:
+            perf_badge = "⚠️ MODERATE"
+            perf_color = "#f59e0b"
+            assessment = "Below target - monitor closely for degradation"
+        else:
+            perf_badge = "🔴 POOR"
+            perf_color = "#ef4444"
+            assessment = "Performance issue - investigate immediately"
+
+        # Calculate trend
+        avg_value = np.mean(all_values)
+        deviation = metric_value - avg_value
+        if abs(deviation) < 0.01:
+            trend = "→ STABLE"
+            trend_color = "#6b7280"
+            trend_note = "Performance consistent with 24h average"
+        elif deviation > 0.01:
+            trend = "↗ ABOVE AVERAGE"
+            trend_color = "#10b981"
+            trend_note = f"Performing {abs(deviation):.1%} better than average"
+        else:
+            trend = "↘ BELOW AVERAGE"
+            trend_color = "#ef4444"
+            trend_note = f"Performing {abs(deviation):.1%} worse than average"
+
+        # Metric-specific insights
+        metric_insights = {
+            'Accuracy': {
+                'definition': 'Percentage of all predictions (fraud + legitimate) that are correct',
+                'impact': f'{metric_value:.1%} of all transactions classified correctly',
+                'threshold': 'Target: ≥93% for production readiness'
+            },
+            'Precision': {
+                'definition': 'Of all transactions flagged as fraud, how many are actually fraud',
+                'impact': f'{metric_value:.1%} of fraud alerts are true fraud (not false alarms)',
+                'threshold': 'Target: ≥90% to minimize analyst workload'
+            },
+            'Recall': {
+                'definition': 'Of all actual fraud, how much did we successfully detect',
+                'impact': f'{metric_value:.1%} of fraud cases caught (missing {(1-metric_value):.1%})',
+                'threshold': 'Target: ≥85% to prevent significant losses'
+            },
+            'F1 Score': {
+                'definition': 'Harmonic mean of precision and recall (balanced metric)',
+                'impact': f'{metric_value:.1%} overall detection effectiveness',
+                'threshold': 'Target: ≥88% for optimal balance'
+            }
+        }
+
+        insight = metric_insights.get(metric_name, {})
+        definition = insight.get('definition', 'Model performance metric')
+        impact = insight.get('impact', f'Current value: {metric_value:.1%}')
+        threshold = insight.get('threshold', 'Performance threshold')
+
+        # Recommendations
+        if metric_value < 0.87:
+            recommendations = [
+                "🔍 Investigate root cause of degradation",
+                "📊 Check for data drift or input anomalies",
+                "🔄 Consider emergency model refresh",
+                "👥 Alert ML engineering team"
+            ]
+        elif metric_value < 0.90:
+            recommendations = [
+                "📈 Monitor trend over next few hours",
+                "🔍 Review recent predictions for patterns",
+                "⚙️ Check model health dashboard"
+            ]
+        else:
+            recommendations = [
+                "✅ Continue normal operations",
+                "📊 Maintain routine monitoring"
+            ]
+
+        rec_text = "<br>".join(recommendations)
+
+        hover_text = (
+            f"<b style='font-size:14px'>{metric_name} at Hour {hour:02d}:00</b><br><br>"
+            f"<b style='color:{perf_color}'>{perf_badge}: {metric_value:.2%}</b><br><br>"
+            f"<b>⏰ Time Context:</b><br>"
+            f"{time_context}<br>"
+            f"<i>{traffic_note}</i><br><br>"
+            f"<b>📊 What This Metric Measures:</b><br>"
+            f"{definition}<br><br>"
+            f"<b>💼 Business Impact:</b><br>"
+            f"{impact}<br><br>"
+            f"<b>🎯 Performance Target:</b><br>"
+            f"{threshold}<br><br>"
+            f"<b>📈 24-Hour Trend:</b><br>"
+            f"<b style='color:{trend_color}'>{trend}</b><br>"
+            f"{trend_note}<br>"
+            f"• Current: <b>{metric_value:.2%}</b><br>"
+            f"• Average: <b>{avg_value:.2%}</b><br>"
+            f"• Best: <b>{max(all_values):.2%}</b> (Hour {all_values.index(max(all_values)):02d})<br>"
+            f"• Worst: <b>{min(all_values):.2%}</b> (Hour {all_values.index(min(all_values)):02d})<br><br>"
+            f"<b style='color:#059669'>🎯 Recommendations:</b><br>"
+            f"{rec_text}"
+        )
+
+        return hover_text
+
+    # Generate hover texts for all metrics
+    accuracy_hovers = [create_timeline_hover(h, 'Accuracy', acc, accuracy) for h, acc in enumerate(accuracy)]
+    precision_hovers = [create_timeline_hover(h, 'Precision', prec, precision) for h, prec in enumerate(precision)]
+    recall_hovers = [create_timeline_hover(h, 'Recall', rec, recall) for h, rec in enumerate(recall)]
+    f1_hovers = [create_timeline_hover(h, 'F1 Score', f1_val, f1) for h, f1_val in enumerate(f1)]
+
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=hours, y=accuracy, name='Accuracy', line=dict(color=colors[0])))
-    fig.add_trace(go.Scatter(x=hours, y=precision, name='Precision', line=dict(color=colors[1])))
-    fig.add_trace(go.Scatter(x=hours, y=recall, name='Recall', line=dict(color=colors[2])))
-    fig.add_trace(go.Scatter(x=hours, y=f1, name='F1 Score', line=dict(color=colors[3])))
+    fig.add_trace(go.Scatter(
+        x=hours, y=accuracy, name='Accuracy',
+        line=dict(color=colors[0]),
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=accuracy_hovers
+    ))
+    fig.add_trace(go.Scatter(
+        x=hours, y=precision, name='Precision',
+        line=dict(color=colors[1]),
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=precision_hovers
+    ))
+    fig.add_trace(go.Scatter(
+        x=hours, y=recall, name='Recall',
+        line=dict(color=colors[2]),
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=recall_hovers
+    ))
+    fig.add_trace(go.Scatter(
+        x=hours, y=f1, name='F1 Score',
+        line=dict(color=colors[3]),
+        hovertemplate='%{customdata}<extra></extra>',
+        customdata=f1_hovers
+    ))
 
     fig.update_layout(
         title="Model Metrics - Last 24 Hours",
