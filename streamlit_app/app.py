@@ -66,6 +66,8 @@ def login_page():
 
             - **Analyst**: Username: `analyst`, Password: `analyst123`
             - **Manager**: Username: `manager`, Password: `manager123`
+            - **Investigator**: Username: `investigator`, Password: `investigator123`
+            - **Admin**: Username: `admin`, Password: `admin123`
             """)
 
 
@@ -82,6 +84,7 @@ def main_dashboard():
 
         # User info
         user_info = get_user_info()
+        user_role = user_info.get('role', 'Unknown').lower()
         st.markdown(f"**User:** {user_info.get('username', 'Unknown')}")
         st.markdown(f"**Role:** {user_info.get('role', 'Unknown').title()}")
 
@@ -90,21 +93,41 @@ def main_dashboard():
         # Navigation
         st.markdown("### 📍 Navigation")
 
+        # Define role-based page access
+        ANALYST_PAGES = [
+            "🏠 Analyst Dashboard",
+            "📊 Fraud Transaction Monitoring",
+            "🌍 Geo Analytics",
+            "🔍 Transaction Review",
+            "📋 Compliance & KYC Analytics"
+        ]
+
+        MANAGER_PAGES = [
+            "🏠 Analyst Dashboard",
+            "📊 Fraud Transaction Monitoring",
+            "📈 Rule Performance Analytics",
+            "🔍 Transaction Review",
+            "🔍 Scenario Analysis",
+            "⚙️ Operational Analytics",
+            "🌍 Geo Analytics",
+            "📋 Compliance & KYC Analytics",
+            "🤖 AI & Machine Learning Intelligence",
+            "💼 Executive Dashboard"
+        ]
+
+        # Filter pages based on role
+        if user_role == "analyst":
+            available_pages = ANALYST_PAGES
+        elif user_role == "manager":
+            available_pages = MANAGER_PAGES
+        else:
+            # Default to analyst pages for unknown roles
+            available_pages = ANALYST_PAGES
+
         # Professional navigation structure
         page = st.selectbox(
             "Select Page",
-            [
-                "🏠 Analyst Dashboard",
-                "📊 Fraud Transaction Monitoring",
-                "📈 Rule Performance Analytics",
-                "🔍 Transaction Review",
-                "🔍 Scenario Analysis",
-                "⚙️ Operational Analytics",
-                "🌍 Geo Analytics",
-                "📋 Compliance & KYC Analytics",
-                "🤖 AI & Machine Learning Intelligence",
-                "💼 Executive Dashboard"
-            ],
+            available_pages,
             index=0,  # Default to Analyst Dashboard
             label_visibility="visible"
         )
