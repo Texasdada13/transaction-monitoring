@@ -98,32 +98,52 @@ def main_dashboard():
         # Navigation
         st.markdown("### 📍 Navigation")
 
-        # Add custom CSS for icon navigation
+        # Add custom CSS for professional icon navigation
         st.markdown("""
         <style>
-        /* Custom radio button styling for icon navigation */
-        .stRadio > label {
-            display: none;
-        }
-        .stRadio > div {
-            gap: 4px;
-        }
-        .stRadio > div > label {
-            background-color: transparent;
-            border-radius: 8px;
+        .nav-item {
+            display: flex;
+            align-items: center;
             padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
+            background-color: transparent;
             border: 1px solid transparent;
         }
-        .stRadio > div > label:hover {
+
+        .nav-item:hover {
             background-color: rgba(102, 126, 234, 0.1);
             border-left: 3px solid #667eea;
         }
-        .stRadio > div > label > div {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+
+        .nav-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-left: 3px solid #667eea;
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .nav-item-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Style buttons to look like nav items */
+        .stButton > button {
+            width: 100%;
+            text-align: left;
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -166,32 +186,38 @@ def main_dashboard():
         if 'selected_page' not in st.session_state:
             st.session_state.selected_page = available_pages[0]
 
-        # Custom navigation with icons using buttons
+        # Professional navigation with icons inline
         page = st.session_state.selected_page
 
-        # Render navigation items with icons
+        # Render navigation items with icons inline
         for page_name in available_pages:
             # Get icon for the page
-            icon = get_page_icon(page_name, size=18)
+            icon_color = "white" if page_name == st.session_state.selected_page else "#667eea"
+            icon = get_page_icon(page_name, size=18, color=icon_color)
             is_selected = (page_name == st.session_state.selected_page)
 
-            # Create button with icon and text
-            col1, col2 = st.columns([0.15, 0.85])
+            # Create container with icon and button
+            nav_container = st.container()
+            with nav_container:
+                col_icon, col_button = st.columns([0.12, 0.88])
 
-            with col1:
-                # Display icon
-                st.markdown(icon, unsafe_allow_html=True)
+                with col_icon:
+                    # Display icon
+                    st.markdown(
+                        f'<div style="padding-top: 8px;">{icon}</div>',
+                        unsafe_allow_html=True
+                    )
 
-            with col2:
-                # Create clickable button
-                if st.button(
-                    page_name,
-                    key=f"nav_{page_name}",
-                    use_container_width=True,
-                    type="primary" if is_selected else "secondary"
-                ):
-                    st.session_state.selected_page = page_name
-                    st.rerun()
+                with col_button:
+                    # Create clickable button
+                    if st.button(
+                        page_name,
+                        key=f"nav_{page_name}",
+                        use_container_width=True,
+                        type="primary" if is_selected else "secondary"
+                    ):
+                        st.session_state.selected_page = page_name
+                        st.rerun()
 
         # Update page variable
         page = st.session_state.selected_page
