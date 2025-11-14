@@ -13,7 +13,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 from streamlit_app.api_client import get_api_client
-from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
+from streamlit_app.theme import apply_master_theme, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 
 # Generate synthetic dataset for visualization
@@ -104,12 +104,10 @@ def render():
     </style>
     """, unsafe_allow_html=True)
 
-    # Header
-    render_page_header(
-        title="Arriba Advisors Transaction Screening System",
-        subtitle="Real-Time Fraud Detection & Prevention Analytics",
-        show_logo=False  # Logo is in sidebar
-    )
+    # Custom header without timestamp
+    st.markdown('<h1 class="main-header">Arriba Advisors Transaction Screening System</h1>', unsafe_allow_html=True)
+    st.markdown("### Real-Time Fraud Detection & Prevention Analytics")
+    st.markdown("---")
 
     # Get standardized chart colors
     colors = get_chart_colors()
@@ -252,108 +250,6 @@ def render():
     )
 
     st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
-
-    # Quick Access Panels (more compact)
-    st.markdown("## 🚀 Quick Access")
-
-    col1, col2, col3 = st.columns(3, gap="small")
-
-    with col1:
-        st.markdown("**🤖 AI Transaction Intelligence**")
-        st.caption("Real-time AI-powered transaction monitoring")
-        if st.button("Open Monitor", use_container_width=True, key="btn_monitor"):
-            st.info("Navigate via sidebar")
-
-    with col2:
-        st.markdown("**🧠 AI Scenario Intelligence**")
-        st.caption("ML-driven analysis of 13 fraud scenarios")
-        if st.button("View Scenarios", use_container_width=True, key="btn_scenarios"):
-            st.info("Navigate via sidebar")
-
-    with col3:
-        st.markdown("**📊 AI Rule Performance**")
-        st.caption("ML-powered rule analysis")
-        if st.button("Analyze Rules", use_container_width=True, key="btn_rules"):
-            st.info("Navigate via sidebar")
-
-    # AI-Powered Dynamic Threshold Optimization (more compact)
-    st.markdown("## 🎯 AI-Powered Dynamic Threshold Optimization")
-
-    st.markdown("""
-    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid #667eea; margin: 8px 0;">
-        <p style="margin: 0; font-size: 0.9rem; color: #666;">
-            Our system continuously monitors fraud patterns and automatically adjusts detection thresholds
-            based on real-time data analysis for optimal balance between fraud detection and operational efficiency.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # AI Recommendations for Current Thresholds (more compact)
-    threshold_col1, threshold_col2 = st.columns([2, 1], gap="small")
-
-    with threshold_col1:
-        st.markdown("### 📊 Current Threshold Performance")
-
-        # Mock current threshold metrics
-        current_metrics = pd.DataFrame({
-            'Threshold Type': ['Auto-Clear', 'Manual Review', 'High Priority', 'Critical'],
-            'Current Value': [0.30, 0.60, 0.80, 0.90],
-            'Utilization': [95.2, 4.5, 0.25, 0.05],
-            'Efficiency': [98.5, 87.3, 92.1, 99.2]
-        })
-
-        st.dataframe(
-            current_metrics,
-            use_container_width=True,
-            hide_index=True,
-            height=180,  # Compact height
-            column_config={
-                'Current Value': st.column_config.ProgressColumn(
-                    'Current Value',
-                    min_value=0,
-                    max_value=1,
-                    format='%.2f'
-                ),
-                'Utilization': st.column_config.ProgressColumn(
-                    'Utilization %',
-                    min_value=0,
-                    max_value=100,
-                    format='%.1f%%'
-                ),
-                'Efficiency': st.column_config.ProgressColumn(
-                    'Efficiency %',
-                    min_value=0,
-                    max_value=100,
-                    format='%.1f%%'
-                )
-            }
-        )
-
-    with threshold_col2:
-        st.markdown("### 🤖 AI Recommendations")
-
-        # Get AI recommendation for thresholds
-        ai_engine = get_ai_engine()
-        threshold_rec = ai_engine.get_threshold_recommendation(
-            current_threshold=0.60,
-            recent_stats={
-                'false_positive_rate': 0.062,
-                'detection_rate': 0.942,
-                'queue_size': 632,
-                'avg_time': 45
-            }
-        )
-
-        st.info(threshold_rec)
-
-        # Trend insight
-        fraud_trend = [45, 47, 44, 52, 51, 48, 47]
-        trend_analysis = ai_engine.get_trend_analysis(
-            metric_name="Daily Fraud Detection",
-            trend_data=fraud_trend
-        )
-
-        st.success(trend_analysis)
 
     # ML Intelligence Section (more compact)
     st.markdown("## 🤖 Machine Learning Intelligence")
@@ -536,6 +432,107 @@ def render():
     )
 
     render_ai_insight("ML Performance Analysis", ml_insight, icon="🤖")
+
+    # === MOVED TO BOTTOM: Quick Access Panels ===
+    st.markdown("## 🚀 Quick Access")
+
+    col1, col2, col3 = st.columns(3, gap="small")
+
+    with col1:
+        st.markdown("**🤖 AI Transaction Intelligence**")
+        st.caption("Real-time AI-powered transaction monitoring")
+        if st.button("Open Monitor", use_container_width=True, key="btn_monitor"):
+            st.info("Navigate via sidebar")
+
+    with col2:
+        st.markdown("**🧠 AI Scenario Intelligence**")
+        st.caption("ML-driven analysis of 13 fraud scenarios")
+        if st.button("View Scenarios", use_container_width=True, key="btn_scenarios"):
+            st.info("Navigate via sidebar")
+
+    with col3:
+        st.markdown("**📊 AI Rule Performance**")
+        st.caption("ML-powered rule analysis")
+        if st.button("Analyze Rules", use_container_width=True, key="btn_rules"):
+            st.info("Navigate via sidebar")
+
+    # === MOVED TO BOTTOM: AI-Powered Dynamic Threshold Optimization ===
+    st.markdown("## 🎯 AI-Powered Dynamic Threshold Optimization")
+
+    st.markdown("""
+    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid #667eea; margin: 8px 0;">
+        <p style="margin: 0; font-size: 0.9rem; color: #666;">
+            Our system continuously monitors fraud patterns and automatically adjusts detection thresholds
+            based on real-time data analysis for optimal balance between fraud detection and operational efficiency.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # AI Recommendations for Current Thresholds (more compact)
+    threshold_col1, threshold_col2 = st.columns([2, 1], gap="small")
+
+    with threshold_col1:
+        st.markdown("### 📊 Current Threshold Performance")
+
+        # Mock current threshold metrics
+        current_metrics = pd.DataFrame({
+            'Threshold Type': ['Auto-Clear', 'Manual Review', 'High Priority', 'Critical'],
+            'Current Value': [0.30, 0.60, 0.80, 0.90],
+            'Utilization': [95.2, 4.5, 0.25, 0.05],
+            'Efficiency': [98.5, 87.3, 92.1, 99.2]
+        })
+
+        st.dataframe(
+            current_metrics,
+            use_container_width=True,
+            hide_index=True,
+            height=180,  # Compact height
+            column_config={
+                'Current Value': st.column_config.ProgressColumn(
+                    'Current Value',
+                    min_value=0,
+                    max_value=1,
+                    format='%.2f'
+                ),
+                'Utilization': st.column_config.ProgressColumn(
+                    'Utilization %',
+                    min_value=0,
+                    max_value=100,
+                    format='%.1f%%'
+                ),
+                'Efficiency': st.column_config.ProgressColumn(
+                    'Efficiency %',
+                    min_value=0,
+                    max_value=100,
+                    format='%.1f%%'
+                )
+            }
+        )
+
+    with threshold_col2:
+        st.markdown("### 🤖 AI Recommendations")
+
+        # Get AI recommendation for thresholds
+        threshold_rec = ai_engine.get_threshold_recommendation(
+            current_threshold=0.60,
+            recent_stats={
+                'false_positive_rate': 0.062,
+                'detection_rate': 0.942,
+                'queue_size': 632,
+                'avg_time': 45
+            }
+        )
+
+        st.info(threshold_rec)
+
+        # Trend insight
+        fraud_trend = [45, 47, 44, 52, 51, 48, 47]
+        trend_analysis = ai_engine.get_trend_analysis(
+            metric_name="Daily Fraud Detection",
+            trend_data=fraud_trend
+        )
+
+        st.success(trend_analysis)
 
     # Footer (more compact)
     st.markdown("---")
