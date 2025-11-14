@@ -67,6 +67,22 @@ def render():
         max-width: 1400px;
     }
 
+    /* Professional Card Styling for Containers */
+    [data-testid="column"] > div > div > div {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+
+    /* Hover effect for card containers */
+    [data-testid="column"] > div > div > div:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
     /* Professional Card Styling */
     .dashboard-card {
         background: white;
@@ -319,33 +335,31 @@ def render():
     """, unsafe_allow_html=True)
 
     # Wrap table in card
-    st.markdown("<div class='dashboard-card critical'>", unsafe_allow_html=True)
+    # Create alert card with proper container
+    with st.container():
+        recent_alerts = pd.DataFrame({
+            'Time': ['10 min ago', '25 min ago', '1 hr ago', '2 hr ago', '3 hr ago'],
+            'Transaction ID': ['TXN-78945', 'TXN-78932', 'TXN-78901', 'TXN-78876', 'TXN-78834'],
+            'Amount': ['$15,000', '$12,500', '$45,000', '$3,200', '$8,900'],
+            'Risk Score': [0.89, 0.96, 0.91, 0.88, 0.84],
+            'Status': ['Under Review', 'Blocked', 'Escalated', 'Under Review', 'Cleared'],
+            'Scenario': ['Large Transfer', 'Account Takeover', 'Vendor Impersonation', 'Duplicate Check', 'Odd Hours']
+        })
 
-    recent_alerts = pd.DataFrame({
-        'Time': ['10 min ago', '25 min ago', '1 hr ago', '2 hr ago', '3 hr ago'],
-        'Transaction ID': ['TXN-78945', 'TXN-78932', 'TXN-78901', 'TXN-78876', 'TXN-78834'],
-        'Amount': ['$15,000', '$12,500', '$45,000', '$3,200', '$8,900'],
-        'Risk Score': [0.89, 0.96, 0.91, 0.88, 0.84],
-        'Status': ['Under Review', 'Blocked', 'Escalated', 'Under Review', 'Cleared'],
-        'Scenario': ['Large Transfer', 'Account Takeover', 'Vendor Impersonation', 'Duplicate Check', 'Odd Hours']
-    })
-
-    st.dataframe(
-        recent_alerts,
-        use_container_width=True,
-        hide_index=True,
-        height=180,
-        column_config={
-            'Risk Score': st.column_config.ProgressColumn(
-                'Risk Score',
-                min_value=0,
-                max_value=1,
-                format='%.2f'
-            )
-        }
-    )
-
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.dataframe(
+            recent_alerts,
+            use_container_width=True,
+            hide_index=True,
+            height=220,
+            column_config={
+                'Risk Score': st.column_config.ProgressColumn(
+                    'Risk Score',
+                    min_value=0,
+                    max_value=1,
+                    format='%.2f'
+                )
+            }
+        )
 
     # ==================== SECTION 2: Key Performance Metrics ====================
     st.markdown("""
@@ -359,24 +373,16 @@ def render():
     kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4, gap="medium")
 
     with kpi_col1:
-        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
         st.metric("Transactions Today", "12,547", "+3.2%")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with kpi_col2:
-        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
         st.metric("Auto-Cleared", "95.0%", "+0.8%")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with kpi_col3:
-        st.markdown("<div class='dashboard-card warning'>", unsafe_allow_html=True)
         st.metric("In Review Queue", "632", "-12")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with kpi_col4:
-        st.markdown("<div class='dashboard-card critical'>", unsafe_allow_html=True)
         st.metric("Fraud Detected", "47", "+5")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # System Status Overview Banner
     st.markdown("""
@@ -418,7 +424,6 @@ def render():
     col1, col2 = st.columns([1, 1], gap="medium")
 
     with col1:
-        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>🤖 Transaction Lifecycle Monitor</h3></div>", unsafe_allow_html=True)
 
         funnel_data = pd.DataFrame({
@@ -450,10 +455,8 @@ def render():
             </p>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
-        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>🧠 Decision Pattern Analytics</h3></div>", unsafe_allow_html=True)
 
         fig_decisions = go.Figure()
@@ -500,7 +503,6 @@ def render():
         )
 
         st.plotly_chart(fig_decisions, use_container_width=True, key="analyst_decisions_chart")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ==================== SECTION 4: Live Transaction Pulse ====================
     st.markdown("""
@@ -510,46 +512,45 @@ def render():
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
-    st.markdown("<div class='subsection-header'><h3>📊 Real-Time Transaction Flow</h3></div>", unsafe_allow_html=True)
+    with st.container():
+        st.markdown("<div class='subsection-header'><h3>📊 Real-Time Transaction Flow</h3></div>", unsafe_allow_html=True)
 
-    hours = pd.date_range(end=datetime.now(), periods=24, freq='H')
-    transactions = np.random.poisson(lam=500, size=24) + np.random.randint(-50, 100, 24)
-    fraud_detected = np.random.poisson(lam=2, size=24)
+        hours = pd.date_range(end=datetime.now(), periods=24, freq='H')
+        transactions = np.random.poisson(lam=500, size=24) + np.random.randint(-50, 100, 24)
+        fraud_detected = np.random.poisson(lam=2, size=24)
 
-    fig = go.Figure()
+        fig = go.Figure()
 
-    fig.add_trace(go.Scatter(
-        x=hours,
-        y=transactions,
-        name='Total Transactions',
-        line=dict(color=colors['primary'], width=2),
-        fill='tozeroy',
-        fillcolor='rgba(102, 126, 234, 0.1)'
-    ))
+        fig.add_trace(go.Scatter(
+            x=hours,
+            y=transactions,
+            name='Total Transactions',
+            line=dict(color=colors['primary'], width=2),
+            fill='tozeroy',
+            fillcolor='rgba(102, 126, 234, 0.1)'
+        ))
 
-    fig.add_trace(go.Scatter(
-        x=hours,
-        y=fraud_detected,
-        name='Fraud Detected',
-        line=dict(color=colors['danger'], width=2),
-        mode='lines+markers',
-        yaxis='y2'
-    ))
+        fig.add_trace(go.Scatter(
+            x=hours,
+            y=fraud_detected,
+            name='Fraud Detected',
+            line=dict(color=colors['danger'], width=2),
+            mode='lines+markers',
+            yaxis='y2'
+        ))
 
-    fig.update_layout(
-        yaxis=dict(title='Transaction Volume', title_font_size=11),
-        yaxis2=dict(title='Fraud Cases', overlaying='y', side='right', title_font_size=11),
-        hovermode='x unified',
-        height=280,
-        margin=dict(l=10, r=10, t=10, b=10),
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10)),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
-    )
+        fig.update_layout(
+            yaxis=dict(title='Transaction Volume', title_font_size=11),
+            yaxis2=dict(title='Fraud Cases', overlaying='y', side='right', title_font_size=11),
+            hovermode='x unified',
+            height=280,
+            margin=dict(l=10, r=10, t=10, b=10),
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10)),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
 
-    st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
 
     # ==================== SECTION 5: ML Intelligence ====================
     st.markdown("""
@@ -563,30 +564,21 @@ def render():
     ml_col1, ml_col2, ml_col3, ml_col4 = st.columns(4, gap="medium")
 
     with ml_col1:
-        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
         st.metric("Model Accuracy", "94.3%", "+1.2%")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with ml_col2:
-        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
         st.metric("AUC-ROC Score", "0.963", "+0.008")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with ml_col3:
-        st.markdown("<div class='dashboard-card warning'>", unsafe_allow_html=True)
         st.metric("Predictions/Min", "1,247", "+156")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with ml_col4:
-        st.markdown("<div class='dashboard-card critical'>", unsafe_allow_html=True)
         st.metric("Avg Confidence", "87.2%", "+2.3%")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ML Visualizations
     ml_viz_col1, ml_viz_col2 = st.columns(2, gap="medium")
 
     with ml_viz_col1:
-        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>🎯 Model Performance Trends</h3></div>", unsafe_allow_html=True)
 
         ml_days = pd.date_range(end=datetime.now(), periods=7, freq='D')
@@ -631,10 +623,8 @@ def render():
         )
 
         st.plotly_chart(fig_ml_perf, use_container_width=True, key="ml_performance_trends")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with ml_viz_col2:
-        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>📊 Prediction Confidence</h3></div>", unsafe_allow_html=True)
 
         np.random.seed(42)
@@ -667,12 +657,10 @@ def render():
         )
 
         st.plotly_chart(fig_conf, use_container_width=True, key="ml_confidence_dist")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     ml_viz_col3, ml_viz_col4 = st.columns(2, gap="medium")
 
     with ml_viz_col3:
-        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>🔍 Top Feature Importance</h3></div>", unsafe_allow_html=True)
 
         feature_names = [
@@ -711,10 +699,8 @@ def render():
         )
 
         st.plotly_chart(fig_features, use_container_width=True, key="ml_feature_importance")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with ml_viz_col4:
-        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>⚡ Model Health</h3></div>", unsafe_allow_html=True)
 
         health_metrics = pd.DataFrame({
@@ -748,7 +734,6 @@ def render():
         )
 
         st.plotly_chart(fig_health, use_container_width=True, key="ml_health_metrics")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ML Insight - AI-Powered Analysis
     st.markdown("""
@@ -758,32 +743,30 @@ def render():
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
+    with st.container():
+        ai_engine = get_ai_engine()
+        ml_insight = ai_engine.get_ml_performance_insight(
+            accuracy=0.943,
+            precision=0.932,
+            recall=0.906,
+            auc_roc=0.963,
+            trend='improving'
+        )
 
-    ai_engine = get_ai_engine()
-    ml_insight = ai_engine.get_ml_performance_insight(
-        accuracy=0.943,
-        precision=0.932,
-        recall=0.906,
-        auc_roc=0.963,
-        trend='improving'
-    )
-
-    # Display AI insight with better formatting
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 16px;
-                border-radius: 10px;
-                border-left: 5px solid #ffd700;">
-        <div style="color: white; font-weight: bold; margin-bottom: 10px; font-size: 1.05rem;">
-            🤖 ML Performance Analysis
+        # Display AI insight with better formatting
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 16px;
+                    border-radius: 10px;
+                    border-left: 5px solid #ffd700;">
+            <div style="color: white; font-weight: bold; margin-bottom: 10px; font-size: 1.05rem;">
+                🤖 ML Performance Analysis
+            </div>
+            <div style="color: #f0f0f0; font-size: 0.95rem; line-height: 1.6;">
+                {ml_insight}
+            </div>
         </div>
-        <div style="color: #f0f0f0; font-size: 0.95rem; line-height: 1.6;">
-            {ml_insight}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     # ==================== SECTION 6: Quick Access ====================
     st.markdown("""
@@ -796,37 +779,37 @@ def render():
     col1, col2, col3 = st.columns(3, gap="medium")
 
     with col1:
-        st.markdown("<div class='dashboard-card primary' style='text-align: center; min-height: 180px;'>", unsafe_allow_html=True)
         st.markdown("""
-            <div style='font-size: 2.5rem; margin-bottom: 12px;'>🤖</div>
-            <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>AI Transaction Intelligence</h4>
-            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.9rem;'>Real-time AI monitoring & detection</p>
+            <div style='text-align: center; padding: 20px 0;'>
+                <div style='font-size: 2.5rem; margin-bottom: 12px;'>🤖</div>
+                <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>AI Transaction Intelligence</h4>
+                <p style='margin: 0 0 16px 0; color: #718096; font-size: 0.9rem;'>Real-time AI monitoring & detection</p>
+            </div>
         """, unsafe_allow_html=True)
         if st.button("🔍 Open Monitor", use_container_width=True, key="btn_monitor"):
             st.success("✓ Use sidebar to navigate to AI & Machine Learning Intelligence")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
-        st.markdown("<div class='dashboard-card success' style='text-align: center; min-height: 180px;'>", unsafe_allow_html=True)
         st.markdown("""
-            <div style='font-size: 2.5rem; margin-bottom: 12px;'>🧠</div>
-            <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>Scenario Analysis</h4>
-            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.9rem;'>13 fraud detection scenarios</p>
+            <div style='text-align: center; padding: 20px 0;'>
+                <div style='font-size: 2.5rem; margin-bottom: 12px;'>🧠</div>
+                <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>Scenario Analysis</h4>
+                <p style='margin: 0 0 16px 0; color: #718096; font-size: 0.9rem;'>13 fraud detection scenarios</p>
+            </div>
         """, unsafe_allow_html=True)
         if st.button("📊 View Scenarios", use_container_width=True, key="btn_scenarios"):
             st.success("✓ Use sidebar to navigate to Scenario Analysis")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with col3:
-        st.markdown("<div class='dashboard-card warning' style='text-align: center; min-height: 180px;'>", unsafe_allow_html=True)
         st.markdown("""
-            <div style='font-size: 2.5rem; margin-bottom: 12px;'>📈</div>
-            <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>Geographic Analytics</h4>
-            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.9rem;'>Location-based fraud patterns</p>
+            <div style='text-align: center; padding: 20px 0;'>
+                <div style='font-size: 2.5rem; margin-bottom: 12px;'>📈</div>
+                <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>Geographic Analytics</h4>
+                <p style='margin: 0 0 16px 0; color: #718096; font-size: 0.9rem;'>Location-based fraud patterns</p>
+            </div>
         """, unsafe_allow_html=True)
         if st.button("🌍 View Geo Data", use_container_width=True, key="btn_geo"):
             st.success("✓ Use sidebar to navigate to Geo Analytics")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ==================== SECTION 7: AI Threshold Optimization ====================
     st.markdown("""
@@ -848,7 +831,6 @@ def render():
     threshold_col1, threshold_col2 = st.columns([2, 1], gap="medium")
 
     with threshold_col1:
-        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>📊 Current Threshold Performance</h3></div>", unsafe_allow_html=True)
 
         current_metrics = pd.DataFrame({
@@ -862,7 +844,7 @@ def render():
             current_metrics,
             use_container_width=True,
             hide_index=True,
-            height=180,
+            height=200,
             column_config={
                 'Current Value': st.column_config.ProgressColumn(
                     'Current Value',
@@ -884,10 +866,8 @@ def render():
                 )
             }
         )
-        st.markdown("</div>", unsafe_allow_html=True)
 
     with threshold_col2:
-        st.markdown("<div class='dashboard-card warning'>", unsafe_allow_html=True)
         st.markdown("<div class='subsection-header'><h3>🤖 AI Recommendations</h3></div>", unsafe_allow_html=True)
 
         threshold_rec = ai_engine.get_threshold_recommendation(
@@ -923,7 +903,6 @@ def render():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ==================== FOOTER ====================
     st.markdown("<hr style='margin-top: 32px;'>", unsafe_allow_html=True)
