@@ -57,6 +57,53 @@ def render():
     # Apply theme
     apply_master_theme()
 
+    # Add custom CSS for compact layout
+    st.markdown("""
+    <style>
+    /* Reduce default spacing */
+    .block-container {
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+    }
+
+    /* Tighten section spacing */
+    .stMarkdown {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Reduce header margins */
+    h2 {
+        margin-top: 1rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    h3 {
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* Compact dataframe */
+    .stDataFrame {
+        margin-bottom: 0.5rem;
+    }
+
+    /* Reduce plotly chart margins */
+    .js-plotly-plot {
+        margin-bottom: 0rem !important;
+    }
+
+    /* Compact metrics */
+    [data-testid="stMetricValue"] {
+        font-size: 1.5rem;
+    }
+
+    /* Reduce column gap */
+    [data-testid="column"] {
+        padding: 0 0.5rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # Header
     render_page_header(
         title="Arriba Advisors Transaction Screening System",
@@ -67,25 +114,7 @@ def render():
     # Get standardized chart colors
     colors = get_chart_colors()
 
-    # # Key Performance Indicators
-    # st.markdown("## 📊 Key Performance Indicators")
-
-    # col1, col2, col3, col4, col5 = st.columns(5)
-
-    # with col1:
-    #     st.metric("Total Transactions Today", "12,547", delta="↑ 8.2%")
-    # with col2:
-    #     st.metric("Auto-Approved", "11,915 (95%)", delta="↑ 2.1%")
-    # with col3:
-    #     st.metric("Flagged for Review", "632 (5%)", delta="↓ 1.3%")
-    # with col4:
-    #     st.metric("Fraud Detected", "47", delta="↓ 12%")
-    # with col5:
-    #     st.metric("Detection Accuracy", "94.2%", delta="↑ 1.5%")
-
-    # st.markdown("---")
-
- # Recent Alerts Summary
+    # Recent Alerts Summary
     st.markdown("## ⚡ Threat Detection Command Center")
 
     recent_alerts = pd.DataFrame({
@@ -96,11 +125,12 @@ def render():
         'Status': ['Under Review', 'Blocked', 'Escalated', 'Under Review', 'Cleared'],
         'Scenario': ['Large Transfer', 'Account Takeover', 'Vendor Impersonation', 'Duplicate Check', 'Odd Hours']
     })
-      
+
     st.dataframe(
         recent_alerts,
         use_container_width=True,
         hide_index=True,
+        height=180,  # Compact height
         column_config={
             'Risk Score': st.column_config.ProgressColumn(
                 'Risk Score',
@@ -111,13 +141,11 @@ def render():
         }
     )
 
-    st.markdown("---")
-
-       # Transaction Flow Funnel
-    col1, col2 = st.columns([1, 1])
+    # Transaction Flow & Decision Analytics (side by side, compact)
+    col1, col2 = st.columns([1, 1], gap="small")
 
     with col1:
-        st.subheader("🤖 Transaction Lifecycle Monitor")
+        st.markdown("### 🤖 Transaction Lifecycle Monitor")
 
         funnel_data = pd.DataFrame({
             'Stage': ['Total Transactions', 'Auto-Cleared', 'Manual Review', 'Rejected', 'Fraud Confirmed'],
@@ -129,17 +157,20 @@ def render():
             y=funnel_data['Stage'],
             x=funnel_data['Count'],
             textinfo="value+percent initial",
-            marker=dict(color=colors['funnel'])  # Standardized Arriba palette
+            marker=dict(color=colors['funnel'])
         ))
 
-        fig_funnel.update_layout(height=400, showlegend=False)
+        fig_funnel.update_layout(
+            height=280,  # Reduced from 400
+            showlegend=False,
+            margin=dict(l=10, r=10, t=10, b=10)
+        )
         st.plotly_chart(fig_funnel, use_container_width=True, key="analyst_funnel_chart")
 
-        # Cost savings
-        st.info(f"💰 **Cost Savings**: Manual reviews prevented: 11,915 × $5 = **$59,575/day**")
+        st.caption("💰 **Cost Savings**: Manual reviews prevented: 11,915 × $5 = **$59,575/day**")
 
     with col2:
-        st.subheader("🧠 Decision Pattern Analytics")
+        st.markdown("### 🧠 Decision Pattern Analytics")
 
         fig_decisions = go.Figure()
 
@@ -169,21 +200,20 @@ def render():
             y=analyst_decisions_df['confidence'],
             name='Confidence %',
             yaxis='y2',
-            line=dict(color=colors['primary'], width=3)
+            line=dict(color=colors['primary'], width=2)
         ))
 
         fig_decisions.update_layout(
             barmode='stack',
-            height=400,
-            yaxis=dict(title='Transaction Count'),
-            yaxis2=dict(title='Confidence %', overlaying='y', side='right', range=[0, 100]),
+            height=280,  # Reduced from 400
+            margin=dict(l=10, r=10, t=10, b=10),
+            yaxis=dict(title='Count', title_font_size=11),
+            yaxis2=dict(title='Confidence %', overlaying='y', side='right', range=[0, 100], title_font_size=11),
             hovermode='x unified',
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10))
         )
 
         st.plotly_chart(fig_decisions, use_container_width=True, key="analyst_decisions_chart")
-
-    st.markdown("---")
 
     # System Activity Timeline
     st.markdown("## 📊 Live Transaction Pulse")
@@ -213,71 +243,53 @@ def render():
     ))
 
     fig.update_layout(
-        yaxis=dict(title='Transaction Volume'),
-        yaxis2=dict(title='Fraud Cases', overlaying='y', side='right'),
+        yaxis=dict(title='Transaction Volume', title_font_size=11),
+        yaxis2=dict(title='Fraud Cases', overlaying='y', side='right', title_font_size=11),
         hovermode='x unified',
-        height=400,
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+        height=280,  # Reduced from 400
+        margin=dict(l=10, r=10, t=10, b=10),
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10))
     )
 
     st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
 
-    st.markdown("---")
-
-    # Quick Access Panels
+    # Quick Access Panels (more compact)
     st.markdown("## 🚀 Quick Access")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3, gap="small")
 
     with col1:
-        st.markdown("### 🤖 AI Transaction Intelligence")
-        st.markdown("Real-time AI-powered transaction monitoring with automated decision intelligence.")
-        if st.button("Open Transaction Monitor", use_container_width=True):
-            st.info("Navigate using sidebar to Transaction Monitoring System")
+        st.markdown("**🤖 AI Transaction Intelligence**")
+        st.caption("Real-time AI-powered transaction monitoring")
+        if st.button("Open Monitor", use_container_width=True, key="btn_monitor"):
+            st.info("Navigate via sidebar")
 
     with col2:
-        st.markdown("### 🧠 AI Scenario Intelligence")
-        st.markdown("ML-driven analysis of 13 fraud scenarios with AI-powered rule intelligence.")
-        if st.button("View Fraud Scenarios", use_container_width=True):
-            st.info("Navigate using sidebar to Fraud Scenario Analysis")
+        st.markdown("**🧠 AI Scenario Intelligence**")
+        st.caption("ML-driven analysis of 13 fraud scenarios")
+        if st.button("View Scenarios", use_container_width=True, key="btn_scenarios"):
+            st.info("Navigate via sidebar")
 
     with col3:
-        st.markdown("### 📊 AI Rule Performance Intelligence")
-        st.markdown("ML-powered fraud detection rule analysis with predictive performance metrics.")
-        if st.button("Analyze Rules", use_container_width=True):
-            st.info("Navigate using sidebar to Rule Performance Analytics")
+        st.markdown("**📊 AI Rule Performance**")
+        st.caption("ML-powered rule analysis")
+        if st.button("Analyze Rules", use_container_width=True, key="btn_rules"):
+            st.info("Navigate via sidebar")
 
-    st.markdown("---")
-
-
-
-    st.markdown("---")
-
-    # AI-Powered Dynamic Threshold Optimization
+    # AI-Powered Dynamic Threshold Optimization (more compact)
     st.markdown("## 🎯 AI-Powered Dynamic Threshold Optimization")
-    st.markdown("**Next-Generation Adaptive Fraud Prevention**")
 
     st.markdown("""
-    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #667eea; margin: 15px 0;">
-        <h4 style="color: #667eea; margin-top: 0;">🔮 Intelligent Threshold Management</h4>
-        <p style="margin-bottom: 10px;">
+    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid #667eea; margin: 8px 0;">
+        <p style="margin: 0; font-size: 0.9rem; color: #666;">
             Our system continuously monitors fraud patterns and automatically adjusts detection thresholds
-            based on real-time data analysis. This ensures optimal balance between fraud detection and
-            operational efficiency.
+            based on real-time data analysis for optimal balance between fraud detection and operational efficiency.
         </p>
-        <h5 style="color: #555; margin-top: 15px;">Dynamic Factors Monitored:</h5>
-        <ul style="color: #666; line-height: 1.8;">
-            <li><strong>Transaction Volume Trends:</strong> Adapts to seasonal peaks and valleys</li>
-            <li><strong>Geographic Risk Shifts:</strong> Responds to emerging high-risk regions</li>
-            <li><strong>Amount Pattern Changes:</strong> Adjusts for inflation and market conditions</li>
-            <li><strong>False Positive Rates:</strong> Optimizes analyst workload</li>
-            <li><strong>Emerging Fraud Patterns:</strong> Learns from new attack vectors</li>
-        </ul>
     </div>
     """, unsafe_allow_html=True)
 
-    # AI Recommendations for Current Thresholds
-    threshold_col1, threshold_col2 = st.columns([2, 1])
+    # AI Recommendations for Current Thresholds (more compact)
+    threshold_col1, threshold_col2 = st.columns([2, 1], gap="small")
 
     with threshold_col1:
         st.markdown("### 📊 Current Threshold Performance")
@@ -294,6 +306,7 @@ def render():
             current_metrics,
             use_container_width=True,
             hide_index=True,
+            height=180,  # Compact height
             column_config={
                 'Current Value': st.column_config.ProgressColumn(
                     'Current Value',
@@ -342,13 +355,10 @@ def render():
 
         st.success(trend_analysis)
 
-    st.markdown("---")
-
-    # ML Intelligence Section
+    # ML Intelligence Section (more compact)
     st.markdown("## 🤖 Machine Learning Intelligence")
-    st.markdown("*Real-time ML model performance and fraud prediction insights*")
 
-    ml_col1, ml_col2, ml_col3, ml_col4 = st.columns(4)
+    ml_col1, ml_col2, ml_col3, ml_col4 = st.columns(4, gap="small")
 
     with ml_col1:
         st.metric("Model Accuracy", "94.3%", "+1.2%")
@@ -359,7 +369,7 @@ def render():
     with ml_col4:
         st.metric("Avg Confidence", "87.2%", "+2.3%")
 
-    ml_viz_col1, ml_viz_col2 = st.columns(2)
+    ml_viz_col1, ml_viz_col2 = st.columns(2, gap="small")
 
     with ml_viz_col1:
         st.markdown("### 🎯 Model Performance Trends")
@@ -376,7 +386,7 @@ def render():
             x=ml_days,
             y=ml_accuracy,
             name='Accuracy',
-            line=dict(color=colors['primary'], width=3),
+            line=dict(color=colors['primary'], width=2),
             mode='lines+markers'
         ))
 
@@ -384,7 +394,7 @@ def render():
             x=ml_days,
             y=ml_precision,
             name='Precision',
-            line=dict(color=colors['success'], width=3),
+            line=dict(color=colors['success'], width=2),
             mode='lines+markers'
         ))
 
@@ -392,15 +402,16 @@ def render():
             x=ml_days,
             y=ml_recall,
             name='Recall',
-            line=dict(color=colors['info'], width=3),
+            line=dict(color=colors['info'], width=2),
             mode='lines+markers'
         ))
 
         fig_ml_perf.update_layout(
-            height=350,
-            yaxis=dict(title='Score', range=[0.85, 0.98]),
+            height=250,  # Reduced from 350
+            margin=dict(l=10, r=10, t=10, b=10),
+            yaxis=dict(title='Score', range=[0.85, 0.98], title_font_size=11),
             hovermode='x unified',
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10))
         )
 
         st.plotly_chart(fig_ml_perf, use_container_width=True, key="ml_performance_trends")
@@ -429,15 +440,16 @@ def render():
         ))
 
         fig_conf.update_layout(
-            height=350,
-            xaxis=dict(title='Confidence Score (%)'),
-            yaxis=dict(title='Number of Predictions'),
+            height=250,  # Reduced from 350
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(title='Confidence Score (%)', title_font_size=11),
+            yaxis=dict(title='Number of Predictions', title_font_size=11),
             showlegend=False
         )
 
         st.plotly_chart(fig_conf, use_container_width=True, key="ml_confidence_dist")
 
-    ml_viz_col3, ml_viz_col4 = st.columns(2)
+    ml_viz_col3, ml_viz_col4 = st.columns(2, gap="small")
 
     with ml_viz_col3:
         st.markdown("### 🔍 Top Feature Importance")
@@ -468,9 +480,10 @@ def render():
         ))
 
         fig_features.update_layout(
-            height=350,
-            xaxis=dict(title='Importance Score'),
-            yaxis=dict(title=''),
+            height=250,  # Reduced from 350
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(title='Importance Score', title_font_size=11),
+            yaxis=dict(title='', tickfont=dict(size=10)),
             showlegend=False
         )
 
@@ -485,17 +498,6 @@ def render():
             'Status': ['Excellent', 'Normal', 'Good', 'Excellent', 'Good'],
             'Score': [98, 92, 88, 97, 91]
         })
-
-        # Color coding
-        def get_status_color(score):
-            if score >= 95:
-                return '🟢'
-            elif score >= 85:
-                return '🟡'
-            else:
-                return '🔴'
-
-        health_metrics['Indicator'] = health_metrics['Score'].apply(get_status_color)
 
         fig_health = go.Figure()
 
@@ -512,15 +514,16 @@ def render():
         ))
 
         fig_health.update_layout(
-            height=350,
-            xaxis=dict(title='Health Score (%)', range=[0, 110]),
-            yaxis=dict(title=''),
+            height=250,  # Reduced from 350
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(title='Health Score (%)', range=[0, 110], title_font_size=11),
+            yaxis=dict(title='', tickfont=dict(size=10)),
             showlegend=False
         )
 
         st.plotly_chart(fig_health, use_container_width=True, key="ml_health_metrics")
 
-    # AI Insight for ML Performance
+    # AI Insight for ML Performance (more compact)
     st.markdown("### 💡 ML Performance Insights")
 
     ai_engine = get_ai_engine()
@@ -534,24 +537,18 @@ def render():
 
     render_ai_insight("ML Performance Analysis", ml_insight, icon="🤖")
 
+    # Footer (more compact)
     st.markdown("---")
-
-    # Footer
-    st.markdown("## ℹ️ System Information")
-
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("**System Version:** 2.5.3")
-        st.markdown("**Database:** SQLite (Production-Ready)")
+        st.caption("**System Version:** 2.5.3 | **Database:** SQLite")
     with col2:
-        st.markdown("**API Status:** ✅ Healthy")
-        st.markdown("**Last Sync:** Just now")
+        st.caption("**API Status:** ✅ Healthy | **Last Sync:** Just now")
     with col3:
-        st.markdown("**Support:** support@arribaadvisors.com")
-        st.markdown("**Documentation:** Available in sidebar")
+        st.caption("**Support:** support@arribaadvisors.com")
 
-    st.caption("© 2024 Arriba Advisors. All rights reserved. | Real-Time Fraud Detection Platform")
+    st.caption("© 2024 Arriba Advisors. All rights reserved.")
 
 if __name__ == "__main__":
     render()
