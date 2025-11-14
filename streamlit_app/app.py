@@ -75,53 +75,79 @@ def main_dashboard():
 
     # Sidebar
     with st.sidebar:
-        # Logo
-        render_logo(location="sidebar")
+        # Professional header
+        st.markdown("""
+        <div style='text-align: center; padding: 20px 0 15px 0; border-bottom: 1px solid rgba(255,255,255,0.1);'>
+            <h2 style='color: #667eea; margin: 0; font-size: 24px;'>🛡️ Fraud Shield</h2>
+            <p style='color: #718096; font-size: 12px; margin-top: 5px; margin-bottom: 0;'>AI-Powered Detection</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown("### 🛡️ Arriba Advisors")
-        st.markdown("**Transaction Screening System**")
-
-        # User info
+        # User info section
         user_info = get_user_info()
         user_role = user_info.get('role', 'Unknown').lower()
-        st.markdown(f"**User:** {user_info.get('username', 'Unknown')}")
-        st.markdown(f"**Role:** {user_info.get('role', 'Unknown').title()}")
 
-        # Debug info - show access level
-        if user_role == "analyst":
-            st.info("🔒 Limited Access (5 pages)")
-        elif user_role == "manager":
-            st.success("🔓 Full Access (10 pages)")
+        st.markdown(f"""
+        <div style='padding: 15px 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; margin: 15px 0;'>
+            <div style='display: flex; align-items: center; gap: 10px; margin-bottom: 8px;'>
+                <div style='width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;'>{user_info.get('username', 'U')[0].upper()}</div>
+                <div>
+                    <p style='margin: 0; color: #1a202c; font-size: 14px; font-weight: 600;'>{user_info.get('username', 'Unknown')}</p>
+                    <p style='margin: 0; color: #718096; font-size: 11px;'>{user_info.get('role', 'Unknown').title()} Access</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.divider()
-
-        # Navigation
-        st.markdown("### 📍 Navigation")
-
-        # Add custom CSS for professional icon navigation
+        # Professional CSS for navigation
         st.markdown("""
         <style>
+        /* Remove Streamlit button styling */
+        [data-testid="stSidebar"] .stButton > button {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            width: 100%;
+            text-align: left;
+        }
+
+        [data-testid="stSidebar"] .stButton > button:hover {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        [data-testid="stSidebar"] .stButton > button:active,
+        [data-testid="stSidebar"] .stButton > button:focus {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Navigation item styling */
         .nav-item {
             display: flex;
             align-items: center;
-            padding: 10px 12px;
-            margin: 4px 0;
+            padding: 12px 15px;
+            margin: 2px 0;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
             background-color: transparent;
-            border: 1px solid transparent;
+            color: #2d3748;
         }
 
         .nav-item:hover {
-            background-color: rgba(102, 126, 234, 0.1);
-            border-left: 3px solid #667eea;
+            background-color: rgba(102, 126, 234, 0.15);
+            transform: translateX(3px);
         }
 
         .nav-item.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border-left: 3px solid #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
         .nav-item svg {
@@ -136,96 +162,133 @@ def main_dashboard():
             font-weight: 500;
         }
 
-        /* Style buttons to look like nav items */
-        .stButton > button {
-            width: 100%;
-            text-align: left;
-            background-color: transparent;
-            border: none;
-            padding: 0;
-            margin: 0;
+        /* Section headers */
+        .nav-section-header {
+            color: #718096;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 15px 15px 8px 15px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .nav-divider {
+            height: 1px;
+            background-color: rgba(113, 128, 150, 0.2);
+            margin: 15px 0;
+        }
+
+        /* Logout button styling */
+        [data-testid="stSidebar"] .stButton:last-of-type > button {
+            background-color: rgba(255, 107, 107, 0.1) !important;
+            color: #ff6b6b !important;
+            padding: 10px 15px !important;
+            border-radius: 8px !important;
+            font-weight: 500 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        [data-testid="stSidebar"] .stButton:last-of-type > button:hover {
+            background-color: rgba(255, 107, 107, 0.2) !important;
+            transform: translateY(-2px);
         }
         </style>
         """, unsafe_allow_html=True)
 
-        # Define role-based page access (clean names without emojis)
-        ANALYST_PAGES = [
-            "Analyst Dashboard",
-            "Fraud Transaction Monitoring",
-            "Geo Analytics",
-            "Transaction Review",
-            "Compliance & KYC Analytics"
-        ]
+        # Define role-based page structure with sections
+        ANALYST_PAGE_STRUCTURE = {
+            "MONITORING": [
+                "Analyst Dashboard",
+                "Fraud Transaction Monitoring",
+                "Transaction Review"
+            ],
+            "ANALYTICS": [
+                "Geo Analytics"
+            ],
+            "COMPLIANCE": [
+                "Compliance & KYC Analytics"
+            ]
+        }
 
-        MANAGER_PAGES = [
-            "Analyst Dashboard",
-            "Fraud Transaction Monitoring",
-            "Rule Performance Analytics",
-            "Transaction Review",
-            "Scenario Analysis",
-            "Operational Analytics",
-            "Geo Analytics",
-            "Compliance & KYC Analytics",
-            "AI & Machine Learning Intelligence",
-            "Executive Dashboard"
-        ]
+        MANAGER_PAGE_STRUCTURE = {
+            "MONITORING": [
+                "Analyst Dashboard",
+                "Fraud Transaction Monitoring",
+                "Transaction Review"
+            ],
+            "ANALYTICS": [
+                "AI & Machine Learning Intelligence",
+                "Scenario Analysis",
+                "Operational Analytics",
+                "Geo Analytics",
+                "Rule Performance Analytics"
+            ],
+            "COMPLIANCE": [
+                "Compliance & KYC Analytics"
+            ],
+            "EXECUTIVE": [
+                "Executive Dashboard"
+            ]
+        }
 
-        # Filter pages based on role
+        # Select page structure based on role
         if user_role == "analyst":
-            available_pages = ANALYST_PAGES
-            st.caption(f"✓ Showing {len(ANALYST_PAGES)} analyst pages")
+            page_structure = ANALYST_PAGE_STRUCTURE
+            total_pages = sum(len(pages) for pages in page_structure.values())
+            st.caption(f"🔒 Limited Access - {total_pages} pages")
         elif user_role == "manager":
-            available_pages = MANAGER_PAGES
-            st.caption(f"✓ Showing {len(MANAGER_PAGES)} manager pages")
+            page_structure = MANAGER_PAGE_STRUCTURE
+            total_pages = sum(len(pages) for pages in page_structure.values())
+            st.caption(f"🔓 Full Access - {total_pages} pages")
         else:
-            # Default to analyst pages for unknown roles
-            available_pages = ANALYST_PAGES
-            st.warning(f"⚠️ Unknown role '{user_role}' - defaulting to analyst pages")
+            page_structure = ANALYST_PAGE_STRUCTURE
+            total_pages = sum(len(pages) for pages in page_structure.values())
+            st.warning(f"⚠️ Unknown role - {total_pages} pages")
 
         # Initialize selected page in session state
+        all_pages = [page for pages in page_structure.values() for page in pages]
         if 'selected_page' not in st.session_state:
-            st.session_state.selected_page = available_pages[0]
+            st.session_state.selected_page = all_pages[0]
 
-        # Professional navigation with icons inline
+        # Render navigation with sections
+        for section, pages in page_structure.items():
+            # Section header
+            st.markdown(f'<div class="nav-section-header">{section}</div>', unsafe_allow_html=True)
+
+            # Render pages in this section
+            for page_name in pages:
+                # Get icon for the page
+                is_selected = (page_name == st.session_state.selected_page)
+                icon_color = "white" if is_selected else "#667eea"
+                icon = get_page_icon(page_name, size=18, color=icon_color)
+
+                # Create nav item HTML
+                active_class = "active" if is_selected else ""
+                nav_item_html = f"""
+                <div class="nav-item {active_class}">
+                    {icon}
+                    <span class="nav-item-text">{page_name}</span>
+                </div>
+                """
+
+                # Create clickable button with HTML label
+                if st.button(
+                    label=nav_item_html,
+                    key=f"nav_{page_name}",
+                    use_container_width=True
+                ):
+                    st.session_state.selected_page = page_name
+                    st.rerun()
+
+        # Get selected page
         page = st.session_state.selected_page
 
-        # Render navigation items with icons inline
-        for page_name in available_pages:
-            # Get icon for the page
-            icon_color = "white" if page_name == st.session_state.selected_page else "#667eea"
-            icon = get_page_icon(page_name, size=18, color=icon_color)
-            is_selected = (page_name == st.session_state.selected_page)
-
-            # Create container with icon and button
-            nav_container = st.container()
-            with nav_container:
-                col_icon, col_button = st.columns([0.12, 0.88])
-
-                with col_icon:
-                    # Display icon
-                    st.markdown(
-                        f'<div style="padding-top: 8px;">{icon}</div>',
-                        unsafe_allow_html=True
-                    )
-
-                with col_button:
-                    # Create clickable button
-                    if st.button(
-                        page_name,
-                        key=f"nav_{page_name}",
-                        use_container_width=True,
-                        type="primary" if is_selected else "secondary"
-                    ):
-                        st.session_state.selected_page = page_name
-                        st.rerun()
-
-        # Update page variable
-        page = st.session_state.selected_page
-
-        st.divider()
+        # Divider before logout
+        st.markdown('<div class="nav-divider"></div>', unsafe_allow_html=True)
 
         # Logout button
-        if st.button("🚪 Logout", use_container_width=True):
+        if st.button("🚪 Logout", use_container_width=True, type="secondary"):
             logout()
             st.session_state.clear()
             st.rerun()
