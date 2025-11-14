@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from streamlit_app.api_client import get_api_client, is_authenticated, get_user_info, logout
 from streamlit_app.theme import apply_master_theme, render_logo
+from streamlit_app.dashboard_icons import DashboardIcons, get_page_icon
 
 # Page configuration
 st.set_page_config(
@@ -64,10 +65,8 @@ def login_page():
             st.markdown("""
             **Available test accounts:**
 
-            - **Analyst**: Username: `analyst`, Password: `analyst123`
-            - **Manager**: Username: `manager`, Password: `manager123`
-            - **Investigator**: Username: `investigator`, Password: `investigator123`
-            - **Admin**: Username: `admin`, Password: `admin123`
+            - **Analyst**: Username: `analyst`, Password: `analyst123` (Limited Access - 5 pages)
+            - **Manager**: Username: `manager`, Password: `manager123` (Full Access - 10 pages)
             """)
 
 
@@ -79,7 +78,7 @@ def main_dashboard():
         # Logo
         render_logo(location="sidebar")
 
-        st.markdown("### 🛡️")
+        st.markdown("### 🛡️ Arriba Advisors")
         st.markdown("**Transaction Screening System**")
 
         # User info
@@ -99,26 +98,56 @@ def main_dashboard():
         # Navigation
         st.markdown("### 📍 Navigation")
 
-        # Define role-based page access
+        # Add custom CSS for icon navigation
+        st.markdown("""
+        <style>
+        /* Custom radio button styling for icon navigation */
+        .stRadio > label {
+            display: none;
+        }
+        .stRadio > div {
+            gap: 4px;
+        }
+        .stRadio > div > label {
+            background-color: transparent;
+            border-radius: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+        .stRadio > div > label:hover {
+            background-color: rgba(102, 126, 234, 0.1);
+            border-left: 3px solid #667eea;
+        }
+        .stRadio > div > label > div {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # Define role-based page access (clean names without emojis)
         ANALYST_PAGES = [
-            "🏠 Analyst Dashboard",
-            "📊 Fraud Transaction Monitoring",
-            "🌍 Geo Analytics",
-            "🔍 Transaction Review",
-            "📋 Compliance & KYC Analytics"
+            "Analyst Dashboard",
+            "Fraud Transaction Monitoring",
+            "Geo Analytics",
+            "Transaction Review",
+            "Compliance & KYC Analytics"
         ]
 
         MANAGER_PAGES = [
-            "🏠 Analyst Dashboard",
-            "📊 Fraud Transaction Monitoring",
-            "📈 Rule Performance Analytics",
-            "🔍 Transaction Review",
-            "🔍 Scenario Analysis",
-            "⚙️ Operational Analytics",
-            "🌍 Geo Analytics",
-            "📋 Compliance & KYC Analytics",
-            "🤖 AI & Machine Learning Intelligence",
-            "💼 Executive Dashboard"
+            "Analyst Dashboard",
+            "Fraud Transaction Monitoring",
+            "Rule Performance Analytics",
+            "Transaction Review",
+            "Scenario Analysis",
+            "Operational Analytics",
+            "Geo Analytics",
+            "Compliance & KYC Analytics",
+            "AI & Machine Learning Intelligence",
+            "Executive Dashboard"
         ]
 
         # Filter pages based on role
@@ -133,13 +162,39 @@ def main_dashboard():
             available_pages = ANALYST_PAGES
             st.warning(f"⚠️ Unknown role '{user_role}' - defaulting to analyst pages")
 
-        # Professional navigation structure
-        page = st.selectbox(
-            "Select Page",
-            available_pages,
-            index=0,  # Default to Analyst Dashboard
-            label_visibility="visible"
-        )
+        # Initialize selected page in session state
+        if 'selected_page' not in st.session_state:
+            st.session_state.selected_page = available_pages[0]
+
+        # Custom navigation with icons using buttons
+        page = st.session_state.selected_page
+
+        # Render navigation items with icons
+        for page_name in available_pages:
+            # Get icon for the page
+            icon = get_page_icon(page_name, size=18)
+            is_selected = (page_name == st.session_state.selected_page)
+
+            # Create button with icon and text
+            col1, col2 = st.columns([0.15, 0.85])
+
+            with col1:
+                # Display icon
+                st.markdown(icon, unsafe_allow_html=True)
+
+            with col2:
+                # Create clickable button
+                if st.button(
+                    page_name,
+                    key=f"nav_{page_name}",
+                    use_container_width=True,
+                    type="primary" if is_selected else "secondary"
+                ):
+                    st.session_state.selected_page = page_name
+                    st.rerun()
+
+        # Update page variable
+        page = st.session_state.selected_page
 
         st.divider()
 
@@ -149,35 +204,35 @@ def main_dashboard():
             st.session_state.clear()
             st.rerun()
 
-    # Route to the selected page
-    if page == "🏠 Analyst Dashboard":
+    # Route to the selected page (clean names without emojis)
+    if page == "Analyst Dashboard":
         from streamlit_app.pages import Analyst_Dashboard
         Analyst_Dashboard.render()
-    elif page == "📊 Fraud Transaction Monitoring":
+    elif page == "Fraud Transaction Monitoring":
         from streamlit_app.pages import Fraud_Transaction_Monitoring
         Fraud_Transaction_Monitoring.render()
-    elif page == "📈 Rule Performance Analytics":
+    elif page == "Rule Performance Analytics":
         from streamlit_app.pages import Rule_Performance
         Rule_Performance.render()
-    elif page == "🔍 Transaction Review":
+    elif page == "Transaction Review":
         from streamlit_app.pages import Transaction_Review
         Transaction_Review.render()
-    elif page == "🔍 Scenario Analysis":
+    elif page == "Scenario Analysis":
         from streamlit_app.pages import scenario_analysis
         scenario_analysis.render()
-    elif page == "⚙️ Operational Analytics":
+    elif page == "Operational Analytics":
         from streamlit_app.pages import operational_analytics
         operational_analytics.render()
-    elif page == "🌍 Geo Analytics":
+    elif page == "Geo Analytics":
         from streamlit_app.pages import Geo_Analytics
         Geo_Analytics.render()
-    elif page == "📋 Compliance & KYC Analytics":
+    elif page == "Compliance & KYC Analytics":
         from streamlit_app.pages import Compliance_KYC_Analytics
         Compliance_KYC_Analytics.render()
-    elif page == "🤖 AI & Machine Learning Intelligence":
+    elif page == "AI & Machine Learning Intelligence":
         from streamlit_app.pages import AI_ML_Intelligence
         AI_ML_Intelligence.render()
-    elif page == "💼 Executive Dashboard":
+    elif page == "Executive Dashboard":
         from streamlit_app.pages import Executive_Dashboard
         Executive_Dashboard.render()
 
