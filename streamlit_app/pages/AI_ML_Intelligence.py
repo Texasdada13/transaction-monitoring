@@ -35,14 +35,21 @@ from streamlit_app.theme import apply_master_theme, render_page_header, get_char
 def load_ml_data():
     """Load transaction data for ML analysis"""
     try:
-        data_dir = Path("compliance_dataset")
-        transactions_df = pd.read_csv(data_dir / "transactions.csv")
+        # Use absolute path from project root
+        data_dir = Path(__file__).parent.parent.parent / "compliance_dataset"
+
+        if not data_dir.exists():
+            st.error(f"Compliance dataset directory not found at: {data_dir}")
+            st.info("Run `python generate_compliance_dataset.py` from the project root to generate the dataset.")
+            return None
+
+        transactions_df = pd.read_csv(str(data_dir / "transactions.csv"))
         transactions_df['timestamp'] = pd.to_datetime(transactions_df['timestamp'])
 
-        alerts_df = pd.read_csv(data_dir / "alerts_analyst_actions.csv")
+        alerts_df = pd.read_csv(str(data_dir / "alerts_analyst_actions.csv"))
         alerts_df['alert_timestamp'] = pd.to_datetime(alerts_df['alert_timestamp'])
 
-        customers_df = pd.read_csv(data_dir / "customer_profiles.csv")
+        customers_df = pd.read_csv(str(data_dir / "customer_profiles.csv"))
 
         return {
             'transactions': transactions_df,
@@ -51,6 +58,7 @@ def load_ml_data():
         }
     except Exception as e:
         st.error(f"Error loading ML data: {e}")
+        st.info("Please ensure all required CSV files exist in the compliance_dataset/ directory.")
         return None
 
 

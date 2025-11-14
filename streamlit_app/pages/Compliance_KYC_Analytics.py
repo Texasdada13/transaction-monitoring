@@ -26,16 +26,22 @@ from streamlit_app.theme import apply_master_theme, render_page_header, get_char
 def load_compliance_data():
     """Load all compliance datasets"""
     try:
-        data_dir = Path("compliance_dataset")
+        # Use absolute path from project root
+        data_dir = Path(__file__).parent.parent.parent / "compliance_dataset"
 
-        customers_df = pd.read_csv(data_dir / "customer_profiles.csv")
-        transactions_df = pd.read_csv(data_dir / "transactions.csv")
-        kyc_events_df = pd.read_csv(data_dir / "kyc_events.csv")
-        cdd_events_df = pd.read_csv(data_dir / "cdd_events.csv")
-        edd_actions_df = pd.read_csv(data_dir / "edd_actions.csv")
-        alerts_df = pd.read_csv(data_dir / "alerts_analyst_actions.csv")
-        rule_executions_df = pd.read_csv(data_dir / "rule_executions.csv")
-        audit_trail_df = pd.read_csv(data_dir / "audit_trail.csv")
+        if not data_dir.exists():
+            st.error(f"Compliance dataset directory not found at: {data_dir}")
+            st.info("Run `python generate_compliance_dataset.py` from the project root to generate the dataset.")
+            return None
+
+        customers_df = pd.read_csv(str(data_dir / "customer_profiles.csv"))
+        transactions_df = pd.read_csv(str(data_dir / "transactions.csv"))
+        kyc_events_df = pd.read_csv(str(data_dir / "kyc_events.csv"))
+        cdd_events_df = pd.read_csv(str(data_dir / "cdd_events.csv"))
+        edd_actions_df = pd.read_csv(str(data_dir / "edd_actions.csv"))
+        alerts_df = pd.read_csv(str(data_dir / "alerts_analyst_actions.csv"))
+        rule_executions_df = pd.read_csv(str(data_dir / "rule_executions.csv"))
+        audit_trail_df = pd.read_csv(str(data_dir / "audit_trail.csv"))
 
         # Convert date columns
         transactions_df['timestamp'] = pd.to_datetime(transactions_df['timestamp'])
@@ -60,6 +66,8 @@ def load_compliance_data():
         }
     except Exception as e:
         st.error(f"Error loading compliance data: {e}")
+        st.info("Failed to load compliance data. Please ensure the dataset exists.")
+        st.info("Run `python generate_compliance_dataset.py` to generate the dataset.")
         return None
 
 
