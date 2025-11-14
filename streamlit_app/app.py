@@ -88,6 +88,12 @@ def main_dashboard():
         st.markdown(f"**User:** {user_info.get('username', 'Unknown')}")
         st.markdown(f"**Role:** {user_info.get('role', 'Unknown').title()}")
 
+        # Debug info - show access level
+        if user_role == "analyst":
+            st.info("🔒 Limited Access (5 pages)")
+        elif user_role == "manager":
+            st.success("🔓 Full Access (10 pages)")
+
         st.divider()
 
         # Navigation
@@ -118,11 +124,14 @@ def main_dashboard():
         # Filter pages based on role
         if user_role == "analyst":
             available_pages = ANALYST_PAGES
+            st.caption(f"✓ Showing {len(ANALYST_PAGES)} analyst pages")
         elif user_role == "manager":
             available_pages = MANAGER_PAGES
+            st.caption(f"✓ Showing {len(MANAGER_PAGES)} manager pages")
         else:
             # Default to analyst pages for unknown roles
             available_pages = ANALYST_PAGES
+            st.warning(f"⚠️ Unknown role '{user_role}' - defaulting to analyst pages")
 
         # Professional navigation structure
         page = st.selectbox(
