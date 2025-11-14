@@ -57,63 +57,269 @@ def render():
     # Apply theme
     apply_master_theme()
 
-    # Add custom CSS for compact layout
+    # Professional CSS for aesthetic design
     st.markdown("""
     <style>
-    /* Reduce default spacing */
+    /* Global Aesthetics */
     .block-container {
-        padding-top: 1rem;
-        padding-bottom: 0rem;
+        padding-top: 0.5rem;
+        padding-bottom: 1rem;
+        max-width: 1400px;
     }
 
-    /* Tighten section spacing */
+    /* Professional Card Styling */
+    .dashboard-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+        border-left: 4px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .dashboard-card.critical {
+        border-left-color: #E54848;
+        background: linear-gradient(to right, #fff5f5 0%, white 10%);
+    }
+
+    .dashboard-card.success {
+        border-left-color: #2E865F;
+        background: linear-gradient(to right, #f0fdf4 0%, white 10%);
+    }
+
+    .dashboard-card.primary {
+        border-left-color: #667eea;
+        background: linear-gradient(to right, #f5f7ff 0%, white 10%);
+    }
+
+    .dashboard-card.warning {
+        border-left-color: #F3B65B;
+        background: linear-gradient(to right, #fffbf0 0%, white 10%);
+    }
+
+    /* Section Headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-header h2 {
+        margin: 0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .section-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Subsection Headers */
+    .subsection-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .subsection-header h3 {
+        margin: 0 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    /* Compact Spacing */
     .stMarkdown {
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.3rem;
     }
 
-    /* Reduce header margins */
     h2 {
-        margin-top: 1rem !important;
-        margin-bottom: 0.5rem !important;
+        margin-top: 0.8rem !important;
+        margin-bottom: 0.4rem !important;
     }
 
     h3 {
-        margin-top: 0.5rem !important;
-        margin-bottom: 0.5rem !important;
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
     }
 
-    /* Compact dataframe */
+    /* Dataframe Styling */
     .stDataFrame {
         margin-bottom: 0.5rem;
+        border-radius: 8px;
+        overflow: hidden;
     }
 
-    /* Reduce plotly chart margins */
+    /* Chart Containers */
     .js-plotly-plot {
-        margin-bottom: 0rem !important;
+        margin-bottom: 0 !important;
+        border-radius: 8px;
     }
 
-    /* Compact metrics */
+    /* Metrics Enhancement */
     [data-testid="stMetricValue"] {
-        font-size: 1.5rem;
+        font-size: 1.8rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
-    /* Reduce column gap */
+    [data-testid="stMetricDelta"] {
+        font-size: 0.9rem;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Column Gap Reduction */
     [data-testid="column"] {
-        padding: 0 0.5rem;
+        padding: 0 0.4rem;
+    }
+
+    /* Professional Button Styling */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        border-color: #667eea;
+    }
+
+    /* Caption Styling */
+    .stCaptionContainer {
+        margin-top: 8px;
+    }
+
+    /* Info Box Styling */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 4px;
+    }
+
+    /* Divider Styling */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    }
+
+    /* Status Indicator */
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-indicator.live {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-indicator.alert {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* Quick Access Cards */
+    .quick-access-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+        border: 2px solid #f0f0f0;
+        text-align: center;
+    }
+
+    .quick-access-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+        transform: translateY(-4px);
+    }
+
+    /* Gradient Text */
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # Custom header without timestamp
-    st.markdown('<h1 class="main-header">Arriba Advisors Transaction Screening System</h1>', unsafe_allow_html=True)
-    st.markdown("### Real-Time Fraud Detection & Prevention Analytics")
-    st.markdown("---")
+    # Professional Header with Gradient
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+            🛡️ Arriba Advisors Transaction Screening System
+        </h1>
+        <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1.1rem; font-weight: 500;'>
+            Real-Time Fraud Detection & Prevention Analytics
+        </p>
+        <div style='display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 6px 14px; background: rgba(255,255,255,0.2); border-radius: 20px; backdrop-filter: blur(10px);'>
+            <div style='width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite;'></div>
+            <span style='color: white; font-size: 0.85rem; font-weight: 600;'>SYSTEM ACTIVE</span>
+        </div>
+    </div>
+
+    <style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Get standardized chart colors
     colors = get_chart_colors()
 
-    # Recent Alerts Summary
-    st.markdown("## ⚡ Threat Detection Command Center")
+    # ==================== SECTION 1: Threat Detection ====================
+    st.markdown("""
+    <div class='section-header'>
+        <h2>⚡ Threat Detection Command Center</h2>
+        <span class='section-badge'>LIVE</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Wrap table in card
+    st.markdown("<div class='dashboard-card critical'>", unsafe_allow_html=True)
 
     recent_alerts = pd.DataFrame({
         'Time': ['10 min ago', '25 min ago', '1 hr ago', '2 hr ago', '3 hr ago'],
@@ -128,7 +334,7 @@ def render():
         recent_alerts,
         use_container_width=True,
         hide_index=True,
-        height=180,  # Compact height
+        height=180,
         column_config={
             'Risk Score': st.column_config.ProgressColumn(
                 'Risk Score',
@@ -139,11 +345,21 @@ def render():
         }
     )
 
-    # Transaction Flow & Decision Analytics (side by side, compact)
-    col1, col2 = st.columns([1, 1], gap="small")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ==================== SECTION 2: Transaction Analytics ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>📊 Transaction Analytics</h2>
+        <span class='section-badge'>REAL-TIME</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 1], gap="medium")
 
     with col1:
-        st.markdown("### 🤖 Transaction Lifecycle Monitor")
+        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>🤖 Transaction Lifecycle Monitor</h3></div>", unsafe_allow_html=True)
 
         funnel_data = pd.DataFrame({
             'Stage': ['Total Transactions', 'Auto-Cleared', 'Manual Review', 'Rejected', 'Fraud Confirmed'],
@@ -159,16 +375,26 @@ def render():
         ))
 
         fig_funnel.update_layout(
-            height=280,  # Reduced from 400
+            height=280,
             showlegend=False,
-            margin=dict(l=10, r=10, t=10, b=10)
+            margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
         st.plotly_chart(fig_funnel, use_container_width=True, key="analyst_funnel_chart")
 
-        st.caption("💰 **Cost Savings**: Manual reviews prevented: 11,915 × $5 = **$59,575/day**")
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, #10b981, #059669); padding: 12px; border-radius: 8px; margin-top: 12px;'>
+            <p style='margin: 0; color: white; font-size: 0.9rem; font-weight: 600; text-align: center;'>
+                💰 <span class='gradient-text' style='-webkit-text-fill-color: white;'>Cost Savings:</span> $59,575/day
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
-        st.markdown("### 🧠 Decision Pattern Analytics")
+        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>🧠 Decision Pattern Analytics</h3></div>", unsafe_allow_html=True)
 
         fig_decisions = go.Figure()
 
@@ -203,20 +429,29 @@ def render():
 
         fig_decisions.update_layout(
             barmode='stack',
-            height=280,  # Reduced from 400
+            height=280,
             margin=dict(l=10, r=10, t=10, b=10),
             yaxis=dict(title='Count', title_font_size=11),
             yaxis2=dict(title='Confidence %', overlaying='y', side='right', range=[0, 100], title_font_size=11),
             hovermode='x unified',
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10))
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10)),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
 
         st.plotly_chart(fig_decisions, use_container_width=True, key="analyst_decisions_chart")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # System Activity Timeline
-    st.markdown("## 📊 Live Transaction Pulse")
+    # ==================== SECTION 3: Live Transaction Pulse ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>📈 Live Transaction Pulse</h2>
+        <span class='section-badge'>24H VIEW</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Generate sample time series data
+    st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
+
     hours = pd.date_range(end=datetime.now(), periods=24, freq='H')
     transactions = np.random.poisson(lam=500, size=24) + np.random.randint(-50, 100, 24)
     fraud_detected = np.random.poisson(lam=2, size=24)
@@ -228,7 +463,8 @@ def render():
         y=transactions,
         name='Total Transactions',
         line=dict(color=colors['primary'], width=2),
-        fill='tozeroy'
+        fill='tozeroy',
+        fillcolor='rgba(102, 126, 234, 0.1)'
     ))
 
     fig.add_trace(go.Scatter(
@@ -244,33 +480,54 @@ def render():
         yaxis=dict(title='Transaction Volume', title_font_size=11),
         yaxis2=dict(title='Fraud Cases', overlaying='y', side='right', title_font_size=11),
         hovermode='x unified',
-        height=280,  # Reduced from 400
+        height=280,
         margin=dict(l=10, r=10, t=10, b=10),
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10))
+        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10)),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
     )
 
     st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # ML Intelligence Section (more compact)
-    st.markdown("## 🤖 Machine Learning Intelligence")
+    # ==================== SECTION 4: ML Intelligence ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🤖 Machine Learning Intelligence</h2>
+        <span class='section-badge'>AI-POWERED</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    ml_col1, ml_col2, ml_col3, ml_col4 = st.columns(4, gap="small")
+    # ML Metrics in Cards
+    ml_col1, ml_col2, ml_col3, ml_col4 = st.columns(4, gap="medium")
 
     with ml_col1:
+        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
         st.metric("Model Accuracy", "94.3%", "+1.2%")
-    with ml_col2:
-        st.metric("AUC-ROC Score", "0.963", "+0.008")
-    with ml_col3:
-        st.metric("Predictions/Min", "1,247", "+156")
-    with ml_col4:
-        st.metric("Avg Confidence", "87.2%", "+2.3%")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    ml_viz_col1, ml_viz_col2 = st.columns(2, gap="small")
+    with ml_col2:
+        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
+        st.metric("AUC-ROC Score", "0.963", "+0.008")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with ml_col3:
+        st.markdown("<div class='dashboard-card warning'>", unsafe_allow_html=True)
+        st.metric("Predictions/Min", "1,247", "+156")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with ml_col4:
+        st.markdown("<div class='dashboard-card critical'>", unsafe_allow_html=True)
+        st.metric("Avg Confidence", "87.2%", "+2.3%")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ML Visualizations
+    ml_viz_col1, ml_viz_col2 = st.columns(2, gap="medium")
 
     with ml_viz_col1:
-        st.markdown("### 🎯 Model Performance Trends")
+        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>🎯 Model Performance Trends</h3></div>", unsafe_allow_html=True)
 
-        # Model performance over last 7 days
         ml_days = pd.date_range(end=datetime.now(), periods=7, freq='D')
         ml_accuracy = [0.932 + i * 0.0015 + np.random.uniform(-0.005, 0.005) for i in range(7)]
         ml_precision = [0.918 + i * 0.002 + np.random.uniform(-0.005, 0.005) for i in range(7)]
@@ -303,23 +560,26 @@ def render():
         ))
 
         fig_ml_perf.update_layout(
-            height=250,  # Reduced from 350
+            height=250,
             margin=dict(l=10, r=10, t=10, b=10),
             yaxis=dict(title='Score', range=[0.85, 0.98], title_font_size=11),
             hovermode='x unified',
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10))
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10)),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
 
         st.plotly_chart(fig_ml_perf, use_container_width=True, key="ml_performance_trends")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with ml_viz_col2:
-        st.markdown("### 📊 Prediction Confidence Distribution")
+        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>📊 Prediction Confidence</h3></div>", unsafe_allow_html=True)
 
-        # Generate prediction confidence distribution
         np.random.seed(42)
         confidence_scores = np.concatenate([
-            np.random.beta(8, 2, 400),  # High confidence predictions
-            np.random.beta(2, 2, 100)   # Low confidence predictions
+            np.random.beta(8, 2, 400),
+            np.random.beta(2, 2, 100)
         ]) * 100
 
         fig_conf = go.Figure()
@@ -336,19 +596,23 @@ def render():
         ))
 
         fig_conf.update_layout(
-            height=250,  # Reduced from 350
+            height=250,
             margin=dict(l=10, r=10, t=10, b=10),
             xaxis=dict(title='Confidence Score (%)', title_font_size=11),
-            yaxis=dict(title='Number of Predictions', title_font_size=11),
-            showlegend=False
+            yaxis=dict(title='Predictions', title_font_size=11),
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
 
         st.plotly_chart(fig_conf, use_container_width=True, key="ml_confidence_dist")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    ml_viz_col3, ml_viz_col4 = st.columns(2, gap="small")
+    ml_viz_col3, ml_viz_col4 = st.columns(2, gap="medium")
 
     with ml_viz_col3:
-        st.markdown("### 🔍 Top Feature Importance")
+        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>🔍 Top Feature Importance</h3></div>", unsafe_allow_html=True)
 
         feature_names = [
             'Transaction Amount',
@@ -376,19 +640,22 @@ def render():
         ))
 
         fig_features.update_layout(
-            height=250,  # Reduced from 350
+            height=250,
             margin=dict(l=10, r=10, t=10, b=10),
-            xaxis=dict(title='Importance Score', title_font_size=11),
+            xaxis=dict(title='Importance', title_font_size=11),
             yaxis=dict(title='', tickfont=dict(size=10)),
-            showlegend=False
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
 
         st.plotly_chart(fig_features, use_container_width=True, key="ml_feature_importance")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with ml_viz_col4:
-        st.markdown("### ⚡ Real-time Model Health")
+        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>⚡ Model Health</h3></div>", unsafe_allow_html=True)
 
-        # Model health metrics
         health_metrics = pd.DataFrame({
             'Metric': ['Data Quality', 'Model Drift', 'Latency', 'Throughput', 'Error Rate'],
             'Status': ['Excellent', 'Normal', 'Good', 'Excellent', 'Good'],
@@ -410,17 +677,21 @@ def render():
         ))
 
         fig_health.update_layout(
-            height=250,  # Reduced from 350
+            height=250,
             margin=dict(l=10, r=10, t=10, b=10),
-            xaxis=dict(title='Health Score (%)', range=[0, 110], title_font_size=11),
+            xaxis=dict(title='Health (%)', range=[0, 110], title_font_size=11),
             yaxis=dict(title='', tickfont=dict(size=10)),
-            showlegend=False
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
         )
 
         st.plotly_chart(fig_health, use_container_width=True, key="ml_health_metrics")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # AI Insight for ML Performance (more compact)
-    st.markdown("### 💡 ML Performance Insights")
+    # ML Insight
+    st.markdown("<div class='dashboard-card primary' style='margin-top: 16px;'>", unsafe_allow_html=True)
+    st.markdown("<div class='subsection-header'><h3>💡 ML Performance Insights</h3></div>", unsafe_allow_html=True)
 
     ai_engine = get_ai_engine()
     ml_insight = ai_engine.get_ml_performance_insight(
@@ -432,49 +703,74 @@ def render():
     )
 
     render_ai_insight("ML Performance Analysis", ml_insight, icon="🤖")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # === MOVED TO BOTTOM: Quick Access Panels ===
-    st.markdown("## 🚀 Quick Access")
+    # ==================== SECTION 5: Quick Access ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🚀 Quick Access</h2>
+        <span class='section-badge'>SHORTCUTS</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3, gap="small")
+    col1, col2, col3 = st.columns(3, gap="medium")
 
     with col1:
-        st.markdown("**🤖 AI Transaction Intelligence**")
-        st.caption("Real-time AI-powered transaction monitoring")
+        st.markdown("""
+        <div class='quick-access-card'>
+            <div style='font-size: 2.5rem; margin-bottom: 8px;'>🤖</div>
+            <h4 style='margin: 0 0 8px 0; color: #1a202c;'>AI Transaction Intelligence</h4>
+            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.85rem;'>Real-time AI monitoring</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("Open Monitor", use_container_width=True, key="btn_monitor"):
             st.info("Navigate via sidebar")
 
     with col2:
-        st.markdown("**🧠 AI Scenario Intelligence**")
-        st.caption("ML-driven analysis of 13 fraud scenarios")
+        st.markdown("""
+        <div class='quick-access-card'>
+            <div style='font-size: 2.5rem; margin-bottom: 8px;'>🧠</div>
+            <h4 style='margin: 0 0 8px 0; color: #1a202c;'>AI Scenario Intelligence</h4>
+            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.85rem;'>13 fraud scenarios</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("View Scenarios", use_container_width=True, key="btn_scenarios"):
             st.info("Navigate via sidebar")
 
     with col3:
-        st.markdown("**📊 AI Rule Performance**")
-        st.caption("ML-powered rule analysis")
+        st.markdown("""
+        <div class='quick-access-card'>
+            <div style='font-size: 2.5rem; margin-bottom: 8px;'>📊</div>
+            <h4 style='margin: 0 0 8px 0; color: #1a202c;'>AI Rule Performance</h4>
+            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.85rem;'>ML-powered analysis</p>
+        </div>
+        """, unsafe_allow_html=True)
         if st.button("Analyze Rules", use_container_width=True, key="btn_rules"):
             st.info("Navigate via sidebar")
 
-    # === MOVED TO BOTTOM: AI-Powered Dynamic Threshold Optimization ===
-    st.markdown("## 🎯 AI-Powered Dynamic Threshold Optimization")
+    # ==================== SECTION 6: AI Threshold Optimization ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🎯 AI-Powered Dynamic Threshold Optimization</h2>
+        <span class='section-badge'>ADAPTIVE</span>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid #667eea; margin: 8px 0;">
-        <p style="margin: 0; font-size: 0.9rem; color: #666;">
+    <div class='dashboard-card primary'>
+        <p style='margin: 0; font-size: 0.95rem; color: #4a5568; line-height: 1.6;'>
             Our system continuously monitors fraud patterns and automatically adjusts detection thresholds
             based on real-time data analysis for optimal balance between fraud detection and operational efficiency.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # AI Recommendations for Current Thresholds (more compact)
-    threshold_col1, threshold_col2 = st.columns([2, 1], gap="small")
+    threshold_col1, threshold_col2 = st.columns([2, 1], gap="medium")
 
     with threshold_col1:
-        st.markdown("### 📊 Current Threshold Performance")
+        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>📊 Current Threshold Performance</h3></div>", unsafe_allow_html=True)
 
-        # Mock current threshold metrics
         current_metrics = pd.DataFrame({
             'Threshold Type': ['Auto-Clear', 'Manual Review', 'High Priority', 'Critical'],
             'Current Value': [0.30, 0.60, 0.80, 0.90],
@@ -486,7 +782,7 @@ def render():
             current_metrics,
             use_container_width=True,
             hide_index=True,
-            height=180,  # Compact height
+            height=180,
             column_config={
                 'Current Value': st.column_config.ProgressColumn(
                     'Current Value',
@@ -508,11 +804,12 @@ def render():
                 )
             }
         )
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with threshold_col2:
-        st.markdown("### 🤖 AI Recommendations")
+        st.markdown("<div class='dashboard-card warning'>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'><h3>🤖 AI Recommendations</h3></div>", unsafe_allow_html=True)
 
-        # Get AI recommendation for thresholds
         threshold_rec = ai_engine.get_threshold_recommendation(
             current_threshold=0.60,
             recent_stats={
@@ -525,7 +822,6 @@ def render():
 
         st.info(threshold_rec)
 
-        # Trend insight
         fraud_trend = [45, 47, 44, 52, 51, 48, 47]
         trend_analysis = ai_engine.get_trend_analysis(
             metric_name="Daily Fraud Detection",
@@ -533,19 +829,32 @@ def render():
         )
 
         st.success(trend_analysis)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # Footer (more compact)
-    st.markdown("---")
-    col1, col2, col3 = st.columns(3)
+    # ==================== FOOTER ====================
+    st.markdown("<hr style='margin-top: 32px;'>", unsafe_allow_html=True)
 
-    with col1:
-        st.caption("**System Version:** 2.5.3 | **Database:** SQLite")
-    with col2:
-        st.caption("**API Status:** ✅ Healthy | **Last Sync:** Just now")
-    with col3:
-        st.caption("**Support:** support@arribaadvisors.com")
-
-    st.caption("© 2024 Arriba Advisors. All rights reserved.")
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #f7fafc, #edf2f7); padding: 20px; border-radius: 12px; margin-top: 20px;'>
+        <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;'>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>System Info</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>v2.5.3 • SQLite</p>
+            </div>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Status</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>✅ Healthy • Just now</p>
+            </div>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Support</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>support@arribaadvisors.com</p>
+            </div>
+        </div>
+        <p style='margin: 16px 0 0 0; text-align: center; color: #a0aec0; font-size: 0.8rem;'>
+            © 2024 Arriba Advisors. All rights reserved.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     render()
