@@ -347,11 +347,71 @@ def render():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ==================== SECTION 2: Transaction Analytics ====================
+    # ==================== SECTION 2: Key Performance Metrics ====================
     st.markdown("""
     <div class='section-header' style='margin-top: 28px;'>
-        <h2>📊 Transaction Analytics</h2>
+        <h2>📊 Key Performance Metrics</h2>
         <span class='section-badge'>REAL-TIME</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Top-level KPI cards
+    kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4, gap="medium")
+
+    with kpi_col1:
+        st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
+        st.metric("Transactions Today", "12,547", "+3.2%")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with kpi_col2:
+        st.markdown("<div class='dashboard-card success'>", unsafe_allow_html=True)
+        st.metric("Auto-Cleared", "95.0%", "+0.8%")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with kpi_col3:
+        st.markdown("<div class='dashboard-card warning'>", unsafe_allow_html=True)
+        st.metric("In Review Queue", "632", "-12")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with kpi_col4:
+        st.markdown("<div class='dashboard-card critical'>", unsafe_allow_html=True)
+        st.metric("Fraud Detected", "47", "+5")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # System Status Overview Banner
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+                padding: 16px;
+                border-radius: 10px;
+                margin: 16px 0;
+                border-left: 5px solid #4caf50;
+                box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);'>
+        <div style='display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; text-align: center;'>
+            <div>
+                <div style='color: #2e7d32; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>System Health</div>
+                <div style='color: #1b5e20; font-size: 1.3rem; font-weight: 700; margin-top: 4px;'>✅ 99.8%</div>
+            </div>
+            <div>
+                <div style='color: #2e7d32; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>Processing Time</div>
+                <div style='color: #1b5e20; font-size: 1.3rem; font-weight: 700; margin-top: 4px;'>⚡ 45ms</div>
+            </div>
+            <div>
+                <div style='color: #2e7d32; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>Active Rules</div>
+                <div style='color: #1b5e20; font-size: 1.3rem; font-weight: 700; margin-top: 4px;'>🎯 20/20</div>
+            </div>
+            <div>
+                <div style='color: #2e7d32; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>Detection Rate</div>
+                <div style='color: #1b5e20; font-size: 1.3rem; font-weight: 700; margin-top: 4px;'>🛡️ 94.2%</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ==================== SECTION 3: Transaction Analytics ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>📈 Transaction Analytics</h2>
+        <span class='section-badge'>24H VIEW</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -386,7 +446,7 @@ def render():
         st.markdown("""
         <div style='background: linear-gradient(135deg, #10b981, #059669); padding: 12px; border-radius: 8px; margin-top: 12px;'>
             <p style='margin: 0; color: white; font-size: 0.9rem; font-weight: 600; text-align: center;'>
-                💰 <span class='gradient-text' style='-webkit-text-fill-color: white;'>Cost Savings:</span> $59,575/day
+                💰 <span style='color: white;'>Cost Savings:</span> $59,575/day
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -442,15 +502,16 @@ def render():
         st.plotly_chart(fig_decisions, use_container_width=True, key="analyst_decisions_chart")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ==================== SECTION 3: Live Transaction Pulse ====================
+    # ==================== SECTION 4: Live Transaction Pulse ====================
     st.markdown("""
     <div class='section-header' style='margin-top: 28px;'>
-        <h2>📈 Live Transaction Pulse</h2>
-        <span class='section-badge'>24H VIEW</span>
+        <h2>⚡ Live Transaction Pulse</h2>
+        <span class='section-badge'>LIVE 24H</span>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
+    st.markdown("<div class='subsection-header'><h3>📊 Real-Time Transaction Flow</h3></div>", unsafe_allow_html=True)
 
     hours = pd.date_range(end=datetime.now(), periods=24, freq='H')
     transactions = np.random.poisson(lam=500, size=24) + np.random.randint(-50, 100, 24)
@@ -490,7 +551,7 @@ def render():
     st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ==================== SECTION 4: ML Intelligence ====================
+    # ==================== SECTION 5: ML Intelligence ====================
     st.markdown("""
     <div class='section-header' style='margin-top: 28px;'>
         <h2>🤖 Machine Learning Intelligence</h2>
@@ -689,9 +750,15 @@ def render():
         st.plotly_chart(fig_health, use_container_width=True, key="ml_health_metrics")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ML Insight
-    st.markdown("<div class='dashboard-card primary' style='margin-top: 16px;'>", unsafe_allow_html=True)
-    st.markdown("<div class='subsection-header'><h3>💡 ML Performance Insights</h3></div>", unsafe_allow_html=True)
+    # ML Insight - AI-Powered Analysis
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>💡 AI Performance Analysis</h2>
+        <span class='section-badge'>INTELLIGENT</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div class='dashboard-card primary'>", unsafe_allow_html=True)
 
     ai_engine = get_ai_engine()
     ml_insight = ai_engine.get_ml_performance_insight(
@@ -702,10 +769,23 @@ def render():
         trend='improving'
     )
 
-    render_ai_insight("ML Performance Analysis", ml_insight, icon="🤖")
+    # Display AI insight with better formatting
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 16px;
+                border-radius: 10px;
+                border-left: 5px solid #ffd700;">
+        <div style="color: white; font-weight: bold; margin-bottom: 10px; font-size: 1.05rem;">
+            🤖 ML Performance Analysis
+        </div>
+        <div style="color: #f0f0f0; font-size: 0.95rem; line-height: 1.6;">
+            {ml_insight}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ==================== SECTION 5: Quick Access ====================
+    # ==================== SECTION 6: Quick Access ====================
     st.markdown("""
     <div class='section-header' style='margin-top: 28px;'>
         <h2>🚀 Quick Access</h2>
@@ -716,39 +796,39 @@ def render():
     col1, col2, col3 = st.columns(3, gap="medium")
 
     with col1:
+        st.markdown("<div class='dashboard-card primary' style='text-align: center; min-height: 180px;'>", unsafe_allow_html=True)
         st.markdown("""
-        <div class='quick-access-card'>
-            <div style='font-size: 2.5rem; margin-bottom: 8px;'>🤖</div>
-            <h4 style='margin: 0 0 8px 0; color: #1a202c;'>AI Transaction Intelligence</h4>
-            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.85rem;'>Real-time AI monitoring</p>
-        </div>
+            <div style='font-size: 2.5rem; margin-bottom: 12px;'>🤖</div>
+            <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>AI Transaction Intelligence</h4>
+            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.9rem;'>Real-time AI monitoring & detection</p>
         """, unsafe_allow_html=True)
-        if st.button("Open Monitor", use_container_width=True, key="btn_monitor"):
-            st.info("Navigate via sidebar")
+        if st.button("🔍 Open Monitor", use_container_width=True, key="btn_monitor"):
+            st.success("✓ Use sidebar to navigate to AI & Machine Learning Intelligence")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
+        st.markdown("<div class='dashboard-card success' style='text-align: center; min-height: 180px;'>", unsafe_allow_html=True)
         st.markdown("""
-        <div class='quick-access-card'>
-            <div style='font-size: 2.5rem; margin-bottom: 8px;'>🧠</div>
-            <h4 style='margin: 0 0 8px 0; color: #1a202c;'>AI Scenario Intelligence</h4>
-            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.85rem;'>13 fraud scenarios</p>
-        </div>
+            <div style='font-size: 2.5rem; margin-bottom: 12px;'>🧠</div>
+            <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>Scenario Analysis</h4>
+            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.9rem;'>13 fraud detection scenarios</p>
         """, unsafe_allow_html=True)
-        if st.button("View Scenarios", use_container_width=True, key="btn_scenarios"):
-            st.info("Navigate via sidebar")
+        if st.button("📊 View Scenarios", use_container_width=True, key="btn_scenarios"):
+            st.success("✓ Use sidebar to navigate to Scenario Analysis")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     with col3:
+        st.markdown("<div class='dashboard-card warning' style='text-align: center; min-height: 180px;'>", unsafe_allow_html=True)
         st.markdown("""
-        <div class='quick-access-card'>
-            <div style='font-size: 2.5rem; margin-bottom: 8px;'>📊</div>
-            <h4 style='margin: 0 0 8px 0; color: #1a202c;'>AI Rule Performance</h4>
-            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.85rem;'>ML-powered analysis</p>
-        </div>
+            <div style='font-size: 2.5rem; margin-bottom: 12px;'>📈</div>
+            <h4 style='margin: 0 0 8px 0; color: #1a202c; font-weight: 600;'>Geographic Analytics</h4>
+            <p style='margin: 0 0 12px 0; color: #718096; font-size: 0.9rem;'>Location-based fraud patterns</p>
         """, unsafe_allow_html=True)
-        if st.button("Analyze Rules", use_container_width=True, key="btn_rules"):
-            st.info("Navigate via sidebar")
+        if st.button("🌍 View Geo Data", use_container_width=True, key="btn_geo"):
+            st.success("✓ Use sidebar to navigate to Geo Analytics")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    # ==================== SECTION 6: AI Threshold Optimization ====================
+    # ==================== SECTION 7: AI Threshold Optimization ====================
     st.markdown("""
     <div class='section-header' style='margin-top: 28px;'>
         <h2>🎯 AI-Powered Dynamic Threshold Optimization</h2>
@@ -820,7 +900,14 @@ def render():
             }
         )
 
-        st.info(threshold_rec)
+        # Display threshold recommendation with styling
+        st.markdown(f"""
+        <div style='background: #e3f2fd; padding: 12px; border-radius: 8px; border-left: 4px solid #2196f3; margin-bottom: 12px;'>
+            <div style='color: #1565c0; font-size: 0.9rem; line-height: 1.6;'>
+                {threshold_rec}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         fraud_trend = [45, 47, 44, 52, 51, 48, 47]
         trend_analysis = ai_engine.get_trend_analysis(
@@ -828,7 +915,14 @@ def render():
             trend_data=fraud_trend
         )
 
-        st.success(trend_analysis)
+        # Display trend analysis with styling
+        st.markdown(f"""
+        <div style='background: #e8f5e9; padding: 12px; border-radius: 8px; border-left: 4px solid #4caf50;'>
+            <div style='color: #2e7d32; font-size: 0.9rem; line-height: 1.6;'>
+                {trend_analysis}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ==================== FOOTER ====================
