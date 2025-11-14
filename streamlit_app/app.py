@@ -28,7 +28,7 @@ apply_master_theme()
 
 def login_page():
     """Display login page"""
-    st.markdown('<div class="main-header">🛡️ Arriba Advisors Transaction Screening System</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">🛡️ Transaction Screening System</div>', unsafe_allow_html=True)
     st.markdown("### Login to Dashboard")
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -66,8 +66,6 @@ def login_page():
 
             - **Analyst**: Username: `analyst`, Password: `analyst123`
             - **Manager**: Username: `manager`, Password: `manager123`
-            - **Investigator**: Username: `investigator`, Password: `investigator123`
-            - **Admin**: Username: `admin`, Password: `admin123`
             """)
 
 
@@ -79,7 +77,7 @@ def main_dashboard():
         # Logo
         render_logo(location="sidebar")
 
-        st.markdown("### 🛡️ Arriba Advisors")
+        st.markdown("### 🛡️")
         st.markdown("**Transaction Screening System**")
 
         # User info
