@@ -942,7 +942,7 @@ def render():
 
     # Footer
     st.markdown("---")
-    st.caption("© 2024 Arriba Advisors | Compliance & KYC Analytics Dashboard")
+    st.caption("© 2024 Compliance & KYC Analytics Dashboard")
 
 
 if __name__ == "__main__":

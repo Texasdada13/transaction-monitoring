@@ -17,7 +17,7 @@ from streamlit_app.dashboard_icons import DashboardIcons, get_page_icon
 
 # Page configuration
 st.set_page_config(
-    page_title="Arriba Advisors - Transaction Screening",
+    page_title="Transaction Screening System",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"

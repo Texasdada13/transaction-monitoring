@@ -1,6 +1,6 @@
 
 """
-Homepage - Arriba Advisors Transaction Screening System
+Homepage - Transaction Screening System
 
 Executive dashboard with key performance indicators and system overview.
 """
@@ -304,7 +304,7 @@ def render():
     st.markdown("""
     <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
         <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
-            🛡️ Arriba Advisors Transaction Screening System
+            🛡️ Transaction Screening System
         </h1>
         <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1.1rem; font-weight: 500;'>
             Real-Time Fraud Detection & Prevention Analytics
@@ -920,11 +920,11 @@ def render():
             </div>
             <div>
                 <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Support</p>
-                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>support@arribaadvisors.com</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'></p>
             </div>
         </div>
         <p style='margin: 16px 0 0 0; text-align: center; color: #a0aec0; font-size: 0.8rem;'>
-            © 2024 Arriba Advisors. All rights reserved.
+            © 2024 All rights reserved.
         </p>
     </div>
     """, unsafe_allow_html=True)
