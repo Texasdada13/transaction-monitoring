@@ -28,7 +28,7 @@ from streamlit_app.explainability import get_explainability_engine
 def load_compliance_data():
     """Load all compliance datasets"""
     try:
-        data_dir = Path("compliance_dataset")
+        data_dir = Path("D:/Project Financial Fraud/Fraud Dashboard/transaction-monitoring/compliance_dataset")
 
         customers_df = pd.read_csv(data_dir / "customer_profiles.csv")
         transactions_df = pd.read_csv(data_dir / "transactions.csv")
@@ -1640,11 +1640,16 @@ def render():
     apply_master_theme()
 
     # Header
-    render_page_header(
-        title="Compliance & KYC Analytics",
-        subtitle="Comprehensive Compliance Monitoring & Regulatory Reporting Intelligence",
-        show_logo=False
-    )
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 1.8rem; font-weight: 700;'>
+            🏛️ Compliance & KYC Analytics
+        </h1>
+        <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1rem;'>
+            Comprehensive compliance monitoring and regulatory reporting
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Get colors
     colors = get_chart_colors()

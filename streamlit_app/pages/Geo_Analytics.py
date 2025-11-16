@@ -46,18 +46,54 @@ def render():
     # Apply theme
     apply_master_theme()
 
+    # Professional CSS for card-based layout
+    st.markdown("""
+    <style>
+    .block-container { padding-top: 0.5rem; padding-bottom: 1rem; max-width: 1400px; }
+    [data-testid="column"] > div > div > div {
+        background: white; border-radius: 12px; padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); margin-bottom: 12px; transition: all 0.3s ease;
+    }
+    [data-testid="column"] > div > div > div:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); transform: translateY(-2px);
+    }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+        padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; }
+    .section-header h2, .section-header h3 { margin: 0 !important; font-size: 1.5rem !important;
+        font-weight: 600; color: #1a202c; }
+    .section-badge { display: inline-block; padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px;
+        font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    h2, h3 { margin-top: 0.8rem !important; margin-bottom: 0.4rem !important; }
+    [data-testid="stMetricValue"] {
+        font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # Header
-    render_page_header(
-        title="🗺️ Geographic & Behavioral Analysis",
-        subtitle="Location-based fraud patterns and behavioral anomaly detection",
-        show_logo=False
-    )
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 1.8rem; font-weight: 700;'>
+            🗺️ Geographic & Behavioral Analysis
+        </h1>
+        <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1rem;'>
+            Location-based fraud patterns and behavioral anomaly detection
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Get standardized chart colors
     colors = get_chart_colors()
 
     # VPN/Proxy Fraud Locations (USA)
-    st.subheader("🌐 Geolocation Threat Map")
+    st.markdown("""
+    <div class='section-header'>
+        <h2>🌐 Geolocation Threat Map</h2>
+        <span class='section-badge'>USA</span>
+    </div>
+    """, unsafe_allow_html=True)
     st.caption("Device locations remotely triggered across USA using VPN/Proxy")
 
     # Enhanced map hover with explainability
@@ -138,14 +174,14 @@ def render():
                 type='albers usa'
             )
         ),
-        height=600,
-        title="VPN/Proxy Fraud Activity Across USA"
+        height=450,
+        margin=dict(l=0, r=0, t=30, b=0)
     )
 
     st.plotly_chart(fig_usa_map, use_container_width=True)
 
     # Top states table
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3, gap="medium")
     top_states = usa_vpn_locations.nlargest(3, 'vpn_fraud_count')
 
     with col1:
@@ -158,13 +194,16 @@ def render():
         st.metric("Third Highest", top_states.iloc[2]['state'],
                  f"{top_states.iloc[2]['vpn_fraud_count']} cases")
 
-    st.markdown("---")
-
     # Behavioral Anomaly Timeline
-    st.subheader("🧠 Anomaly Detection Timeline")
+    st.markdown("""
+    <div class='section-header' style='margin-top: 24px;'>
+        <h2>🧠 Anomaly Detection Timeline</h2>
+        <span class='section-badge'>REAL-TIME</span>
+    </div>
+    """, unsafe_allow_html=True)
     st.caption("Normal behavior baseline vs flagged transaction patterns")
 
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2, gap="medium")
 
     with col1:
         st.markdown("**Transaction Frequency Analysis**")
@@ -235,7 +274,10 @@ def render():
         fig_behavior_freq.update_layout(
             xaxis_title="Time",
             yaxis_title="Transaction Frequency",
-            height=400,
+            height=280,
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(title_font_size=11),
+            yaxis=dict(title_font_size=11),
             hovermode='x unified'
         )
 
@@ -312,7 +354,10 @@ def render():
             xaxis_title="Time",
             yaxis_title="Transaction Amount ($)",
             yaxis_type="log",
-            height=400,
+            height=280,
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(title_font_size=11),
+            yaxis=dict(title_font_size=11),
             hovermode='x unified'
         )
 
@@ -321,7 +366,7 @@ def render():
     # Anomaly detection insights
     st.markdown("**🚨 Anomaly Detection Summary:**")
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4, gap="medium")
     with col1:
         st.metric("Frequency Spike", "8→18 txn/hr", delta="125% increase")
     with col2:
@@ -331,10 +376,13 @@ def render():
     with col4:
         st.metric("Pattern Match", "Known fraud signature", delta="99% confidence")
 
-    st.markdown("---")
-
     # Combined Multi-Metric Anomaly View
-    st.subheader("🤖 Cross-Vector Threat Analysis")
+    st.markdown("""
+    <div class='section-header' style='margin-top: 24px;'>
+        <h2>🤖 Cross-Vector Threat Analysis</h2>
+        <span class='section-badge'>AI-POWERED</span>
+    </div>
+    """, unsafe_allow_html=True)
     st.caption("Comprehensive view of device, location, and behavioral inconsistencies")
 
     # Create sample anomaly data for a suspicious transaction
@@ -365,18 +413,23 @@ def render():
     fig_multi_anomaly.update_layout(
         xaxis_title="Detection Parameter",
         yaxis_title="Anomaly Score (0-100)",
-        height=400,
-        yaxis=dict(range=[0, 110])
+        height=280,
+        margin=dict(l=10, r=10, t=10, b=40),
+        xaxis=dict(title_font_size=11, tickfont=dict(size=10)),
+        yaxis=dict(range=[0, 110], title_font_size=11)
     )
 
     st.plotly_chart(fig_multi_anomaly, use_container_width=True)
 
-    st.markdown("---")
-
     # AI Geographic Pattern Analysis
-    st.markdown("## 🤖 AI Geographic Risk Analysis")
+    st.markdown("""
+    <div class='section-header' style='margin-top: 24px;'>
+        <h2>🤖 AI Geographic Risk Analysis</h2>
+        <span class='section-badge'>INSIGHTS</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    geo_col1, geo_col2 = st.columns(2)
+    geo_col1, geo_col2 = st.columns(2, gap="medium")
 
     with geo_col1:
         st.markdown("### 🗺️ Regional Fraud Trends")
