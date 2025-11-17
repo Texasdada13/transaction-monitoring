@@ -17,6 +17,7 @@ from datetime import datetime
 import json
 from typing import Dict, Any, List
 
+from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import get_chart_colors
 from streamlit_app.explainability import get_explainability_engine
@@ -25,15 +26,13 @@ from streamlit_app.explainability import get_explainability_engine
 def render_workflow_diagram():
     """Render the transaction processing workflow diagram"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;">
-        <h3 style="color: white; margin: 0;">📊 Transaction Processing Workflow</h3>
+    <div class='section-header'>
+        <h2>📊 Transaction Processing Workflow</h2>
+        <span class='section-badge'>WORKFLOW</span>
     </div>
     """, unsafe_allow_html=True)
 
-    # Create a Sankey diagram to show the workflow - Blue theme
+    # Create a Sankey diagram to show the workflow - Purple theme
     fig = go.Figure(data=[go.Sankey(
         node = dict(
             pad = 15,
@@ -49,7 +48,7 @@ def render_workflow_diagram():
                 "High Priority Review (> 0.6)",  # 6
                 "Critical Review (> 0.8)"  # 7
             ],
-            color = ["#1e3a8a", "#2563eb", "#3b82f6", "#60a5fa", "#28A745", "#FFC107", "#FF5722", "#DC3545"],
+            color = ["#667eea", "#764ba2", "#8b5cf6", "#a78bfa", "#28A745", "#FFC107", "#FF5722", "#DC3545"],
             x = [0.1, 0.3, 0.5, 0.7, 0.95, 0.95, 0.95, 0.95],
             y = [0.5, 0.5, 0.5, 0.5, 0.2, 0.45, 0.7, 0.9]
         ),
@@ -57,7 +56,7 @@ def render_workflow_diagram():
             source = [0, 1, 2, 3, 3, 3, 3],
             target = [1, 2, 3, 4, 5, 6, 7],
             value = [100, 100, 100, 30, 30, 30, 10],
-            color = ["#93c5fd", "#93c5fd", "#93c5fd", "#28A745", "#FFC107", "#FF5722", "#DC3545"]
+            color = ["#c4b5fd", "#c4b5fd", "#c4b5fd", "#28A745", "#FFC107", "#FF5722", "#DC3545"]
         )
     )])
 
@@ -107,11 +106,9 @@ def render_workflow_diagram():
 def render_transaction_card(transaction: Dict[str, Any]):
     """Render transaction details card"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;">
-        <h3 style="color: white; margin: 0;">💳 Transaction Details</h3>
+    <div class='section-header'>
+        <h2>💳 Transaction Details</h2>
+        <span class='section-badge'>OVERVIEW</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -138,11 +135,9 @@ def render_transaction_card(transaction: Dict[str, Any]):
 def render_rule_evaluation(assessment: Dict[str, Any], all_rules: List[Dict[str, Any]]):
     """Render detailed rule evaluation showing all rules checked"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;">
-        <h3 style="color: white; margin: 0;">🔍 Rule Evaluation Results</h3>
+    <div class='section-header'>
+        <h2>🔍 Rule Evaluation Results</h2>
+        <span class='section-badge'>RULES</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -241,11 +236,9 @@ def render_rule_evaluation(assessment: Dict[str, Any], all_rules: List[Dict[str,
 def render_risk_score_calculation(assessment: Dict[str, Any], all_rules: List[Dict[str, Any]]):
     """Render visual risk score calculation breakdown"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;">
-        <h3 style="color: white; margin: 0;">📈 Risk Score Calculation</h3>
+    <div class='section-header'>
+        <h2>📈 Risk Score Calculation</h2>
+        <span class='section-badge'>SCORING</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -393,11 +386,9 @@ def render_risk_score_calculation(assessment: Dict[str, Any], all_rules: List[Di
 def render_threshold_comparison(assessment: Dict[str, Any]):
     """Render threshold comparison visualization"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;">
-        <h3 style="color: white; margin: 0;">🎯 Threshold Comparison & Decision Logic</h3>
+    <div class='section-header'>
+        <h2>🎯 Threshold Comparison & Decision Logic</h2>
+        <span class='section-badge'>DECISION</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -515,11 +506,9 @@ def render_threshold_comparison(assessment: Dict[str, Any]):
 def render_decision_explanation(assessment: Dict[str, Any]):
     """Render detailed explanation of why decision was made"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;">
-        <h3 style="color: white; margin: 0;">💡 Decision Explanation</h3>
+    <div class='section-header'>
+        <h2>💡 Decision Explanation</h2>
+        <span class='section-badge'>REASONING</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -636,11 +625,9 @@ def get_risk_color(risk_score):
 def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
     """Render comprehensive audit trail with timeline and event history"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;">
-        <h3 style="color: white; margin: 0;">📜 Audit Trail & Decision History</h3>
+    <div class='section-header'>
+        <h2>📜 Audit Trail & Decision History</h2>
+        <span class='section-badge'>AUDIT</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -770,14 +757,14 @@ def render_audit_trail(transaction: Dict[str, Any], assessment: Dict[str, Any]):
     # Create timeline chart
     fig = go.Figure()
 
-    # Color mapping for event types - Blue theme
+    # Color mapping for event types - Purple theme
     color_map = {
-        "system": "#1e3a8a",
-        "rule_trigger": "#3b82f6",
-        "decision": "#60a5fa",
-        "analyst_action": "#93c5fd",
-        "note": "#667eea",
-        "approval": "#2563eb"
+        "system": "#667eea",
+        "rule_trigger": "#764ba2",
+        "decision": "#8b5cf6",
+        "analyst_action": "#a78bfa",
+        "note": "#c4b5fd",
+        "approval": "#7c3aed"
     }
 
     # Enhanced hover for timeline events
@@ -981,23 +968,246 @@ def get_mock_all_rules():
 def render():
     """Main render function for Transaction Review Detail page"""
 
+    # Apply theme
+    apply_master_theme()
+
     st.set_page_config(page_title="Transaction Review Detail", page_icon="🔍", layout="wide")
 
     # Get standardized chart colors
     colors = get_chart_colors()
 
-    # Header with blue theme
+    # Professional CSS for aesthetic design
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                padding: 25px;
-                border-radius: 15px;
-                margin-bottom: 20px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        <h1 style="color: white; margin: 0;">🔍 Transaction Review Detail</h1>
-        <p style="color: #e0e7ff; font-size: 18px; margin: 10px 0 0 0;">
-            <strong>Comprehensive Analysis: Auto-Clear vs Manual Review Decision Process</strong>
+    <style>
+    /* Global Aesthetics */
+    .block-container {
+        padding-top: 0.5rem;
+        padding-bottom: 1rem;
+        max-width: 1400px;
+    }
+
+    /* Professional Card Styling for Containers */
+    [data-testid="column"] > div > div > div {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+
+    /* Hover effect for card containers */
+    [data-testid="column"] > div > div > div:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    /* Professional Card Styling */
+    .dashboard-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+        border-left: 4px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .dashboard-card.critical {
+        border-left-color: #E54848;
+        background: linear-gradient(to right, #fff5f5 0%, white 10%);
+    }
+
+    .dashboard-card.success {
+        border-left-color: #2E865F;
+        background: linear-gradient(to right, #f0fdf4 0%, white 10%);
+    }
+
+    .dashboard-card.primary {
+        border-left-color: #667eea;
+        background: linear-gradient(to right, #f5f7ff 0%, white 10%);
+    }
+
+    .dashboard-card.warning {
+        border-left-color: #F3B65B;
+        background: linear-gradient(to right, #fffbf0 0%, white 10%);
+    }
+
+    /* Section Headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-header h2 {
+        margin: 0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .section-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Subsection Headers */
+    .subsection-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .subsection-header h3 {
+        margin: 0 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    /* Compact Spacing */
+    .stMarkdown {
+        margin-bottom: 0.3rem;
+    }
+
+    h2 {
+        margin-top: 0.8rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    h3 {
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    /* Dataframe Styling */
+    .stDataFrame {
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* Chart Containers */
+    .js-plotly-plot {
+        margin-bottom: 0 !important;
+        border-radius: 8px;
+    }
+
+    /* Metrics Enhancement */
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    [data-testid="stMetricDelta"] {
+        font-size: 0.9rem;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Column Gap Reduction */
+    [data-testid="column"] {
+        padding: 0 0.4rem;
+    }
+
+    /* Professional Button Styling */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        border-color: #667eea;
+    }
+
+    /* Caption Styling */
+    .stCaptionContainer {
+        margin-top: 8px;
+    }
+
+    /* Info Box Styling */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 4px;
+    }
+
+    /* Divider Styling */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    }
+
+    /* Gradient Text */
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+    }
+
+    /* Expander Styling */
+    .streamlit-expanderHeader {
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Professional Header with Gradient
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+            🔍 Transaction Review Detail
+        </h1>
+        <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1.1rem; font-weight: 500;'>
+            Comprehensive Analysis: Auto-Clear vs Manual Review Decision Process
         </p>
+        <div style='display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 6px 14px; background: rgba(255,255,255,0.2); border-radius: 20px; backdrop-filter: blur(10px);'>
+            <div style='width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite;'></div>
+            <span style='color: white; font-size: 0.85rem; font-weight: 600;'>SYSTEM ACTIVE</span>
+        </div>
     </div>
+
+    <style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    </style>
     """, unsafe_allow_html=True)
 
     # Transaction selector
@@ -1081,11 +1291,9 @@ def render():
         # Action buttons
         st.divider()
         st.markdown("""
-        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                    padding: 15px;
-                    border-radius: 10px;
-                    margin-bottom: 20px;">
-            <h3 style="color: white; margin: 0;">🎬 Review Actions</h3>
+        <div class='section-header'>
+            <h2>🎬 Review Actions</h2>
+            <span class='section-badge'>ACTIONS</span>
         </div>
         """, unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
@@ -1110,9 +1318,20 @@ def render():
         st.info("👆 Enter a transaction ID above to view detailed risk analysis")
 
         # ML Intelligence Section
-        st.markdown("---")
-        st.markdown("## 🤖 ML-Powered Transaction Intelligence")
-        st.markdown("*Real-time machine learning insights for transaction screening*")
+        st.markdown("""
+        <div class='section-header' style='margin-top: 28px;'>
+            <h2>🤖 ML-Powered Transaction Intelligence</h2>
+            <span class='section-badge'>ML-POWERED</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class='dashboard-card primary'>
+            <p style='margin: 0; font-size: 0.95rem; color: #4a5568; line-height: 1.6;'>
+                Real-time machine learning insights for transaction screening and risk assessment
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
         ml_metrics_col1, ml_metrics_col2, ml_metrics_col3, ml_metrics_col4 = st.columns(4)
 
@@ -1128,7 +1347,7 @@ def render():
         ml_viz_col1, ml_viz_col2 = st.columns(2)
 
         with ml_viz_col1:
-            st.markdown("### 🎯 ML Risk Score Distribution")
+            st.markdown("<div class='subsection-header'><h3>🎯 ML Risk Score Distribution</h3></div>", unsafe_allow_html=True)
 
             # Generate risk score distribution
             np.random.seed(42)
@@ -1210,7 +1429,7 @@ def render():
             st.plotly_chart(fig_risk_dist, use_container_width=True, key="txn_risk_dist")
 
         with ml_viz_col2:
-            st.markdown("### 🔍 Top ML Feature Contributions")
+            st.markdown("<div class='subsection-header'><h3>🔍 Top ML Feature Contributions</h3></div>", unsafe_allow_html=True)
 
             features_txn = [
                 'Transaction Amount',
@@ -1324,7 +1543,11 @@ def render():
             st.plotly_chart(fig_features_txn, use_container_width=True, key="txn_feature_importance")
 
         # ML Performance Insights
-        st.markdown("### 📊 ML Model Performance Metrics")
+        st.markdown("""
+        <div class='subsection-header' style='margin-top: 20px;'>
+            <h3>📊 ML Model Performance Metrics</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
         perf_col1, perf_col2, perf_col3 = st.columns(3)
 
@@ -1446,13 +1669,10 @@ def render():
             st.plotly_chart(fig_throughput, use_container_width=True, key="txn_throughput")
 
         # Show example
-        st.markdown("---")
         st.markdown("""
-        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                    padding: 15px;
-                    border-radius: 10px;
-                    margin-bottom: 20px;">
-            <h3 style="color: white; margin: 0;">📚 Example Use Cases</h3>
+        <div class='section-header' style='margin-top: 28px;'>
+            <h2>📚 Example Use Cases</h2>
+            <span class='section-badge'>EXAMPLES</span>
         </div>
         """, unsafe_allow_html=True)
 

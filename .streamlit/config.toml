@@ -1,0 +1,23 @@
+[client]
+# Hide the default Streamlit sidebar navigation
+showSidebarNavigation = false
+
+[server]
+# Run on headless mode
+headless = true
+
+# Enable CORS for API calls
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+# Gather usage stats
+gatherUsageStats = false
+
+[theme]
+# Custom theme colors (matching our purple gradient theme)
+primaryColor = "#667eea"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f7fafc"
+textColor = "#1a202c"
+font = "sans serif"

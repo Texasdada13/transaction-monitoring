@@ -196,68 +196,82 @@ def main_dashboard():
         </style>
         """, unsafe_allow_html=True)
 
-        # Define role-based page structure with sections
-        ANALYST_PAGE_STRUCTURE = {
-            "MONITORING": [
-                "Analyst Dashboard",
-                "Fraud Transaction Monitoring",
-                "Transaction Review"
-            ],
-            "ANALYTICS": [
-                "Geo Analytics"
-            ],
-            "COMPLIANCE": [
-                "Compliance & KYC Analytics"
-            ]
-        }
+        # Define role-based page structure - Top-level pages and dropdown groups
+        ANALYST_TOP_PAGES = ["Analyst Dashboard"]
+        ANALYST_DROPDOWN_PAGES = [
+            "Fraud Transaction Monitoring",
+            "Transaction Review",
+            "Rule Performance Analytics",
+            "Scenario Analysis",
+            "AI & Machine Learning Intelligence"
+        ]
 
-        MANAGER_PAGE_STRUCTURE = {
-            "MONITORING": [
-                "Analyst Dashboard",
-                "Fraud Transaction Monitoring",
-                "Transaction Review"
-            ],
-            "ANALYTICS": [
-                "AI & Machine Learning Intelligence",
-                "Scenario Analysis",
-                "Operational Analytics",
-                "Geo Analytics",
-                "Rule Performance Analytics"
-            ],
-            "COMPLIANCE": [
-                "Compliance & KYC Analytics"
-            ],
-            "EXECUTIVE": [
-                "Executive Dashboard"
-            ]
-        }
+        MANAGER_TOP_PAGES = ["Analyst Dashboard", "Executive Dashboard"]
+        MANAGER_DROPDOWN_PAGES = [
+            "Fraud Transaction Monitoring",
+            "Transaction Review",
+            "Rule Performance Analytics",
+            "Scenario Analysis",
+            "AI & Machine Learning Intelligence",
+            "Operational Analytics",
+            "Geo Analytics",
+            "Compliance & KYC Analytics"
+        ]
 
         # Select page structure based on role
         if user_role == "analyst":
-            page_structure = ANALYST_PAGE_STRUCTURE
-            total_pages = sum(len(pages) for pages in page_structure.values())
+            top_pages = ANALYST_TOP_PAGES
+            dropdown_pages = ANALYST_DROPDOWN_PAGES
+            total_pages = len(top_pages) + len(dropdown_pages)
             st.caption(f"🔒 Limited Access - {total_pages} pages")
         elif user_role == "manager":
-            page_structure = MANAGER_PAGE_STRUCTURE
-            total_pages = sum(len(pages) for pages in page_structure.values())
+            top_pages = MANAGER_TOP_PAGES
+            dropdown_pages = MANAGER_DROPDOWN_PAGES
+            total_pages = len(top_pages) + len(dropdown_pages)
             st.caption(f"🔓 Full Access - {total_pages} pages")
         else:
-            page_structure = ANALYST_PAGE_STRUCTURE
-            total_pages = sum(len(pages) for pages in page_structure.values())
+            top_pages = ANALYST_TOP_PAGES
+            dropdown_pages = ANALYST_DROPDOWN_PAGES
+            total_pages = len(top_pages) + len(dropdown_pages)
             st.warning(f"⚠️ Unknown role - {total_pages} pages")
 
         # Initialize selected page in session state
-        all_pages = [page for pages in page_structure.values() for page in pages]
+        all_pages = top_pages + dropdown_pages
         if 'selected_page' not in st.session_state:
             st.session_state.selected_page = all_pages[0]
 
-        # Render navigation with sections
-        for section, pages in page_structure.items():
-            # Section header
-            st.markdown(f'<div class="nav-section-header">{section}</div>', unsafe_allow_html=True)
+        # Render top-level navigation pages
+        st.markdown('<div class="nav-section-header">DASHBOARDS</div>', unsafe_allow_html=True)
 
-            # Render pages in this section
-            for page_name in pages:
+        for page_name in top_pages:
+            # Get icon for the page
+            is_selected = (page_name == st.session_state.selected_page)
+            icon_color = "white" if is_selected else "#667eea"
+            icon = get_page_icon(page_name, size=18, color=icon_color)
+
+            # Create nav item HTML
+            active_class = "active" if is_selected else ""
+            nav_item_html = f"""
+            <div class="nav-item {active_class}">
+                {icon}
+                <span class="nav-item-text">{page_name}</span>
+            </div>
+            """
+
+            # Create clickable button with HTML label
+            if st.button(
+                label=nav_item_html,
+                key=f"nav_{page_name}",
+                use_container_width=True
+            ):
+                st.session_state.selected_page = page_name
+                st.rerun()
+
+        # Render dropdown section for other pages
+        st.markdown('<div class="nav-section-header">TOOLS & ANALYTICS</div>', unsafe_allow_html=True)
+
+        with st.expander("📊 View All Pages", expanded=False):
+            for page_name in dropdown_pages:
                 # Get icon for the page
                 is_selected = (page_name == st.session_state.selected_page)
                 icon_color = "white" if is_selected else "#667eea"
