@@ -625,18 +625,5 @@ def render():
                 icon="🏪"
             )
 
-    # Professional footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center; color: white;">
-        <p style="margin: 0; font-size: 14px;">
-            <strong>© 2024 Arriba Advisors | Operational Analytics Dashboard</strong><br>
-            For operational inquiries: operations@arribadvisors.com | 24/7 Operations Center: +1 (555) 987-6543<br>
-            Last Updated: """ + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + """
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
 if __name__ == "__main__":
     render()
