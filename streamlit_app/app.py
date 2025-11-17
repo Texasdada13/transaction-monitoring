@@ -75,11 +75,35 @@ def main_dashboard():
 
     # Sidebar
     with st.sidebar:
+        # Remove top padding and hide collapse button
+        st.markdown("""
+        <style>
+        /* Remove top padding from sidebar */
+        [data-testid="stSidebar"] {
+            padding-top: 0 !important;
+        }
+
+        [data-testid="stSidebar"] > div:first-child {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        /* Hide sidebar collapse button */
+        [data-testid="collapsedControl"] {
+            display: none !important;
+        }
+
+        button[kind="header"] {
+            display: none !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
         # Professional header
         st.markdown("""
         <div style='text-align: center; padding: 20px 0 15px 0; border-bottom: 1px solid rgba(255,255,255,0.1);'>
             <h2 style='color: #667eea; margin: 0; font-size: 24px;'>🛡️ Fraud Shield</h2>
-            <p style='color: #718096; font-size: 12px; margin-top: 5px; margin-bottom: 0;'>AI-Powered Detection</p>
+            <p style='color: #718096; font-size: 18px; margin-top: 5px; margin-bottom: 0;'>AI-Powered Detection</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -92,8 +116,7 @@ def main_dashboard():
             <div style='display: flex; align-items: center; gap: 10px; margin-bottom: 8px;'>
                 <div style='width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;'>{user_info.get('username', 'U')[0].upper()}</div>
                 <div>
-                    <p style='margin: 0; color: #1a202c; font-size: 14px; font-weight: 600;'>{user_info.get('username', 'Unknown')}</p>
-                    <p style='margin: 0; color: #718096; font-size: 11px;'>{user_info.get('role', 'Unknown').title()} Access</p>
+                    <p style='margin: 0; color: #1a202c; font-size: 14px; font-weight: 600;'>{user_info.get('username', 'Unknown').upper()} ACCESS</p>
                 </div>
             </div>
         </div>
@@ -179,19 +202,118 @@ def main_dashboard():
             margin: 15px 0;
         }
 
-        /* Logout button styling */
-        [data-testid="stSidebar"] .stButton:last-of-type > button {
-            background-color: rgba(255, 107, 107, 0.1) !important;
-            color: #ff6b6b !important;
-            padding: 10px 15px !important;
-            border-radius: 8px !important;
-            font-weight: 500 !important;
+        /* 3D Home Button Styling - Active State */
+        .home-button-active {
+            background: linear-gradient(145deg, #7c8ef7 0%, #8b5cf6 50%, #764ba2 100%) !important;
+            color: white !important;
+            padding: 12px 20px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            cursor: pointer !important;
+            border: none !important;
+            box-shadow:
+                0 8px 16px rgba(102, 126, 234, 0.4),
+                0 4px 8px rgba(118, 75, 162, 0.3),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3) !important;
             transition: all 0.2s ease !important;
+            transform: translateY(0px) !important;
+            position: relative !important;
+        }
+
+        .home-button-active:hover {
+            transform: translateY(-2px) !important;
+            box-shadow:
+                0 10px 20px rgba(102, 126, 234, 0.5),
+                0 6px 12px rgba(118, 75, 162, 0.4),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3) !important;
+        }
+
+        .home-button-active:active {
+            transform: translateY(2px) !important;
+            box-shadow:
+                0 4px 8px rgba(102, 126, 234, 0.3),
+                0 2px 4px rgba(118, 75, 162, 0.2),
+                inset 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* 3D Home Button Styling - Inactive State */
+        .home-button-inactive {
+            background: linear-gradient(145deg, #f0f4ff 0%, #e8edff 100%) !important;
+            color: #667eea !important;
+            padding: 12px 20px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            cursor: pointer !important;
+            border: 2px solid rgba(102, 126, 234, 0.2) !important;
+            box-shadow:
+                0 6px 12px rgba(102, 126, 234, 0.15),
+                0 3px 6px rgba(0, 0, 0, 0.1),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+                inset 0 2px 4px rgba(255, 255, 255, 0.8) !important;
+            transition: all 0.2s ease !important;
+            transform: translateY(0px) !important;
+        }
+
+        .home-button-inactive:hover {
+            background: linear-gradient(145deg, #e8edff 0%, #dde5ff 100%) !important;
+            border-color: rgba(102, 126, 234, 0.4) !important;
+            transform: translateY(-2px) !important;
+            box-shadow:
+                0 8px 16px rgba(102, 126, 234, 0.25),
+                0 4px 8px rgba(0, 0, 0, 0.15),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.05),
+                inset 0 2px 4px rgba(255, 255, 255, 0.8) !important;
+        }
+
+        .home-button-inactive:active {
+            transform: translateY(2px) !important;
+            box-shadow:
+                0 3px 6px rgba(102, 126, 234, 0.2),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        /* Logout button styling - Purple */
+        [data-testid="stSidebar"] .stButton:last-of-type > button {
+            background: linear-gradient(145deg, #7c8ef7 0%, #8b5cf6 50%, #764ba2 100%) !important;
+            color: white !important;
+            padding: 12px 20px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            cursor: pointer !important;
+            border: none !important;
+            box-shadow:
+                0 8px 16px rgba(102, 126, 234, 0.4),
+                0 4px 8px rgba(118, 75, 162, 0.3),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3) !important;
+            transition: all 0.2s ease !important;
+            transform: translateY(0px) !important;
         }
 
         [data-testid="stSidebar"] .stButton:last-of-type > button:hover {
-            background-color: rgba(255, 107, 107, 0.2) !important;
-            transform: translateY(-2px);
+            transform: translateY(-2px) !important;
+            box-shadow:
+                0 10px 20px rgba(102, 126, 234, 0.5),
+                0 6px 12px rgba(118, 75, 162, 0.4),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3) !important;
+        }
+
+        [data-testid="stSidebar"] .stButton:last-of-type > button:active {
+            transform: translateY(2px) !important;
+            box-shadow:
+                0 4px 8px rgba(102, 126, 234, 0.3),
+                0 2px 4px rgba(118, 75, 162, 0.2),
+                inset 0 3px 6px rgba(0, 0, 0, 0.3) !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -206,16 +328,15 @@ def main_dashboard():
             "AI & Machine Learning Intelligence"
         ]
 
-        MANAGER_TOP_PAGES = ["Analyst Dashboard", "Executive Dashboard"]
+        MANAGER_TOP_PAGES = ["Executive Dashboard"]
         MANAGER_DROPDOWN_PAGES = [
-            "Fraud Transaction Monitoring",
             "Transaction Review",
+            "Geo Analytics",
+            "Compliance & KYC Analytics",
             "Rule Performance Analytics",
             "Scenario Analysis",
             "AI & Machine Learning Intelligence",
-            "Operational Analytics",
-            "Geo Analytics",
-            "Compliance & KYC Analytics"
+            "Operational Analytics"        
         ]
 
         # Select page structure based on role
@@ -223,17 +344,17 @@ def main_dashboard():
             top_pages = ANALYST_TOP_PAGES
             dropdown_pages = ANALYST_DROPDOWN_PAGES
             total_pages = len(top_pages) + len(dropdown_pages)
-            st.caption(f"🔒 Limited Access - {total_pages} pages")
+            #st.caption(f"Access {total_pages} AI powered pages")
         elif user_role == "manager":
             top_pages = MANAGER_TOP_PAGES
             dropdown_pages = MANAGER_DROPDOWN_PAGES
             total_pages = len(top_pages) + len(dropdown_pages)
-            st.caption(f"🔓 Full Access - {total_pages} pages")
+            #st.caption(f"Access {total_pages} AI powered pages")
         else:
             top_pages = ANALYST_TOP_PAGES
             dropdown_pages = ANALYST_DROPDOWN_PAGES
             total_pages = len(top_pages) + len(dropdown_pages)
-            st.warning(f"⚠️ Unknown role - {total_pages} pages")
+            #st.warning(f"⚠️ Unknown role - {total_pages} pages")
 
         # Initialize selected page in session state
         all_pages = top_pages + dropdown_pages
@@ -241,59 +362,86 @@ def main_dashboard():
             st.session_state.selected_page = all_pages[0]
 
         # Render top-level navigation pages
-        st.markdown('<div class="nav-section-header">DASHBOARDS</div>', unsafe_allow_html=True)
+        # Set header and home page based on user role
+        if user_role == "analyst":
+            st.markdown('<div class="nav-section-header">ANALYST DASHBOARD</div>', unsafe_allow_html=True)
+            home_page = "Analyst Dashboard"
+        else:  # manager
+            st.markdown('<div class="nav-section-header">MANAGER DASHBOARD</div>', unsafe_allow_html=True)
+            home_page = "Executive Dashboard"
 
-        for page_name in top_pages:
-            # Get icon for the page
-            is_selected = (page_name == st.session_state.selected_page)
-            icon_color = "white" if is_selected else "#667eea"
-            icon = get_page_icon(page_name, size=18, color=icon_color)
+        # Create small horizontal "Home" button with 3D design - Always Purple
+        button_style = """
+        <style>
+        /* 3D Home Button - Always Purple */
+        div[data-testid="stSidebar"] button[key="home_button"],
+        [data-testid="stSidebar"] div[data-testid="column"] > div > div > div > button:first-of-type {
+            background: linear-gradient(145deg, #7c8ef7 0%, #8b5cf6 50%, #764ba2 100%) !important;
+            color: white !important;
+            padding: 12px 20px !important;
+            border-radius: 10px !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            cursor: pointer !important;
+            border: none !important;
+            box-shadow:
+                0 8px 16px rgba(102, 126, 234, 0.4),
+                0 4px 8px rgba(118, 75, 162, 0.3),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3) !important;
+            transition: all 0.2s ease !important;
+            transform: translateY(0px) !important;
+            position: relative !important;
+        }
 
-            # Create nav item HTML
-            active_class = "active" if is_selected else ""
-            nav_item_html = f"""
-            <div class="nav-item {active_class}">
-                {icon}
-                <span class="nav-item-text">{page_name}</span>
-            </div>
-            """
+        div[data-testid="stSidebar"] button[key="home_button"]:hover,
+        [data-testid="stSidebar"] div[data-testid="column"] > div > div > div > button:first-of-type:hover {
+            transform: translateY(-2px) !important;
+            box-shadow:
+                0 10px 20px rgba(102, 126, 234, 0.5),
+                0 6px 12px rgba(118, 75, 162, 0.4),
+                inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.3) !important;
+        }
 
-            # Create clickable button with HTML label
-            if st.button(
-                label=nav_item_html,
-                key=f"nav_{page_name}",
-                use_container_width=True
-            ):
-                st.session_state.selected_page = page_name
-                st.rerun()
+        div[data-testid="stSidebar"] button[key="home_button"]:active,
+        [data-testid="stSidebar"] div[data-testid="column"] > div > div > div > button:first-of-type:active {
+            transform: translateY(2px) !important;
+            box-shadow:
+                0 4px 8px rgba(102, 126, 234, 0.3),
+                0 2px 4px rgba(118, 75, 162, 0.2),
+                inset 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+        }
+        </style>
+        """
 
-        # Render dropdown section for other pages
-        st.markdown('<div class="nav-section-header">TOOLS & ANALYTICS</div>', unsafe_allow_html=True)
+        st.markdown(button_style, unsafe_allow_html=True)
 
-        with st.expander("📊 View All Pages", expanded=False):
-            for page_name in dropdown_pages:
-                # Get icon for the page
-                is_selected = (page_name == st.session_state.selected_page)
-                icon_color = "white" if is_selected else "#667eea"
-                icon = get_page_icon(page_name, size=18, color=icon_color)
+        if st.button("Home", key="home_button", use_container_width=True):
+            st.session_state.selected_page = home_page
+            st.rerun()
 
-                # Create nav item HTML
-                active_class = "active" if is_selected else ""
-                nav_item_html = f"""
-                <div class="nav-item {active_class}">
-                    {icon}
-                    <span class="nav-item-text">{page_name}</span>
-                </div>
-                """
+         # Render dropdown section for other pages
+        st.markdown('<div class="nav-section-header">Access AI powered pages</div>', unsafe_allow_html=True)
 
-                # Create clickable button with HTML label
-                if st.button(
-                    label=nav_item_html,
-                    key=f"nav_{page_name}",
-                    use_container_width=True
-                ):
-                    st.session_state.selected_page = page_name
-                    st.rerun()
+        # Create selectbox for dropdown pages
+        # Get current selection index - only if current page is in dropdown
+        if st.session_state.selected_page in dropdown_pages:
+            current_index = dropdown_pages.index(st.session_state.selected_page)
+        else:
+            # If current page is not in dropdown (e.g., on a dashboard), default to first option
+            current_index = 0
+
+        # Display selectbox with clean page names
+        st.selectbox(
+            label="Select Page",
+            options=dropdown_pages,
+            index=current_index,
+            key="page_selectbox",
+            label_visibility="collapsed",
+            on_change=lambda: setattr(st.session_state, 'selected_page', st.session_state.page_selectbox)
+        )
 
         # Get selected page
         page = st.session_state.selected_page
@@ -321,8 +469,8 @@ def main_dashboard():
         from streamlit_app.pages import Transaction_Review
         Transaction_Review.render()
     elif page == "Scenario Analysis":
-        from streamlit_app.pages import scenario_analysis
-        scenario_analysis.render()
+        from streamlit_app.pages import Scenario_Analysis
+        Scenario_Analysis.render()
     elif page == "Operational Analytics":
         from streamlit_app.pages import operational_analytics
         operational_analytics.render()
