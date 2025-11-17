@@ -266,10 +266,10 @@ def render_transaction_search():
                 fig_dist.update_layout(
                     xaxis_title="Risk Score",
                     yaxis_title="Transaction Count",
-                    height=400,
+                    height=350,
                     bargap=0.05
                 )
-                st.plotly_chart(fig_dist, use_container_width=True)
+                st.plotly_chart(fig_dist, use_container_width=True, key="fraud_risk_dist")
 
             # Amount vs Risk (Scatter)
             with viz_col2:
@@ -330,10 +330,10 @@ def render_transaction_search():
                 fig_scatter.update_layout(
                     xaxis_title="Transaction Amount ($)",
                     yaxis_title="Risk Score",
-                    height=400,
+                    height=350,
                     hovermode='closest'
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.plotly_chart(fig_scatter, use_container_width=True, key="fraud_scatter")
 
             st.divider()
             st.markdown("#### Results")
@@ -794,15 +794,43 @@ def render():
     </style>
     """, unsafe_allow_html=True)
 
-    # Header
+    # Professional gradient header
     st.markdown("""
-    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
-        <h1 style='color: white; margin: 0; font-size: 1.8rem; font-weight: 700;'>
-            🛡️ Fraud Surveillance Hub
+    <div style='background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 28px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700;'>
+            🛡️ Fraud Transaction Monitoring
         </h1>
-        <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1rem;'>
-            Real-Time Fraud Detection & Alert Management
+        <p style='color: rgba(255,255,255,0.95); margin: 10px 0 0 0; font-size: 1.05rem;'>
+            Real-time fraud detection, intelligent transaction search, and advanced ML-powered surveillance
         </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Key Performance Metrics Callout
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                padding: 20px; border-radius: 12px; margin: 20px 0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+        <div style="color: white; text-align: center;">
+            <h3 style="margin: 0; color: white; font-size: 1.3rem;">📊 Real-Time Fraud Protection Metrics</h3>
+            <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">$3.8M</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">Prevented This Month</div>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">98.2%</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">ML Detection Rate</div>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">6ms</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">Detection Latency</div>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">347</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">Real-time Blocks Today</div>
+                </div>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -945,7 +973,7 @@ def render():
         fig_fraud_detection.update_layout(
             yaxis=dict(title='Detection Rate (%)', range=[90, 102], title_font_size=11),
             yaxis2=dict(title='Cases Detected', overlaying='y', side='right', title_font_size=11),
-            height=280,
+            height=300,
             margin=dict(l=10, r=10, t=10, b=40),
             xaxis=dict(tickangle=-45, tickfont=dict(size=10)),
             hovermode='x unified',
@@ -989,7 +1017,7 @@ def render():
         fig_anomaly.update_layout(
             xaxis_title="Anomaly Score",
             yaxis_title="Frequency",
-            height=280,
+            height=300,
             margin=dict(l=10, r=10, t=10, b=10),
             xaxis=dict(title_font_size=11),
             yaxis=dict(title_font_size=11)
@@ -1054,7 +1082,7 @@ def render():
         ))
 
         fig_acc_trend.update_layout(
-            height=220,
+            height=250,
             margin=dict(l=10, r=10, t=10, b=10),
             yaxis=dict(range=[96, 99], title='Accuracy (%)', title_font_size=11),
             showlegend=False
@@ -1108,7 +1136,7 @@ def render():
         ))
 
         fig_fp_trend.update_layout(
-            height=220,
+            height=250,
             margin=dict(l=10, r=10, t=10, b=10),
             yaxis=dict(range=[0, 0.1], title='FP Rate', title_font_size=11),
             showlegend=False
@@ -1152,7 +1180,7 @@ def render():
         ))
 
         fig_prevented.update_layout(
-            height=220,
+            height=250,
             margin=dict(l=10, r=10, t=10, b=10),
             yaxis=dict(title='Amount ($M)', title_font_size=11),
             showlegend=False
@@ -1173,30 +1201,36 @@ def render():
     with insight_cards_col1:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    padding: 15px; border-radius: 10px; color: white;">
-            <h5 style="margin-top: 0; color: white;">🎯 Real-time Detection</h5>
-            <p style="font-size: 14px;">ML models process 1,247 transactions per minute
-            with 98.2% accuracy, blocking fraudulent transactions in under 6ms.</p>
+                    padding: 18px; border-radius: 10px; color: white; min-height: 160px;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+            <h5 style="margin-top: 0; color: white; font-size: 1.1rem;">🎯 Real-time Detection</h5>
+            <p style="font-size: 14px; line-height: 1.6; opacity: 0.95;">ML models process 1,247 transactions per minute
+            with 98.2% accuracy, blocking fraudulent transactions in under 6ms. Lightning-fast protection
+            with minimal latency impact on customer experience.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with insight_cards_col2:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                    padding: 15px; border-radius: 10px; color: white;">
-            <h5 style="margin-top: 0; color: white;">🛡️ Adaptive Learning</h5>
-            <p style="font-size: 14px;">Models continuously learn from new fraud patterns,
-            improving detection accuracy by 2.8% quarter-over-quarter.</p>
+                    padding: 18px; border-radius: 10px; color: white; min-height: 160px;
+                    box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);">
+            <h5 style="margin-top: 0; color: white; font-size: 1.1rem;">🛡️ Adaptive Learning</h5>
+            <p style="font-size: 14px; line-height: 1.6; opacity: 0.95;">Models continuously learn from new fraud patterns,
+            improving detection accuracy by 2.8% quarter-over-quarter. Automated model retraining keeps
+            pace with evolving fraud tactics.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with insight_cards_col3:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                    padding: 15px; border-radius: 10px; color: white;">
-            <h5 style="margin-top: 0; color: white;">💰 Financial Impact</h5>
-            <p style="font-size: 14px;">ML-powered fraud prevention has saved $3.8M this
-            month, with false positive rates down 29% from last quarter.</p>
+                    padding: 18px; border-radius: 10px; color: white; min-height: 160px;
+                    box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);">
+            <h5 style="margin-top: 0; color: white; font-size: 1.1rem;">💰 Financial Impact</h5>
+            <p style="font-size: 14px; line-height: 1.6; opacity: 0.95;">ML-powered fraud prevention has saved $3.8M this
+            month, with false positive rates down 29% from last quarter. Maximizing protection while
+            minimizing analyst workload.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1226,6 +1260,23 @@ def render():
                 st.rerun()
             else:
                 st.warning("Please enter an account ID")
+
+    # Professional Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #f5f7fa 0%, #e5f1fa 100%);
+                padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center;">
+        <p style="color: #4a5568; margin: 0; font-size: 0.9rem;">
+            <strong>Fraud Transaction Monitoring</strong> | Last Updated: {datetime} |
+            Real-time fraud surveillance powered by advanced ML models
+        </p>
+        <p style="color: #718096; margin: 8px 0 0 0; font-size: 0.85rem;">
+            For fraud escalations: <strong>fraud-ops@company.com</strong> |
+            24/7 SOC Hotline: <strong>1-800-FRAUD-OPS</strong> |
+            Internal Ext: <strong>5555</strong>
+        </p>
+    </div>
+    """.format(datetime=datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
