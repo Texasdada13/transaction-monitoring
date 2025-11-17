@@ -1196,41 +1196,35 @@ def render():
     </div>
     """, unsafe_allow_html=True)
 
-    insight_cards_col1, insight_cards_col2, insight_cards_col3 = st.columns(3, gap="medium")
+    insight_cards_col1, insight_cards_col2, insight_cards_col3 = st.columns(3)
 
     with insight_cards_col1:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    padding: 18px; border-radius: 10px; color: white; min-height: 160px;
-                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
-            <h5 style="margin-top: 0; color: white; font-size: 1.1rem;">🎯 Real-time Detection</h5>
-            <p style="font-size: 14px; line-height: 1.6; opacity: 0.95;">ML models process 1,247 transactions per minute
-            with 98.2% accuracy, blocking fraudulent transactions in under 6ms. Lightning-fast protection
-            with minimal latency impact on customer experience.</p>
+                    padding: 15px; border-radius: 10px; color: white; height: 150px;">
+            <h5 style="margin-top: 0; color: white;">🎯 Real-time Detection</h5>
+            <p style="font-size: 14px;">ML models process 1,247 transactions per minute
+            with 98.2% accuracy, blocking fraudulent transactions in under 6ms.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with insight_cards_col2:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                    padding: 18px; border-radius: 10px; color: white; min-height: 160px;
-                    box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);">
-            <h5 style="margin-top: 0; color: white; font-size: 1.1rem;">🛡️ Adaptive Learning</h5>
-            <p style="font-size: 14px; line-height: 1.6; opacity: 0.95;">Models continuously learn from new fraud patterns,
-            improving detection accuracy by 2.8% quarter-over-quarter. Automated model retraining keeps
-            pace with evolving fraud tactics.</p>
+                    padding: 15px; border-radius: 10px; color: white; height: 150px;">
+            <h5 style="margin-top: 0; color: white;">🛡️ Adaptive Learning</h5>
+            <p style="font-size: 14px;">Models continuously learn from new fraud patterns,
+            improving detection accuracy by 2.8% quarter-over-quarter.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with insight_cards_col3:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                    padding: 18px; border-radius: 10px; color: white; min-height: 160px;
-                    box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);">
-            <h5 style="margin-top: 0; color: white; font-size: 1.1rem;">💰 Financial Impact</h5>
-            <p style="font-size: 14px; line-height: 1.6; opacity: 0.95;">ML-powered fraud prevention has saved $3.8M this
-            month, with false positive rates down 29% from last quarter. Maximizing protection while
-            minimizing analyst workload.</p>
+                    padding: 15px; border-radius: 10px; color: white; height: 150px;">
+            <h5 style="margin-top: 0; color: white;">💰 Financial Impact</h5>
+            <p style="font-size: 14px;">ML-powered fraud prevention has saved $3.8M this
+            month, with false positive rates down 29% from last quarter.</p>
         </div>
         """, unsafe_allow_html=True)
 
