@@ -562,22 +562,6 @@ def render():
         </div>
         """, unsafe_allow_html=True)
 
-    # Professional Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #f5f7fa 0%, #e5f1fa 100%);
-                padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center;">
-        <p style="color: #4a5568; margin: 0; font-size: 0.9rem;">
-            <strong>Geographic & Behavioral Analytics</strong> | Last Updated: {datetime} |
-            Location intelligence and anomaly detection powered by AI/ML
-        </p>
-        <p style="color: #718096; margin: 8px 0 0 0; font-size: 0.85rem;">
-            For geographic fraud alerts: <strong>fraud-ops@company.com</strong> |
-            VPN Detection Support: <strong>geo-intel@company.com</strong>
-        </p>
-    </div>
-    """.format(datetime=datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
-
 if __name__ == "__main__":
     render()
     

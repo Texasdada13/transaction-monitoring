@@ -1255,23 +1255,6 @@ def render():
             else:
                 st.warning("Please enter an account ID")
 
-    # Professional Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #f5f7fa 0%, #e5f1fa 100%);
-                padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center;">
-        <p style="color: #4a5568; margin: 0; font-size: 0.9rem;">
-            <strong>Fraud Transaction Monitoring</strong> | Last Updated: {datetime} |
-            Real-time fraud surveillance powered by advanced ML models
-        </p>
-        <p style="color: #718096; margin: 8px 0 0 0; font-size: 0.85rem;">
-            For fraud escalations: <strong>fraud-ops@company.com</strong> |
-            24/7 SOC Hotline: <strong>1-800-FRAUD-OPS</strong> |
-            Internal Ext: <strong>5555</strong>
-        </p>
-    </div>
-    """.format(datetime=datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
-
 
 if __name__ == "__main__":
     render()
