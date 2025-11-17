@@ -796,7 +796,7 @@ def render():
 
     # Professional gradient header
     st.markdown("""
-    <div style='background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 28px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);'>
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 28px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
         <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700;'>
             🛡️ Fraud Transaction Monitoring
         </h1>
