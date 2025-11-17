@@ -1790,8 +1790,8 @@ def render():
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 padding: 20px; border-radius: 10px; margin-top: 30px; text-align: center; color: white;">
         <p style="margin: 0; font-size: 14px;">
-            <strong>© 2024 Arriba Advisors | Compliance & KYC Analytics Dashboard</strong><br>
-            For compliance inquiries: compliance@arribadvisors.com | Regulatory Support: +1 (555) 234-5678<br>
+            <strong>© 2025 | Compliance & KYC Analytics Dashboard</strong><br>
+            For compliance inquiries: compliance@company.com | Regulatory Support: +1 (999) 999-9999<br>
             Last Updated: """ + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + """
         </p>
     </div>

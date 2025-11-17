@@ -86,7 +86,7 @@ def render():
 
     # Key Geographic Metrics Callout
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                 padding: 20px; border-radius: 12px; margin: 20px 0; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
         <div style="color: white; text-align: center;">
             <h3 style="margin: 0; color: white; font-size: 1.3rem;">🌐 Geographic Threat Intelligence</h3>
