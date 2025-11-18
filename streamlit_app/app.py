@@ -472,8 +472,8 @@ def main_dashboard():
         from streamlit_app.pages import Scenario_Analysis
         Scenario_Analysis.render()
     elif page == "Operational Analytics":
-        from streamlit_app.pages import operational_analytics
-        operational_analytics.render()
+        from streamlit_app.pages import Operational_Analytics
+        Operational_Analytics.render()
     elif page == "Geo Analytics":
         from streamlit_app.pages import Geo_Analytics
         Geo_Analytics.render()
