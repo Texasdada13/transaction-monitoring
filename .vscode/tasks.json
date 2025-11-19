@@ -50,15 +50,17 @@
     {
       "label": "Open Browser",
       "type": "shell",
-      "command": "timeout /t 5 /nobreak && start http://localhost:8501",
       "windows": {
-        "command": "timeout /t 5 /nobreak && start http://localhost:8501"
+        "command": "cmd",
+        "args": ["/c", "timeout /t 5 /nobreak && start http://localhost:8501"]
       },
       "linux": {
-        "command": "sleep 5 && xdg-open http://localhost:8501"
+        "command": "bash",
+        "args": ["-c", "sleep 5 && xdg-open http://localhost:8501"]
       },
       "osx": {
-        "command": "sleep 5 && open http://localhost:8501"
+        "command": "bash",
+        "args": ["-c", "sleep 5 && open http://localhost:8501"]
       },
       "problemMatcher": [],
       "presentation": {
