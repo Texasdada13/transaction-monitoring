@@ -1,0 +1,12 @@
+*.md
+docs/
+tests/
+.git/
+.vscode/
+.claude/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
