@@ -28,7 +28,7 @@ from streamlit_app.explainability import get_explainability_engine
 def load_compliance_data():
     """Load all compliance datasets"""
     try:
-        data_dir = Path("C:/Users/dada_/OneDrive/Documents/transaction-monitoring/compliance_dataset")
+        data_dir = Path("compliance_dataset")
 
         customers_df = pd.read_csv(data_dir / "customer_profiles.csv")
         transactions_df = pd.read_csv(data_dir / "transactions.csv")
