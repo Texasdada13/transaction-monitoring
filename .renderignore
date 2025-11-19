@@ -1,0 +1,70 @@
+# Render Ignore File
+# Files and directories to exclude from deployment
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Local database
+*.db
+*.sqlite
+*.sqlite3
+transaction_monitoring.db
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation (optional - remove if you want docs deployed)
+*.md
+!RENDER_DEPLOYMENT.md
+docs/
+repo-backup/
+
+# Test files
+tests/
+test_*.py
+*_test.py
+pytest.ini
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Excel and data files (if not needed in production)
+*.xlsx
+*.csv
+compliance_dataset/
+
+# Backup directories
+repo-backup/
+transaction-monitoring/
+
+# Local scripts
+setup.sh
+setup.ps1
+start_dashboard.sh
+generate_test_data.py
+generate_compliance_dataset.py
+create_sales_analysis.py
+test_*.py

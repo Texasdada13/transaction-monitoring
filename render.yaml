@@ -1,0 +1,30 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: transaction-monitoring-db
+    env: docker
+    plan: free  # Free tier PostgreSQL
+    region: oregon
+
+  # Web service for Streamlit dashboard
+  - type: web
+    name: transaction-monitoring-dashboard
+    env: python
+    region: oregon
+    plan: free  # Change to 'starter' ($7/month) for better performance
+    buildCommand: pip install --upgrade pip && pip install -r requirements-render.txt
+    startCommand: streamlit run streamlit_app/app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=true
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: transaction-monitoring-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Add your Anthropic API key in Render dashboard
+      - key: STREAMLIT_SERVER_PORT
+        value: $PORT
+      - key: STREAMLIT_SERVER_ADDRESS
+        value: 0.0.0.0
