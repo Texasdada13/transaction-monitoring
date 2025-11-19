@@ -5,6 +5,8 @@ services:
     env: docker
     plan: free  # Free tier PostgreSQL
     region: oregon
+    databaseName: transaction_monitoring
+    databaseUser: transaction_user
 
   # FastAPI Backend API
   - type: web
