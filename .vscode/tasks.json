@@ -1,0 +1,81 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start FastAPI Backend",
+      "type": "shell",
+      "command": "${workspaceFolder}/venv/Scripts/python.exe",
+      "args": [
+        "-m",
+        "uvicorn",
+        "api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "dev"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "Start Streamlit Dashboard",
+      "type": "shell",
+      "command": "${workspaceFolder}/venv/Scripts/python.exe",
+      "args": [
+        "-m",
+        "streamlit",
+        "run",
+        "streamlit_app/app.py"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "dev"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "Open Browser",
+      "type": "shell",
+      "command": "timeout /t 5 /nobreak && start http://localhost:8501",
+      "windows": {
+        "command": "timeout /t 5 /nobreak && start http://localhost:8501"
+      },
+      "linux": {
+        "command": "sleep 5 && xdg-open http://localhost:8501"
+      },
+      "osx": {
+        "command": "sleep 5 && open http://localhost:8501"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "never"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "Start All Services",
+      "dependsOn": [
+        "Start FastAPI Backend",
+        "Start Streamlit Dashboard",
+        "Open Browser"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
