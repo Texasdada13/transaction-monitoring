@@ -1,15 +1,54 @@
 services:
-  # FastAPI Backend
+  # PostgreSQL Database
+  - type: pserv
+    name: transaction-monitoring-db
+    env: docker
+    plan: free  # Free tier PostgreSQL
+    region: oregon
+
+  # FastAPI Backend API
   - type: web
     name: transaction-monitor-api
     env: python
-    buildCommand: pip install -r requirements.txt
+    region: oregon
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r requirements-render.txt
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: transaction-monitoring-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Add your Anthropic API key in Render dashboard
 
-  # Streamlit Frontend
+  # Streamlit Dashboard Frontend
   - type: web
-    name: transaction-monitor-dashboard
+    name: transaction-monitoring-dashboard
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run streamlit_app/app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
+    region: oregon
+    plan: free  # Change to 'starter' ($7/month) for better performance
+    buildCommand: pip install --upgrade pip && pip install -r requirements-render.txt
+    startCommand: streamlit run streamlit_app/app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=true
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: transaction-monitoring-db
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Add your Anthropic API key in Render dashboard
+      - key: API_BASE_URL
+        fromService:
+          type: web
+          name: transaction-monitor-api
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: STREAMLIT_SERVER_PORT
+        value: $PORT
+      - key: STREAMLIT_SERVER_ADDRESS
+        value: 0.0.0.0

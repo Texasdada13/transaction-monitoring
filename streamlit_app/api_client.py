@@ -464,7 +464,8 @@ def get_api_client() -> FraudAPIClient:
     if "api_client" not in st.session_state:
         # Get API URL from environment or use default
         import os
-        api_url = os.getenv("API_URL", "http://localhost:8000")
+        # Check multiple environment variable names for flexibility
+        api_url = os.getenv("API_BASE_URL") or os.getenv("API_URL", "http://localhost:8000")
         st.session_state.api_client = FraudAPIClient(api_url)
 
     return st.session_state.api_client
