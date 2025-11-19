@@ -533,25 +533,257 @@ def render():
     # Apply theme
     apply_master_theme()
 
-    # Header
-    render_page_header(
-        title="Attack Pattern Simulator",
-        subtitle="Comprehensive Analysis of 13 Fraud Detection Scenarios",
-        show_logo=False
-    )
+    # Professional CSS for aesthetic design
+    st.markdown("""
+    <style>
+    /* Global Aesthetics */
+    .block-container {
+        padding-top: 0.5rem;
+        padding-bottom: 1rem;
+        max-width: 1400px;
+    }
+
+    /* Professional Card Styling for Containers */
+    [data-testid="column"] > div > div > div {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+
+    /* Hover effect for card containers */
+    [data-testid="column"] > div > div > div:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    /* Professional Card Styling */
+    .dashboard-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+        border-left: 4px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .dashboard-card.critical {
+        border-left-color: #E54848;
+        background: linear-gradient(to right, #fff5f5 0%, white 10%);
+    }
+
+    .dashboard-card.success {
+        border-left-color: #2E865F;
+        background: linear-gradient(to right, #f0fdf4 0%, white 10%);
+    }
+
+    .dashboard-card.primary {
+        border-left-color: #667eea;
+        background: linear-gradient(to right, #f5f7ff 0%, white 10%);
+    }
+
+    .dashboard-card.warning {
+        border-left-color: #F3B65B;
+        background: linear-gradient(to right, #fffbf0 0%, white 10%);
+    }
+
+    /* Section Headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-header h2 {
+        margin: 0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .section-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Subsection Headers */
+    .subsection-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .subsection-header h3 {
+        margin: 0 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    /* Compact Spacing */
+    .stMarkdown {
+        margin-bottom: 0.3rem;
+    }
+
+    h2 {
+        margin-top: 0.8rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    h3 {
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    /* Dataframe Styling */
+    .stDataFrame {
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* Chart Containers */
+    .js-plotly-plot {
+        margin-bottom: 0 !important;
+        border-radius: 8px;
+    }
+
+    /* Metrics Enhancement */
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    [data-testid="stMetricDelta"] {
+        font-size: 0.9rem;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Column Gap Reduction */
+    [data-testid="column"] {
+        padding: 0 0.4rem;
+    }
+
+    /* Professional Button Styling */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        border-color: #667eea;
+    }
+
+    /* Caption Styling */
+    .stCaptionContainer {
+        margin-top: 8px;
+    }
+
+    /* Info Box Styling */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 4px;
+    }
+
+    /* Divider Styling */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    }
+
+    /* Gradient Text */
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+    }
+
+    /* Expander Styling */
+    .streamlit-expanderHeader {
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Professional Header with Gradient
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+            🎯 Attack Pattern Simulator
+        </h1>
+        <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1.1rem; font-weight: 500;'>
+            Comprehensive Analysis of 13 Fraud Detection Scenarios
+        </p>
+        <div style='display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 6px 14px; background: rgba(255,255,255,0.2); border-radius: 20px; backdrop-filter: blur(10px);'>
+            <div style='width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite;'></div>
+            <span style='color: white; font-size: 0.85rem; font-weight: 600;'>SYSTEM ACTIVE</span>
+        </div>
+    </div>
+
+    <style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Get standardized chart colors
     colors = get_chart_colors()
 
-    # --- Top-of-page scenario selector (main area) ---
-    st.markdown("### 🔽 Scenario Selector")
+    # ==================== SECTION 1: Scenario Selector ====================
+    st.markdown("""
+    <div class='section-header'>
+        <h2>🔽 Scenario Selector</h2>
+        <span class='section-badge'>INTERACTIVE</span>
+    </div>
+    """, unsafe_allow_html=True)
+
     scenario_key_top = st.selectbox(
         "Select a fraud scenario to analyze:",
         options=list(fraud_scenarios.keys()),
         format_func=lambda x: fraud_scenarios[x]['title'],
         key="scenario_key_top",
     )
-    st.markdown("---")
 
     # Sidebar for scenario selection
     with st.sidebar:
@@ -573,28 +805,43 @@ def render():
     active_scenario_key = st.session_state.get("scenario_key_top", None) or scenario_key
     scenario = fraud_scenarios[active_scenario_key]
 
+    # ==================== SECTION 2: Scenario Overview ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>📋 Scenario Overview</h2>
+        <span class='section-badge'>ANALYSIS</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Scenario title card
+    st.markdown(f"""
+    <div class='dashboard-card primary'>
+        <h3 style='margin: 0 0 8px 0; color: #1a202c; font-size: 1.3rem;'>{scenario['title']}</h3>
+        <p style='margin: 0; color: #718096; font-size: 0.95rem;'>{scenario['subtitle']}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Risk Score Header
-    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+    col1, col2, col3, col4 = st.columns([2, 1, 1, 1], gap="medium")
     with col1:
-        st.markdown(f"### {scenario['title']}")
-        st.caption(scenario['subtitle'])
+        st.markdown(f"**Transaction Type:** {scenario['transaction_type']}")
+        st.markdown(f"**Customer Profile:** {scenario['customer_profile']}")
     with col2:
-        risk_color = "🔴" if scenario['risk_score'] >= 90 else "🟠" if scenario['risk_score'] >= 75 else "🟡"
+        # Color logic: Red for >= 85, Yellow for 70-84, Green for < 70
+        risk_color = "🔴" if scenario['risk_score'] >= 85 else "🟡" if scenario['risk_score'] >= 70 else "🟢"
         st.metric("Risk Score", f"{scenario['risk_score']}/100 {risk_color}")
     with col3:
         st.metric("Profile", scenario['customer_profile'].split(' - ')[0])
     with col4:
         st.metric("Outcome", scenario['outcome'])
-            # Key Information Row
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"**Transaction Type:** {scenario['transaction_type']}")
-    with col2:
-        st.markdown(f"**Customer Profile:** {scenario['customer_profile']}")
 
-    st.markdown("---")
-
-    st.markdown("### 🎯 Analyst Decision & Recommendation")
+    # ==================== SECTION 3: Analyst Decision ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🎯 Analyst Decision & Recommendation</h2>
+        <span class='section-badge'>DECISION</span>
+    </div>
+    """, unsafe_allow_html=True)
 
     decision_col1, decision_col2 = st.columns([2, 1])
 
@@ -645,11 +892,22 @@ def render():
             }
         )
 
-        st.info(scenario_insight)
+        st.markdown(f"""
+        <div style='background: linear-gradient(135deg, #e3f2fd, #bbdefb); padding: 16px; border-radius: 10px; border-left: 5px solid #2196f3; margin-top: 16px;'>
+            <div style='color: #1565c0; font-size: 0.9rem; line-height: 1.6;'>
+                {scenario_insight}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Timeline Section
     if show_timeline:
-        st.markdown("### ⏱️ Detection Timeline")
+        st.markdown("""
+        <div class='section-header' style='margin-top: 28px;'>
+            <h2>⏱️ Detection Timeline</h2>
+            <span class='section-badge'>CHRONOLOGY</span>
+        </div>
+        """, unsafe_allow_html=True)
         
         timeline_df = pd.DataFrame(scenario['timeline'])
         
@@ -661,11 +919,14 @@ def render():
             }.get(row['status'], '⚪')
             
             st.markdown(f"{status_class} **{row['time']}** - {row['event']}")
-        
-        st.markdown("---")
 
-    # Triggered Rules Section
-    st.markdown("### 🚨 Triggered Rules & Risk Contribution")
+    # ==================== SECTION 4: Triggered Rules ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🚨 Triggered Rules & Risk Contribution</h2>
+        <span class='section-badge'>DETECTION</span>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Create rule contribution chart
     rule_df = pd.DataFrame(scenario['triggered_rules'])
@@ -778,7 +1039,11 @@ def render():
     st.plotly_chart(fig_rules, use_container_width=True)
 
     # Detailed rules table
-    st.markdown("#### Detailed Rule Analysis")
+    st.markdown("""
+    <div class='subsection-header' style='margin-top: 20px;'>
+        <h3>📋 Detailed Rule Analysis</h3>
+    </div>
+    """, unsafe_allow_html=True)
     for idx, rule in enumerate(scenario['triggered_rules']):
         severity_emoji = {
             'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '🔵'
@@ -789,22 +1054,28 @@ def render():
             st.markdown(f"**Detail:** {rule['detail']}")
             st.markdown(f"**Risk Contribution:** {rule['weight']} points")
 
-    st.markdown("---")
-
     # Metrics Section
     if show_metrics:
-        st.markdown("### 📈 Key Detection Metrics")
+        st.markdown("""
+        <div class='section-header' style='margin-top: 28px;'>
+            <h2>📈 Key Detection Metrics</h2>
+            <span class='section-badge'>METRICS</span>
+        </div>
+        """, unsafe_allow_html=True)
         
         metrics_cols = st.columns(len(scenario['metrics']))
         for idx, (key, value) in enumerate(scenario['metrics'].items()):
             with metrics_cols[idx]:
                 st.metric(key, value)
-        
-        st.markdown("---")
 
     # Advanced Visualizations
     if show_visualizations and 'visualization_data' in scenario:
-        st.markdown("### 📊 Advanced Analysis Visualizations")
+        st.markdown("""
+        <div class='section-header' style='margin-top: 28px;'>
+            <h2>📊 Advanced Analysis Visualizations</h2>
+            <span class='section-badge'>VISUAL ANALYTICS</span>
+        </div>
+        """, unsafe_allow_html=True)
         
         viz_data = scenario['visualization_data']
         
@@ -958,10 +1229,14 @@ def render():
             )
 
             st.plotly_chart(fig_test, use_container_width=True)
-        
+
         # Scenario 4: Money Mule Flow
         if 'flow' in viz_data:
-            st.markdown("#### Money Flow Diagram")
+            st.markdown("""
+            <div class='subsection-header' style='margin-top: 20px;'>
+                <h3>💸 Money Flow Diagram</h3>
+            </div>
+            """, unsafe_allow_html=True)
             
             flow = viz_data['flow']
             
@@ -978,10 +1253,14 @@ def render():
                 st.markdown(f"**Total Outgoing:** ${sum(flow['outgoing'])}")
                 retention = sum(flow['incoming']) - sum(flow['outgoing'])
                 st.markdown(f"**Retained:** ${retention} ({retention/sum(flow['incoming'])*100:.1f}%)")
-        
+
         # Scenario 5: Device Comparison
         if 'device_comparison' in viz_data:
-            st.markdown("#### Device & Access Profile Comparison")
+            st.markdown("""
+            <div class='subsection-header' style='margin-top: 20px;'>
+                <h3>📱 Device & Access Profile Comparison</h3>
+            </div>
+            """, unsafe_allow_html=True)
             
             comparison = viz_data['device_comparison']
             
@@ -1000,10 +1279,14 @@ def render():
                 st.markdown(f"🌍 Location: {comparison['suspicious']['location']} 🔴")
                 st.markdown(f"🔓 VPN: {comparison['suspicious']['vpn']} 🔴")
                 st.markdown(f"⌨️ Typing Speed: {comparison['suspicious']['typing_wpm']} wpm 🔴")
-        
+
         # Scenario 13: Refund Chain
         if 'chain' in viz_data:
-            st.markdown("#### Transaction Chain Visualization")
+            st.markdown("""
+            <div class='subsection-header' style='margin-top: 20px;'>
+                <h3>🔗 Transaction Chain Visualization</h3>
+            </div>
+            """, unsafe_allow_html=True)
             
             chain_df = pd.DataFrame(viz_data['chain'])
             
@@ -1011,13 +1294,13 @@ def render():
                 emoji = "📥" if row['type'] == 'payment' else "📤"
                 st.markdown(f"{emoji} {row['from']} → {row['to']}: **${row['amount']}** ({row['type']})")
 
-    st.markdown("---")
-
     # Decision Section
- 
-
     with decision_col2:
-        st.markdown("### Action Buttons")
+        st.markdown("""
+        <div class='subsection-header' style='margin-top: 20px;'>
+            <h3>⚡ Action Buttons</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         if st.button("🔴 REJECT TRANSACTION", type="primary"):
             st.error("Transaction rejected and account flagged for review")
@@ -1031,12 +1314,15 @@ def render():
         if st.button("📞 CONTACT CUSTOMER"):
             st.info("Verification call initiated")
 
-    st.markdown("---")
+    # ==================== SECTION 5: Summary Statistics ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>📊 Scenario Summary Statistics</h2>
+        <span class='section-badge'>SUMMARY</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Summary Statistics
-    st.markdown("### 📊 Scenario Summary Statistics")
-
-    summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+    summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4, gap="medium")
 
     with summary_col1:
         st.metric("Total Rules Triggered", len(scenario['triggered_rules']))
@@ -1049,9 +1335,30 @@ def render():
     with summary_col4:
         st.metric("Detection Time", "Real-time" if scenario['risk_score'] >= 85 else "< 1 min")
 
-    st.markdown("---")
-    st.caption("💡 **Note:** All scenarios are based on real fraud patterns and detection methodologies used in financial institutions.")
-    st.caption(f"**System Status:** 🟢 Active | **Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    # ==================== FOOTER ====================
+    st.markdown("<hr style='margin-top: 32px;'>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #f7fafc, #edf2f7); padding: 20px; border-radius: 12px; margin-top: 20px;'>
+        <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;'>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Total Scenarios</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>13 • Active</p>
+            </div>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Last Updated</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>{}</p>
+            </div>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>System Status</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>🟢 Active</p>
+            </div>
+        </div>
+        <p style='margin: 16px 0 0 0; text-align: center; color: #a0aec0; font-size: 0.8rem;'>
+            💡 All scenarios based on real fraud patterns and detection methodologies • © 2024 All rights reserved.
+        </p>
+    </div>
+    """.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
 
 if __name__ == "__main__":
     render()

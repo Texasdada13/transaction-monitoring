@@ -1,12 +1,11 @@
 """
-Arriba Advisors - Master Theme and Branding
 Centralized theme configuration for consistent styling across all dashboard pages.
 """
 
 import streamlit as st
 import os
 
-# Arriba Advisors Color Palette
+# Color Palette
 COLORS = {
     # Primary Palette
     'dark_blue': '#002B5B',        # Main brand color
@@ -57,12 +56,11 @@ def get_logo_url():
 
 def apply_master_theme():
     """
-    Apply the Arriba Advisors master theme to the current page.
     Should be called at the start of each page's render() function.
     """
     st.markdown(f"""
     <style>
-        /* ===== ARRIBA ADVISORS MASTER THEME ===== */
+        /* ===== MASTER THEME ===== */
 
         /* Color Variables */
         :root {{

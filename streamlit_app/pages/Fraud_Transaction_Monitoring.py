@@ -266,10 +266,10 @@ def render_transaction_search():
                 fig_dist.update_layout(
                     xaxis_title="Risk Score",
                     yaxis_title="Transaction Count",
-                    height=400,
+                    height=350,
                     bargap=0.05
                 )
-                st.plotly_chart(fig_dist, use_container_width=True)
+                st.plotly_chart(fig_dist, use_container_width=True, key="fraud_risk_dist")
 
             # Amount vs Risk (Scatter)
             with viz_col2:
@@ -330,10 +330,10 @@ def render_transaction_search():
                 fig_scatter.update_layout(
                     xaxis_title="Transaction Amount ($)",
                     yaxis_title="Risk Score",
-                    height=400,
+                    height=350,
                     hovermode='closest'
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                st.plotly_chart(fig_scatter, use_container_width=True, key="fraud_scatter")
 
             st.divider()
             st.markdown("#### Results")
@@ -722,12 +722,117 @@ def render():
     # Apply theme
     apply_master_theme()
 
-    # Header
-    render_page_header(
-        title="Fraud Surveillance Hub",
-        subtitle="Real-Time Fraud Detection & Alert Management",
-        show_logo=False
-    )
+    # Professional CSS for card-based layout
+    st.markdown("""
+    <style>
+    /* Global Aesthetics */
+    .block-container {
+        padding-top: 0.5rem;
+        padding-bottom: 1rem;
+        max-width: 1400px;
+    }
+
+    /* Professional Card Styling for Containers */
+    [data-testid="column"] > div > div > div {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+
+    [data-testid="column"] > div > div > div:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    /* Section Headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-header h2, .section-header h3 {
+        margin: 0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .section-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Compact spacing */
+    h2, h3 {
+        margin-top: 0.8rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    /* Metrics Enhancement */
+    [data-testid="stMetricValue"] {
+        font-size: 1.6rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Professional gradient header
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 28px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700;'>
+            🛡️ Fraud Transaction Monitoring
+        </h1>
+        <p style='color: rgba(255,255,255,0.95); margin: 10px 0 0 0; font-size: 1.05rem;'>
+            Real-time fraud detection, intelligent transaction search, and advanced ML-powered surveillance
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Key Performance Metrics Callout
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                padding: 20px; border-radius: 12px; margin: 20px 0; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+        <div style="color: white; text-align: center;">
+            <h3 style="margin: 0; color: white; font-size: 1.3rem;">📊 Real-Time Fraud Protection Metrics</h3>
+            <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">$3.8M</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">Prevented This Month</div>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">98.2%</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">ML Detection Rate</div>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">6ms</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">Detection Latency</div>
+                </div>
+                <div>
+                    <div style="font-size: 2rem; font-weight: bold;">347</div>
+                    <div style="font-size: 0.9rem; opacity: 0.95;">Real-time Blocks Today</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Get standardized chart colors
     colors = get_chart_colors()
@@ -753,11 +858,14 @@ def render():
     render_transaction_search()
 
     # ML Intelligence for Fraud Monitoring
-    st.divider()
-    st.markdown("## 🤖 ML-Powered Fraud Intelligence")
-    st.markdown("*Real-time machine learning insights for fraud detection and prevention*")
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🤖 ML-Powered Fraud Intelligence</h2>
+        <span class='section-badge'>AI-POWERED</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    ml_fraud_col1, ml_fraud_col2, ml_fraud_col3, ml_fraud_col4 = st.columns(4)
+    ml_fraud_col1, ml_fraud_col2, ml_fraud_col3, ml_fraud_col4 = st.columns(4, gap="medium")
 
     with ml_fraud_col1:
         st.metric("ML Fraud Detection", "98.2%", "+2.8%")
@@ -768,10 +876,10 @@ def render():
     with ml_fraud_col4:
         st.metric("Detection Latency", "6ms", "-1ms")
 
-    ml_fraud_viz_col1, ml_fraud_viz_col2 = st.columns(2)
+    ml_fraud_viz_col1, ml_fraud_viz_col2 = st.columns(2, gap="medium")
 
     with ml_fraud_viz_col1:
-        st.markdown("### 🎯 ML Fraud Detection by Category")
+        st.markdown("#### 🎯 ML Fraud Detection by Category")
 
         fraud_categories = [
             'Account Takeover',
@@ -863,18 +971,20 @@ def render():
         ))
 
         fig_fraud_detection.update_layout(
-            title="ML Detection Performance by Fraud Type",
-            yaxis=dict(title='Detection Rate (%)', range=[90, 102]),
-            yaxis2=dict(title='Cases Detected', overlaying='y', side='right'),
-            height=350,
-            xaxis=dict(tickangle=-45),
-            hovermode='x unified'
+            yaxis=dict(title='Detection Rate (%)', range=[90, 102], title_font_size=11),
+            yaxis2=dict(title='Cases Detected', overlaying='y', side='right', title_font_size=11),
+            height=300,
+            margin=dict(l=10, r=10, t=10, b=40),
+            xaxis=dict(tickangle=-45, tickfont=dict(size=10)),
+            hovermode='x unified',
+            showlegend=True,
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1, font=dict(size=10))
         )
 
         st.plotly_chart(fig_fraud_detection, use_container_width=True, key="ml_fraud_detection")
 
     with ml_fraud_viz_col2:
-        st.markdown("### 📊 ML Anomaly Score Distribution")
+        st.markdown("#### 📊 ML Anomaly Score Distribution")
 
         # Generate anomaly scores
         np.random.seed(42)
@@ -905,18 +1015,25 @@ def render():
                              annotation_text="Block Threshold")
 
         fig_anomaly.update_layout(
-            title="ML Anomaly Score Distribution",
             xaxis_title="Anomaly Score",
             yaxis_title="Frequency",
-            height=350
+            height=300,
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(title_font_size=11),
+            yaxis=dict(title_font_size=11)
         )
 
         st.plotly_chart(fig_anomaly, use_container_width=True, key="ml_anomaly_dist")
 
     # ML Model Performance Tracking
-    st.markdown("### 📈 ML Model Performance Tracking")
+    st.markdown("""
+    <div class='section-header' style='margin-top: 24px;'>
+        <h3>📈 ML Model Performance Tracking</h3>
+        <span class='section-badge'>LIVE</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    perf_track_col1, perf_track_col2, perf_track_col3 = st.columns(3)
+    perf_track_col1, perf_track_col2, perf_track_col3 = st.columns(3, gap="medium")
 
     with perf_track_col1:
         st.markdown("#### Detection Accuracy Trend")
@@ -966,7 +1083,8 @@ def render():
 
         fig_acc_trend.update_layout(
             height=250,
-            yaxis=dict(range=[96, 99], title='Accuracy (%)'),
+            margin=dict(l=10, r=10, t=10, b=10),
+            yaxis=dict(range=[96, 99], title='Accuracy (%)', title_font_size=11),
             showlegend=False
         )
 
@@ -1019,7 +1137,8 @@ def render():
 
         fig_fp_trend.update_layout(
             height=250,
-            yaxis=dict(range=[0, 0.1], title='FP Rate'),
+            margin=dict(l=10, r=10, t=10, b=10),
+            yaxis=dict(range=[0, 0.1], title='FP Rate', title_font_size=11),
             showlegend=False
         )
 
@@ -1062,21 +1181,27 @@ def render():
 
         fig_prevented.update_layout(
             height=250,
-            yaxis=dict(title='Amount ($M)'),
+            margin=dict(l=10, r=10, t=10, b=10),
+            yaxis=dict(title='Amount ($M)', title_font_size=11),
             showlegend=False
         )
 
         st.plotly_chart(fig_prevented, use_container_width=True, key="fraud_prevented")
 
     # ML Insights Summary
-    st.markdown("### 💡 ML Intelligence Summary")
+    st.markdown("""
+    <div class='section-header' style='margin-top: 24px;'>
+        <h3>💡 ML Intelligence Summary</h3>
+        <span class='section-badge'>INSIGHTS</span>
+    </div>
+    """, unsafe_allow_html=True)
 
     insight_cards_col1, insight_cards_col2, insight_cards_col3 = st.columns(3)
 
     with insight_cards_col1:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    padding: 15px; border-radius: 10px; color: white;">
+                    padding: 15px; border-radius: 10px; color: white; height: 150px;">
             <h5 style="margin-top: 0; color: white;">🎯 Real-time Detection</h5>
             <p style="font-size: 14px;">ML models process 1,247 transactions per minute
             with 98.2% accuracy, blocking fraudulent transactions in under 6ms.</p>
@@ -1086,7 +1211,7 @@ def render():
     with insight_cards_col2:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                    padding: 15px; border-radius: 10px; color: white;">
+                    padding: 15px; border-radius: 10px; color: white; height: 150px;">
             <h5 style="margin-top: 0; color: white;">🛡️ Adaptive Learning</h5>
             <p style="font-size: 14px;">Models continuously learn from new fraud patterns,
             improving detection accuracy by 2.8% quarter-over-quarter.</p>
@@ -1096,7 +1221,7 @@ def render():
     with insight_cards_col3:
         st.markdown("""
         <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                    padding: 15px; border-radius: 10px; color: white;">
+                    padding: 15px; border-radius: 10px; color: white; height: 150px;">
             <h5 style="margin-top: 0; color: white;">💰 Financial Impact</h5>
             <p style="font-size: 14px;">ML-powered fraud prevention has saved $3.8M this
             month, with false positive rates down 29% from last quarter.</p>
@@ -1104,10 +1229,14 @@ def render():
         """, unsafe_allow_html=True)
 
     # Quick access section
-    st.divider()
-    st.markdown("### ⚡ Quick Access")
+    st.markdown("""
+    <div class='section-header' style='margin-top: 24px;'>
+        <h3>⚡ Quick Access</h3>
+        <span class='section-badge'>SHORTCUTS</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2, gap="medium")
 
     with col1:
         st.markdown("#### Recent High-Risk Transactions")

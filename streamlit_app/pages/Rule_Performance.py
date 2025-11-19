@@ -60,21 +60,250 @@ def render():
     # Apply theme
     apply_master_theme()
 
-    # Header
-    render_page_header(
-        title="Detection Rule Observatory",
-        subtitle="Fraud Detection Rule Effectiveness & Optimization Metrics",
-        show_logo=False
-    )
+    # Professional CSS for aesthetic design
+    st.markdown("""
+    <style>
+    /* Global Aesthetics */
+    .block-container {
+        padding-top: 0.5rem;
+        padding-bottom: 1rem;
+        max-width: 1400px;
+    }
+
+    /* Professional Card Styling for Containers */
+    [data-testid="column"] > div > div > div {
+        background: white;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+    }
+
+    /* Hover effect for card containers */
+    [data-testid="column"] > div > div > div:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    /* Professional Card Styling */
+    .dashboard-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+        border-left: 4px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .dashboard-card.critical {
+        border-left-color: #E54848;
+        background: linear-gradient(to right, #fff5f5 0%, white 10%);
+    }
+
+    .dashboard-card.success {
+        border-left-color: #2E865F;
+        background: linear-gradient(to right, #f0fdf4 0%, white 10%);
+    }
+
+    .dashboard-card.primary {
+        border-left-color: #667eea;
+        background: linear-gradient(to right, #f5f7ff 0%, white 10%);
+    }
+
+    .dashboard-card.warning {
+        border-left-color: #F3B65B;
+        background: linear-gradient(to right, #fffbf0 0%, white 10%);
+    }
+
+    /* Section Headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .section-header h2 {
+        margin: 0 !important;
+        font-size: 1.5rem !important;
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .section-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Subsection Headers */
+    .subsection-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .subsection-header h3 {
+        margin: 0 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    /* Compact Spacing */
+    .stMarkdown {
+        margin-bottom: 0.3rem;
+    }
+
+    h2 {
+        margin-top: 0.8rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    h3 {
+        margin-top: 0.4rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    /* Dataframe Styling */
+    .stDataFrame {
+        margin-bottom: 0.5rem;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* Chart Containers */
+    .js-plotly-plot {
+        margin-bottom: 0 !important;
+        border-radius: 8px;
+    }
+
+    /* Metrics Enhancement */
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    [data-testid="stMetricDelta"] {
+        font-size: 0.9rem;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Column Gap Reduction */
+    [data-testid="column"] {
+        padding: 0 0.4rem;
+    }
+
+    /* Professional Button Styling */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        border-color: #667eea;
+    }
+
+    /* Caption Styling */
+    .stCaptionContainer {
+        margin-top: 8px;
+    }
+
+    /* Info Box Styling */
+    .stAlert {
+        border-radius: 8px;
+        border-left-width: 4px;
+    }
+
+    /* Divider Styling */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    }
+
+    /* Gradient Text */
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Professional Header with Gradient
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);'>
+        <h1 style='color: white; margin: 0; font-size: 2rem; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
+            🎯 Detection Rule Observatory
+        </h1>
+        <p style='color: rgba(255,255,255,0.95); margin: 8px 0 0 0; font-size: 1.1rem; font-weight: 500;'>
+            Fraud Detection Rule Effectiveness & Optimization Metrics
+        </p>
+        <div style='display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; padding: 6px 14px; background: rgba(255,255,255,0.2); border-radius: 20px; backdrop-filter: blur(10px);'>
+            <div style='width: 8px; height: 8px; background: #10b981; border-radius: 50%; animation: pulse 2s infinite;'></div>
+            <span style='color: white; font-size: 0.85rem; font-weight: 600;'>SYSTEM ACTIVE</span>
+        </div>
+    </div>
+
+    <style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Get standardized chart colors
     colors = get_chart_colors()
 
+    # ==================== SECTION 1: Rule Performance Overview ====================
+    st.markdown("""
+    <div class='section-header'>
+        <h2>📊 Rule Performance Overview</h2>
+        <span class='section-badge'>ANALYTICS</span>
+    </div>
+    """, unsafe_allow_html=True)
+
     # Rule Contribution Treemap and Bubble Chart
-    col1, col2 = st.columns([1, 1])
+    col1, col2 = st.columns([1, 1], gap="medium")
 
     with col1:
-        st.subheader("🤖 Detection Impact Scorecard")
+        st.markdown("<div class='subsection-header'><h3>🤖 Detection Impact Scorecard</h3></div>", unsafe_allow_html=True)
         st.caption("Treemap showing confirmed fraud catches by rule")
 
         # Enhanced hover texts for treemap
@@ -142,7 +371,7 @@ def render():
         st.plotly_chart(fig_treemap, use_container_width=True)
 
     with col2:
-        st.subheader("🧠 Rule Precision Dashboard")
+        st.markdown("<div class='subsection-header'><h3>🧠 Rule Precision Dashboard</h3></div>", unsafe_allow_html=True)
         st.caption("Bubble chart: Trigger Frequency vs Precision (size = weight)")
 
         fig_bubble = go.Figure()
@@ -231,10 +460,14 @@ def render():
 
         st.plotly_chart(fig_bubble, use_container_width=True)
 
-    st.markdown("---")
+    # ==================== SECTION 2: Rule Correlation Network ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🔗 Detection Rule Nexus</h2>
+        <span class='section-badge'>CORRELATION</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Rule Correlation Network
-    st.subheader("🔗 Detection Rule Nexus")
     st.caption("Shows which rules commonly fire together (typical 5-8 rule patterns)")
 
     # Create network visualization using scatter plot with connecting lines
@@ -345,15 +578,20 @@ def render():
     st.plotly_chart(fig_network, use_container_width=True)
 
     # Display correlation pairs
-    st.markdown("**High-Correlation Rule Pairs:**")
-    correlation_df = pd.DataFrame(rule_correlation_pairs, columns=['Rule 1', 'Rule 2', 'Correlation %'])
-    correlation_df = correlation_df.sort_values('Correlation %', ascending=False)
-    st.dataframe(correlation_df, use_container_width=True, hide_index=True)
+    with st.container():
+        st.markdown("**High-Correlation Rule Pairs:**")
+        correlation_df = pd.DataFrame(rule_correlation_pairs, columns=['Rule 1', 'Rule 2', 'Correlation %'])
+        correlation_df = correlation_df.sort_values('Correlation %', ascending=False)
+        st.dataframe(correlation_df, use_container_width=True, hide_index=True)
 
-    st.markdown("---")
+    # ==================== SECTION 3: Risk Score Waterfall ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>📈 Fraud Prevention Cascade</h2>
+        <span class='section-badge'>RISK BUILD-UP</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # Rule Contribution Waterfall
-    st.subheader("📈 Fraud Prevention Cascade")
     st.caption("Shows how each triggered rule contributes to final risk score")
 
     # Sample transaction with rules
@@ -451,10 +689,13 @@ def render():
 
     st.plotly_chart(fig_waterfall, use_container_width=True)
 
-    st.markdown("---")
-
-    # Detailed Rule Performance Table
-    st.subheader("📊 Rule Efficacy Intelligence")
+    # ==================== SECTION 4: Detailed Rule Table ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>📊 Rule Efficacy Intelligence</h2>
+        <span class='section-badge'>DETAILED VIEW</span>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Format the dataframe for display
     display_df = rule_performance_df.copy()
@@ -477,12 +718,15 @@ def render():
         hide_index=True
     )
 
-    st.markdown("---")
+    # ==================== SECTION 5: AI-Powered Rule Optimization ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🤖 AI-Powered Rule Optimization</h2>
+        <span class='section-badge'>INTELLIGENT</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # AI-Powered Rule Optimization Recommendations
-    st.markdown("## 🤖 AI-Powered Rule Optimization")
-
-    opt_col1, opt_col2 = st.columns(2)
+    opt_col1, opt_col2 = st.columns(2, gap="medium")
 
     with opt_col1:
         st.markdown("### 🎯 Top Performing Rules")
@@ -532,12 +776,23 @@ def render():
                 icon="🔧"
             )
 
-    # ML-Enhanced Rule Intelligence
-    st.markdown("---")
-    st.markdown("## 🤖 ML-Enhanced Rule Intelligence")
-    st.markdown("*Machine learning insights for rule optimization*")
+    # ==================== SECTION 6: ML-Enhanced Rule Intelligence ====================
+    st.markdown("""
+    <div class='section-header' style='margin-top: 28px;'>
+        <h2>🤖 ML-Enhanced Rule Intelligence</h2>
+        <span class='section-badge'>ML-POWERED</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-    ml_rule_col1, ml_rule_col2, ml_rule_col3, ml_rule_col4 = st.columns(4)
+    st.markdown("""
+    <div class='dashboard-card primary'>
+        <p style='margin: 0; font-size: 0.95rem; color: #4a5568; line-height: 1.6;'>
+            Machine learning insights for rule optimization and performance enhancement
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    ml_rule_col1, ml_rule_col2, ml_rule_col3, ml_rule_col4 = st.columns(4, gap="medium")
 
     with ml_rule_col1:
         st.metric("ML-Optimized Rules", "12/20", "+3")
@@ -548,10 +803,10 @@ def render():
     with ml_rule_col4:
         st.metric("Ensemble Boost", "+15%", "+3%")
 
-    ml_rule_viz_col1, ml_rule_viz_col2 = st.columns(2)
+    ml_rule_viz_col1, ml_rule_viz_col2 = st.columns(2, gap="medium")
 
     with ml_rule_viz_col1:
-        st.markdown("### 📊 ML vs Rule-Based Performance")
+        st.markdown("<div class='subsection-header'><h3>📊 ML vs Rule-Based Performance</h3></div>", unsafe_allow_html=True)
 
         comparison_metrics = ['Precision', 'Recall', 'F1 Score', 'FP Rate']
         ml_scores = [94.3, 91.8, 93.0, 6.2]
@@ -645,7 +900,7 @@ def render():
         st.plotly_chart(fig_ml_comparison, use_container_width=True, key="ml_rule_comparison")
 
     with ml_rule_viz_col2:
-        st.markdown("### 🎯 Rule Optimization Impact")
+        st.markdown("<div class='subsection-header'><h3>🎯 Rule Optimization Impact</h3></div>", unsafe_allow_html=True)
 
         # Show before/after for optimized rules
         optimized_rules = rule_performance_df.nlargest(5, 'precision')['rule_name'].tolist()
@@ -736,12 +991,16 @@ def render():
         st.plotly_chart(fig_optimization, use_container_width=True, key="ml_optimization_impact")
 
     # ML Feature Importance for Rules
-    st.markdown("### 🔍 ML Feature Importance Analysis")
+    st.markdown("""
+    <div class='subsection-header' style='margin-top: 20px;'>
+        <h3>🔍 ML Feature Importance Analysis</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
-    feat_col1, feat_col2 = st.columns(2)
+    feat_col1, feat_col2 = st.columns(2, gap="medium")
 
     with feat_col1:
-        st.markdown("#### Top Features for Fraud Detection")
+        st.markdown("**Top Features for Fraud Detection**")
 
         ml_features = [
             'Transaction Amount Deviation',
@@ -825,7 +1084,7 @@ def render():
         st.plotly_chart(fig_ml_features, use_container_width=True, key="ml_feature_importance_rules")
 
     with feat_col2:
-        st.markdown("#### Rule Synergy Matrix")
+        st.markdown("**Rule Synergy Matrix**")
 
         # Show which rules work best together
         rule_synergy = np.array([
@@ -903,8 +1162,30 @@ def render():
 
         st.plotly_chart(fig_synergy, use_container_width=True, key="rule_synergy_matrix")
 
-    st.markdown("---")
-    st.caption(f"💡 Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | **Note:** Enhanced analytics with synthetic correlation data")
+    # ==================== FOOTER ====================
+    st.markdown("<hr style='margin-top: 32px;'>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #f7fafc, #edf2f7); padding: 20px; border-radius: 12px; margin-top: 20px;'>
+        <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: center;'>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Active Rules</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>20/20 • Optimized</p>
+            </div>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Last Updated</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>{}</p>
+            </div>
+            <div>
+                <p style='margin: 0; color: #718096; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;'>Data Quality</p>
+                <p style='margin: 4px 0 0 0; color: #2d3748; font-weight: 600;'>✅ Excellent</p>
+            </div>
+        </div>
+        <p style='margin: 16px 0 0 0; text-align: center; color: #a0aec0; font-size: 0.8rem;'>
+            💡 Enhanced analytics with ML-powered insights • © 2024 All rights reserved.
+        </p>
+    </div>
+    """.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
 
 if __name__ == "__main__":
     render()

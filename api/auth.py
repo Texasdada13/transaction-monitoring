@@ -44,11 +44,10 @@ class UserInDB(User):
 # In production, this would be a real database
 
 # Simple password storage for demo (in production, use proper bcrypt hashing)
+# Only Analyst and Manager roles
 SIMPLE_USERS = {
     "analyst": {"password": "analyst123", "role": "analyst", "user_id": "analyst_001", "full_name": "Fraud Analyst"},
-    "manager": {"password": "manager123", "role": "manager", "user_id": "manager_001", "full_name": "Risk Manager"},
-    "investigator": {"password": "investigator123", "role": "investigator", "user_id": "investigator_001", "full_name": "Fraud Investigator"},
-    "admin": {"password": "admin123", "role": "admin", "user_id": "admin_001", "full_name": "System Administrator"}
+    "manager": {"password": "manager123", "role": "manager", "user_id": "manager_001", "full_name": "Risk Manager"}
 }
 
 # Legacy USERS_DB for compatibility (not used with simple auth)
@@ -143,10 +142,8 @@ def decode_token(token: str) -> Optional[TokenData]:
 # ==================== Role-Based Access Control ====================
 
 ROLE_PERMISSIONS = {
-    "analyst": ["view_alerts", "view_transactions", "update_alerts"],
-    "manager": ["view_alerts", "view_transactions", "view_analytics", "export_reports"],
-    "investigator": ["view_alerts", "view_transactions", "update_alerts", "view_full_details", "add_notes"],
-    "admin": ["*"]  # All permissions
+    "analyst": ["view_alerts", "view_transactions", "update_alerts", "view_analytics"],
+    "manager": ["*"]  # Manager has all permissions (executive + analyst pages)
 }
 
 def has_permission(role: str, permission: str) -> bool:

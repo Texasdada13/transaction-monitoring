@@ -119,10 +119,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     Login endpoint - authenticates user and returns JWT token.
 
     Test credentials:
-    - Username: analyst, Password: analyst123 (Role: analyst)
-    - Username: manager, Password: manager123 (Role: manager)
-    - Username: investigator, Password: investigator123 (Role: investigator)
-    - Username: admin, Password: admin123 (Role: admin)
+    - Username: analyst, Password: analyst123 (Role: analyst - limited access)
+    - Username: manager, Password: manager123 (Role: manager - full access)
     """
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
