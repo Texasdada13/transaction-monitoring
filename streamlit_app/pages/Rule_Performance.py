@@ -471,8 +471,7 @@ def render():
             title="Rule Precision Dashboard",
             what_it_shows="Bubble chart showing each rule's trigger frequency vs precision, with bubble size indicating rule weight. Higher and right positions indicate better overall performance.",
             why_it_matters="Balances rule effectiveness (precision) against operational burden (frequency). High-frequency, low-precision rules create excessive false positives.",
-            what_to_do="Tune thresholds for rules with high frequency but low precision. Consider increasing weight for high-precision rules. Review rules in the bottom-right quadrant.",
-            use_container_width=True
+            what_to_do="Tune thresholds for rules with high frequency but low precision. Consider increasing weight for high-precision rules. Review rules in the bottom-right quadrant."
         )
 
     # ==================== SECTION 2: Rule Correlation Network ====================

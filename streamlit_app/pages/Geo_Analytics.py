@@ -213,8 +213,7 @@ def render():
         title="Geolocation Threat Map",
         what_it_shows="Geographic distribution of VPN/proxy-enabled fraud attempts across US states, with bubble size indicating fraud volume and color intensity showing threat severity.",
         why_it_matters="Geographic clustering reveals fraud hotspots and enables targeted regional monitoring. VPN/proxy usage is a key indicator of location masking by fraudsters.",
-        what_to_do="Deploy enhanced monitoring in high-risk states (CA, NY, TX). Implement stricter verification for transactions from VPN-detected locations. Consider regional transaction limits.",
-        use_container_width=True
+        what_to_do="Deploy enhanced monitoring in high-risk states (CA, NY, TX). Implement stricter verification for transactions from VPN-detected locations. Consider regional transaction limits."
     )
 
     # Top states table
@@ -323,8 +322,7 @@ def render():
             title="Transaction Frequency Analysis",
             what_it_shows="Comparison of normal transaction frequency baseline (green) versus flagged suspicious activity patterns (red) over time, highlighting frequency spikes.",
             why_it_matters="Sudden spikes in transaction frequency are strong indicators of account takeover or automated fraud attacks. Normal users show consistent patterns.",
-            what_to_do="Investigate accounts showing 100%+ frequency deviation. Set up real-time alerts for velocity anomalies. Consider temporary holds for extreme spikes.",
-            use_container_width=True
+            what_to_do="Investigate accounts showing 100%+ frequency deviation. Set up real-time alerts for velocity anomalies. Consider temporary holds for extreme spikes."
         )
 
     with col2:
@@ -410,8 +408,7 @@ def render():
             title="Transaction Amount Analysis",
             what_it_shows="Normal transaction amount baseline versus flagged high-value anomalies on a logarithmic scale, revealing extreme amount deviations from typical spending patterns.",
             why_it_matters="Dramatic increases in transaction amounts (especially 500%+ above normal) are critical fraud signals indicating potential account compromise or money laundering.",
-            what_to_do="Block transactions exceeding 10x normal amounts pending verification. Contact customers for high-value transactions. Review accounts with sudden amount spikes.",
-            use_container_width=True
+            what_to_do="Block transactions exceeding 10x normal amounts pending verification. Contact customers for high-value transactions. Review accounts with sudden amount spikes."
         )
 
     # Anomaly detection insights

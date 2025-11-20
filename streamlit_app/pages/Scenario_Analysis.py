@@ -1247,8 +1247,7 @@ def render():
                 title="Testing Pattern Analysis",
                 what_it_shows="Bar chart showing the classic testing pattern: small test transactions (yellow) followed by a large exploitation attempt (red), displayed on a log scale.",
                 why_it_matters="Testing patterns are a hallmark of automated fraud attacks. Fraudsters validate stolen credentials with small amounts before attempting large theft.",
-                what_to_do="Block the exploitation attempt immediately. Review and potentially freeze the account. Check for similar patterns across other accounts.",
-                use_container_width=True
+                what_to_do="Block the exploitation attempt immediately. Review and potentially freeze the account. Check for similar patterns across other accounts."
             )
 
         # Scenario 4: Money Mule Flow
