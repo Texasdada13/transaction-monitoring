@@ -370,7 +370,14 @@ def render():
         ))
 
         fig_treemap.update_layout(height=500)
-        st.plotly_chart(fig_treemap, use_container_width=True)
+        chart_with_explanation(
+            fig_treemap,
+            title="Detection Impact Scorecard",
+            what_it_shows="Treemap visualization of confirmed fraud catches by each detection rule, with box size proportional to fraud volume caught and color intensity showing detection impact.",
+            why_it_matters="Identifies which rules deliver the most value in catching actual fraud. Helps prioritize rule maintenance and optimization efforts on high-impact rules.",
+            what_to_do="Focus optimization resources on top-performing rules. Investigate underperforming rules for threshold adjustments. Consider retiring low-impact rules to reduce noise.",
+            use_container_width=True
+        )
 
     with col2:
         st.markdown("<div class='subsection-header'><h3>🧠 Rule Precision Dashboard</h3></div>", unsafe_allow_html=True)
@@ -460,7 +467,14 @@ def render():
             hovermode='closest'
         )
 
-        st.plotly_chart(fig_bubble, use_container_width=True)
+        chart_with_explanation(
+            fig_bubble,
+            title="Rule Precision Dashboard",
+            what_it_shows="Bubble chart showing each rule's trigger frequency vs precision, with bubble size indicating rule weight. Higher and right positions indicate better overall performance.",
+            why_it_matters="Balances rule effectiveness (precision) against operational burden (frequency). High-frequency, low-precision rules create excessive false positives.",
+            what_to_do="Tune thresholds for rules with high frequency but low precision. Consider increasing weight for high-precision rules. Review rules in the bottom-right quadrant.",
+            use_container_width=True
+        )
 
     # ==================== SECTION 2: Rule Correlation Network ====================
     st.markdown("""
@@ -577,7 +591,14 @@ def render():
         plot_bgcolor='rgba(0,0,0,0)'
     )
 
-    st.plotly_chart(fig_network, use_container_width=True)
+    chart_with_explanation(
+        fig_network,
+        title="Detection Rule Nexus",
+        what_it_shows="Network visualization of rule correlations, with edges showing which rules commonly fire together and edge thickness indicating correlation strength.",
+        why_it_matters="Highly correlated rules may be redundant or indicate specific fraud patterns. Understanding rule relationships helps optimize detection coverage.",
+        what_to_do="Review highly correlated rule pairs for potential consolidation. Ensure coverage for fraud patterns that trigger multiple rules. Consider rule dependencies in threshold tuning.",
+        use_container_width=True
+    )
 
     # Display correlation pairs
     with st.container():
@@ -689,7 +710,14 @@ def render():
         height=500
     )
 
-    st.plotly_chart(fig_waterfall, use_container_width=True)
+    chart_with_explanation(
+        fig_waterfall,
+        title="Fraud Prevention Cascade",
+        what_it_shows="Waterfall chart showing how each triggered rule contributes risk points to build up the final risk score for a sample transaction.",
+        why_it_matters="Demonstrates the scoring mechanism transparency. Shows which rules had the most impact on a specific transaction's risk assessment.",
+        what_to_do="Use this view for investigation training. Identify dominant rules in high-risk transactions. Validate that rule weights align with actual fraud indicators.",
+        use_container_width=True
+    )
 
     # ==================== SECTION 4: Detailed Rule Table ====================
     st.markdown("""
@@ -899,7 +927,14 @@ def render():
             barmode='group'
         )
 
-        st.plotly_chart(fig_ml_comparison, use_container_width=True, key="ml_rule_comparison")
+        chart_with_explanation(
+            fig_ml_comparison,
+            title="ML vs Rule-Based Performance",
+            what_it_shows="Side-by-side comparison of ML-enhanced system versus traditional rules-only approach across precision, recall, F1 score, and false positive rate metrics.",
+            why_it_matters="Quantifies the value of ML enhancement over traditional rules. ML typically delivers 8-15% improvement in precision while reducing false positives by 20%+.",
+            what_to_do="Use these metrics to justify ML investment. Monitor for performance degradation. Consider expanding ML coverage to more rule types.",
+            use_container_width=True
+        )
 
     with ml_rule_viz_col2:
         st.markdown("<div class='subsection-header'><h3>🎯 Rule Optimization Impact</h3></div>", unsafe_allow_html=True)
@@ -990,7 +1025,14 @@ def render():
             yaxis=dict(range=[0.7, 1.0])
         )
 
-        st.plotly_chart(fig_optimization, use_container_width=True, key="ml_optimization_impact")
+        chart_with_explanation(
+            fig_optimization,
+            title="Rule Optimization Impact",
+            what_it_shows="Before and after comparison of rule precision following ML optimization, showing the improvement trajectory for top-performing rules.",
+            why_it_matters="Demonstrates concrete ROI from ML-based rule tuning. Shows which rules benefited most from optimization and validates the ML approach.",
+            what_to_do="Apply similar optimization to other rules. Set up continuous learning for dynamic threshold adjustment. Monitor for precision drift over time.",
+            use_container_width=True
+        )
 
     # ML Feature Importance for Rules
     st.markdown("""
@@ -1083,7 +1125,14 @@ def render():
             height=300
         )
 
-        st.plotly_chart(fig_ml_features, use_container_width=True, key="ml_feature_importance_rules")
+        chart_with_explanation(
+            fig_ml_features,
+            title="ML Feature Importance",
+            what_it_shows="Horizontal bar chart ranking ML-learned features by their importance to fraud detection, from transaction amount deviation to velocity metrics.",
+            why_it_matters="Reveals which factors the ML model finds most predictive of fraud. Validates model logic and helps identify data quality priorities.",
+            what_to_do="Ensure data quality for top features. Create new rules based on important features. Investigate if important features align with domain expertise.",
+            use_container_width=True
+        )
 
     with feat_col2:
         st.markdown("**Rule Synergy Matrix**")
@@ -1162,7 +1211,14 @@ def render():
             height=300
         )
 
-        st.plotly_chart(fig_synergy, use_container_width=True, key="rule_synergy_matrix")
+        chart_with_explanation(
+            fig_synergy,
+            title="Rule Synergy Matrix",
+            what_it_shows="Heatmap showing ML-detected synergies between top fraud detection rules, where higher values indicate rules that work better together.",
+            why_it_matters="Identifies powerful rule combinations for multi-factor authentication. High synergy rules should be maintained together for maximum effectiveness.",
+            what_to_do="Keep high-synergy rule pairs active together. Use synergy insights for alert prioritization. Avoid disabling one rule in a high-synergy pair.",
+            use_container_width=True
+        )
 
     # ==================== FOOTER ====================
     st.markdown("<hr style='margin-top: 32px;'>", unsafe_allow_html=True)

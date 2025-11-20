@@ -1038,7 +1038,14 @@ def render():
         margin=dict(l=20, r=20, t=40, b=20)
     )
 
-    st.plotly_chart(fig_rules, use_container_width=True)
+    chart_with_explanation(
+        fig_rules,
+        title="Rule Weight Contribution",
+        what_it_shows="Horizontal bar chart showing how each triggered rule contributes to the total risk score, colored by severity level (critical=red, high=orange, medium=yellow).",
+        why_it_matters="Explains exactly why a transaction was flagged and the relative importance of each rule. Essential for analyst decision-making and model transparency.",
+        what_to_do="Focus investigation on critical-severity rules first. Verify the underlying data for high-weight rules. Use this breakdown to explain decisions to customers.",
+        use_container_width=True
+    )
 
     # Detailed rules table
     st.markdown("""
@@ -1176,7 +1183,14 @@ def render():
                 hovermode='closest'
             )
 
-            st.plotly_chart(fig_amount, use_container_width=True)
+            chart_with_explanation(
+                fig_amount,
+                title="Transaction Amount Over Time",
+                what_it_shows="Time series of transaction amounts leading up to the flagged transaction, with the suspicious transaction highlighted as a red star against the normal pattern.",
+                why_it_matters="Visualizes the deviation from normal behavior. Extreme spikes in amount are classic fraud indicators showing sudden draining attempts.",
+                what_to_do="Calculate the standard deviation of the spike. Verify if customer authorized the large transaction. Check for other accounts with similar patterns.",
+                use_container_width=True
+            )
         
         # Scenario 2: Testing Pattern
         if 'times' in viz_data and 'types' in viz_data:
@@ -1230,7 +1244,14 @@ def render():
                 height=400
             )
 
-            st.plotly_chart(fig_test, use_container_width=True)
+            chart_with_explanation(
+                fig_test,
+                title="Testing Pattern Analysis",
+                what_it_shows="Bar chart showing the classic testing pattern: small test transactions (yellow) followed by a large exploitation attempt (red), displayed on a log scale.",
+                why_it_matters="Testing patterns are a hallmark of automated fraud attacks. Fraudsters validate stolen credentials with small amounts before attempting large theft.",
+                what_to_do="Block the exploitation attempt immediately. Review and potentially freeze the account. Check for similar patterns across other accounts.",
+                use_container_width=True
+            )
 
         # Scenario 4: Money Mule Flow
         if 'flow' in viz_data:

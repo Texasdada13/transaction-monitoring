@@ -148,7 +148,14 @@ def render():
         xaxis=dict(tickmode='linear', dtick=2)
     )
 
-    st.plotly_chart(fig_heatmap_time, use_container_width=True)
+    chart_with_explanation(
+        fig_heatmap_time,
+        title="Transaction Flow Heatmap",
+        what_it_shows="Weekly heatmap of flagged transactions by hour and day, with darker colors indicating higher volumes of suspicious activity.",
+        why_it_matters="Reveals temporal fraud patterns critical for staffing decisions. Fraudsters often target off-hours when monitoring is reduced.",
+        what_to_do="Increase analyst coverage during peak fraud hours (2-4 AM). Schedule system maintenance during low-activity periods. Adjust automated blocking thresholds for high-risk times.",
+        use_container_width=True
+    )
 
     # Insights
     col1, col2, col3 = st.columns(3)
@@ -227,7 +234,14 @@ def render():
             showlegend=True
         )
 
-        st.plotly_chart(fig_resolution, use_container_width=True)
+        chart_with_explanation(
+            fig_resolution,
+            title="Investigation Velocity Metrics",
+            what_it_shows="Box plots showing distribution of case resolution times by risk level, from Low to Critical priority cases.",
+            why_it_matters="Tracks SLA compliance and operational efficiency. Fast resolution of high-risk cases prevents fraud losses and improves customer experience.",
+            what_to_do="Address bottlenecks causing SLA violations. Allocate more resources to critical cases. Implement auto-escalation for aging high-risk cases.",
+            use_container_width=True
+        )
 
         # Resolution time metrics
         st.markdown("**Average Resolution Times:**")
@@ -318,7 +332,14 @@ def render():
             height=300
         )
 
-        st.plotly_chart(fig_dist, use_container_width=True)
+        chart_with_explanation(
+            fig_dist,
+            title="Case Resolution Analytics",
+            what_it_shows="Histogram of all case resolution times showing the distribution and identifying bottlenecks in the review process.",
+            why_it_matters="Identifies systemic delays in case processing. Long tails indicate cases getting stuck in review, increasing fraud exposure.",
+            what_to_do="Investigate causes of long-tail cases. Implement time-based escalation rules. Consider automation for straightforward low-risk cases.",
+            use_container_width=True
+        )
 
         # Calculate percentiles
         st.markdown("**Resolution Time Percentiles:**")
@@ -420,7 +441,14 @@ def render():
             height=400
         )
 
-        st.plotly_chart(fig_radar, use_container_width=True)
+        chart_with_explanation(
+            fig_radar,
+            title="Merchant Risk Profile",
+            what_it_shows="Radar chart displaying risk scores across different merchant categories, with further from center indicating higher risk.",
+            why_it_matters="Different merchant categories have vastly different fraud profiles. Cryptocurrency and gaming require stricter controls than retail or healthcare.",
+            what_to_do="Implement category-specific transaction limits. Apply enhanced due diligence for high-risk categories. Consider blocking certain categories for high-risk accounts.",
+            use_container_width=True
+        )
 
     with col2:
         # Enhanced Bar chart showing fraud rate with explainability
@@ -516,7 +544,14 @@ def render():
             showlegend=False
         )
 
-        st.plotly_chart(fig_merchant_bar, use_container_width=True)
+        chart_with_explanation(
+            fig_merchant_bar,
+            title="Fraud Rate by Merchant Category",
+            what_it_shows="Horizontal bar chart ranking merchant categories by fraud rate percentage, with color indicating overall risk score.",
+            why_it_matters="Quantifies fraud exposure by category for targeted controls. High fraud rate categories require enhanced monitoring and stricter limits.",
+            what_to_do="Deploy additional verification for high fraud rate categories. Set lower transaction limits for cryptocurrency and gaming. Review merchant onboarding criteria.",
+            use_container_width=True
+        )
 
     # Merchant details table
     st.markdown("**Detailed Merchant Analysis:**")

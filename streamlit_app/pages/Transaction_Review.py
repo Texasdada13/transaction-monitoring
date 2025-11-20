@@ -1428,7 +1428,14 @@ def render():
                 showlegend=False
             )
 
-            st.plotly_chart(fig_risk_dist, use_container_width=True, key="txn_risk_dist")
+            chart_with_explanation(
+                fig_risk_dist,
+                title="ML Risk Score Distribution",
+                what_it_shows="Histogram of transaction risk scores over the last 24 hours, with vertical lines marking auto-clear (0.3) and high-risk (0.7) thresholds.",
+                why_it_matters="Shows the effectiveness of ML scoring in separating legitimate from fraudulent transactions. Most transactions should cluster in the low-risk zone.",
+                what_to_do="Investigate if high-risk volume increases. Adjust thresholds if too many false positives. Monitor for drift in distribution over time.",
+                use_container_width=True
+            )
 
         with ml_viz_col2:
             st.markdown("<div class='subsection-header'><h3>🔍 Top ML Feature Contributions</h3></div>", unsafe_allow_html=True)
@@ -1542,7 +1549,14 @@ def render():
                 showlegend=False
             )
 
-            st.plotly_chart(fig_features_txn, use_container_width=True, key="txn_feature_importance")
+            chart_with_explanation(
+                fig_features_txn,
+                title="Top ML Feature Contributions",
+                what_it_shows="Horizontal bar chart showing the relative importance of each feature in the ML risk scoring model, from transaction amount to behavioral score.",
+                why_it_matters="Explains what drives ML decisions. Transaction amount is typically the most important, but time and counterparty history are also significant.",
+                what_to_do="Ensure data quality for top features. Use feature importance to guide rule creation. Validate that importance aligns with fraud analyst intuition.",
+                use_container_width=True
+            )
 
         # ML Performance Insights
         st.markdown("""
@@ -1603,7 +1617,14 @@ def render():
                                        customdata=recall_hover_texts))
 
             fig_pr.update_layout(height=250, yaxis=dict(range=[0.85, 1.0]), showlegend=True)
-            st.plotly_chart(fig_pr, use_container_width=True, key="txn_pr_metrics")
+            chart_with_explanation(
+                fig_pr,
+                title="Precision & Recall Trends",
+                what_it_shows="Weekly trend of model precision (blue) and recall (green), tracking how accurately the model identifies fraud while minimizing false positives.",
+                why_it_matters="Precision shows accuracy of fraud flags; recall shows how much fraud is caught. Both should stay above 90% for effective fraud prevention.",
+                what_to_do="Investigate drops in either metric. Retrain model if sustained degradation. Balance precision-recall tradeoff based on business priorities.",
+                use_container_width=True
+            )
 
         with perf_col2:
             st.markdown("#### False Positive Rate")
@@ -1638,7 +1659,14 @@ def render():
                                        customdata=fp_hover_texts))
 
             fig_fp.update_layout(height=250, yaxis=dict(range=[0, 0.1]), showlegend=False)
-            st.plotly_chart(fig_fp, use_container_width=True, key="txn_fp_rate")
+            chart_with_explanation(
+                fig_fp,
+                title="False Positive Rate Trend",
+                what_it_shows="Daily false positive rate trend showing the percentage of legitimate transactions incorrectly flagged as suspicious.",
+                why_it_matters="High false positive rates burden analysts and frustrate customers. Target rate should be below 7% for optimal operational efficiency.",
+                what_to_do="Tune model thresholds if FP rate exceeds 8%. Review recently added rules for excessive triggers. Consider segmented thresholds by transaction type.",
+                use_container_width=True
+            )
 
         with perf_col3:
             st.markdown("#### Processing Throughput")
@@ -1668,7 +1696,14 @@ def render():
                                            customdata=throughput_hover_texts))
 
             fig_throughput.update_layout(height=250, yaxis_title="Transactions/Min")
-            st.plotly_chart(fig_throughput, use_container_width=True, key="txn_throughput")
+            chart_with_explanation(
+                fig_throughput,
+                title="Processing Throughput",
+                what_it_shows="Daily transaction processing throughput in transactions per minute, showing system capacity and performance trends.",
+                why_it_matters="System must handle peak loads without delays. Degraded throughput increases fraud exposure during high-volume periods.",
+                what_to_do="Scale infrastructure if throughput drops below 1000 tx/min. Monitor for correlation between throughput and accuracy. Plan capacity for growth.",
+                use_container_width=True
+            )
 
         # Show example
         st.markdown("""
