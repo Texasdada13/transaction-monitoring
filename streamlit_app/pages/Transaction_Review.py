@@ -1433,8 +1433,7 @@ def render():
                 title="ML Risk Score Distribution",
                 what_it_shows="Histogram of transaction risk scores over the last 24 hours, with vertical lines marking auto-clear (0.3) and high-risk (0.7) thresholds.",
                 why_it_matters="Shows the effectiveness of ML scoring in separating legitimate from fraudulent transactions. Most transactions should cluster in the low-risk zone.",
-                what_to_do="Investigate if high-risk volume increases. Adjust thresholds if too many false positives. Monitor for drift in distribution over time.",
-                use_container_width=True
+                what_to_do="Investigate if high-risk volume increases. Adjust thresholds if too many false positives. Monitor for drift in distribution over time."
             )
 
         with ml_viz_col2:
@@ -1554,8 +1553,7 @@ def render():
                 title="Top ML Feature Contributions",
                 what_it_shows="Horizontal bar chart showing the relative importance of each feature in the ML risk scoring model, from transaction amount to behavioral score.",
                 why_it_matters="Explains what drives ML decisions. Transaction amount is typically the most important, but time and counterparty history are also significant.",
-                what_to_do="Ensure data quality for top features. Use feature importance to guide rule creation. Validate that importance aligns with fraud analyst intuition.",
-                use_container_width=True
+                what_to_do="Ensure data quality for top features. Use feature importance to guide rule creation. Validate that importance aligns with fraud analyst intuition."
             )
 
         # ML Performance Insights
@@ -1622,8 +1620,7 @@ def render():
                 title="Precision & Recall Trends",
                 what_it_shows="Weekly trend of model precision (blue) and recall (green), tracking how accurately the model identifies fraud while minimizing false positives.",
                 why_it_matters="Precision shows accuracy of fraud flags; recall shows how much fraud is caught. Both should stay above 90% for effective fraud prevention.",
-                what_to_do="Investigate drops in either metric. Retrain model if sustained degradation. Balance precision-recall tradeoff based on business priorities.",
-                use_container_width=True
+                what_to_do="Investigate drops in either metric. Retrain model if sustained degradation. Balance precision-recall tradeoff based on business priorities."
             )
 
         with perf_col2:
@@ -1664,8 +1661,7 @@ def render():
                 title="False Positive Rate Trend",
                 what_it_shows="Daily false positive rate trend showing the percentage of legitimate transactions incorrectly flagged as suspicious.",
                 why_it_matters="High false positive rates burden analysts and frustrate customers. Target rate should be below 7% for optimal operational efficiency.",
-                what_to_do="Tune model thresholds if FP rate exceeds 8%. Review recently added rules for excessive triggers. Consider segmented thresholds by transaction type.",
-                use_container_width=True
+                what_to_do="Tune model thresholds if FP rate exceeds 8%. Review recently added rules for excessive triggers. Consider segmented thresholds by transaction type."
             )
 
         with perf_col3:
@@ -1701,8 +1697,7 @@ def render():
                 title="Processing Throughput",
                 what_it_shows="Daily transaction processing throughput in transactions per minute, showing system capacity and performance trends.",
                 why_it_matters="System must handle peak loads without delays. Degraded throughput increases fraud exposure during high-volume periods.",
-                what_to_do="Scale infrastructure if throughput drops below 1000 tx/min. Monitor for correlation between throughput and accuracy. Plan capacity for growth.",
-                use_container_width=True
+                what_to_do="Scale infrastructure if throughput drops below 1000 tx/min. Monitor for correlation between throughput and accuracy. Plan capacity for growth."
             )
 
         # Show example

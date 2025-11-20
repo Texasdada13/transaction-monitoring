@@ -375,8 +375,7 @@ def render():
             title="Detection Impact Scorecard",
             what_it_shows="Treemap visualization of confirmed fraud catches by each detection rule, with box size proportional to fraud volume caught and color intensity showing detection impact.",
             why_it_matters="Identifies which rules deliver the most value in catching actual fraud. Helps prioritize rule maintenance and optimization efforts on high-impact rules.",
-            what_to_do="Focus optimization resources on top-performing rules. Investigate underperforming rules for threshold adjustments. Consider retiring low-impact rules to reduce noise.",
-            use_container_width=True
+            what_to_do="Focus optimization resources on top-performing rules. Investigate underperforming rules for threshold adjustments. Consider retiring low-impact rules to reduce noise."
         )
 
     with col2:
@@ -596,8 +595,7 @@ def render():
         title="Detection Rule Nexus",
         what_it_shows="Network visualization of rule correlations, with edges showing which rules commonly fire together and edge thickness indicating correlation strength.",
         why_it_matters="Highly correlated rules may be redundant or indicate specific fraud patterns. Understanding rule relationships helps optimize detection coverage.",
-        what_to_do="Review highly correlated rule pairs for potential consolidation. Ensure coverage for fraud patterns that trigger multiple rules. Consider rule dependencies in threshold tuning.",
-        use_container_width=True
+        what_to_do="Review highly correlated rule pairs for potential consolidation. Ensure coverage for fraud patterns that trigger multiple rules. Consider rule dependencies in threshold tuning."
     )
 
     # Display correlation pairs
@@ -715,8 +713,7 @@ def render():
         title="Fraud Prevention Cascade",
         what_it_shows="Waterfall chart showing how each triggered rule contributes risk points to build up the final risk score for a sample transaction.",
         why_it_matters="Demonstrates the scoring mechanism transparency. Shows which rules had the most impact on a specific transaction's risk assessment.",
-        what_to_do="Use this view for investigation training. Identify dominant rules in high-risk transactions. Validate that rule weights align with actual fraud indicators.",
-        use_container_width=True
+        what_to_do="Use this view for investigation training. Identify dominant rules in high-risk transactions. Validate that rule weights align with actual fraud indicators."
     )
 
     # ==================== SECTION 4: Detailed Rule Table ====================
@@ -932,8 +929,7 @@ def render():
             title="ML vs Rule-Based Performance",
             what_it_shows="Side-by-side comparison of ML-enhanced system versus traditional rules-only approach across precision, recall, F1 score, and false positive rate metrics.",
             why_it_matters="Quantifies the value of ML enhancement over traditional rules. ML typically delivers 8-15% improvement in precision while reducing false positives by 20%+.",
-            what_to_do="Use these metrics to justify ML investment. Monitor for performance degradation. Consider expanding ML coverage to more rule types.",
-            use_container_width=True
+            what_to_do="Use these metrics to justify ML investment. Monitor for performance degradation. Consider expanding ML coverage to more rule types."
         )
 
     with ml_rule_viz_col2:
@@ -1030,8 +1026,7 @@ def render():
             title="Rule Optimization Impact",
             what_it_shows="Before and after comparison of rule precision following ML optimization, showing the improvement trajectory for top-performing rules.",
             why_it_matters="Demonstrates concrete ROI from ML-based rule tuning. Shows which rules benefited most from optimization and validates the ML approach.",
-            what_to_do="Apply similar optimization to other rules. Set up continuous learning for dynamic threshold adjustment. Monitor for precision drift over time.",
-            use_container_width=True
+            what_to_do="Apply similar optimization to other rules. Set up continuous learning for dynamic threshold adjustment. Monitor for precision drift over time."
         )
 
     # ML Feature Importance for Rules
@@ -1130,8 +1125,7 @@ def render():
             title="ML Feature Importance",
             what_it_shows="Horizontal bar chart ranking ML-learned features by their importance to fraud detection, from transaction amount deviation to velocity metrics.",
             why_it_matters="Reveals which factors the ML model finds most predictive of fraud. Validates model logic and helps identify data quality priorities.",
-            what_to_do="Ensure data quality for top features. Create new rules based on important features. Investigate if important features align with domain expertise.",
-            use_container_width=True
+            what_to_do="Ensure data quality for top features. Create new rules based on important features. Investigate if important features align with domain expertise."
         )
 
     with feat_col2:
@@ -1216,8 +1210,7 @@ def render():
             title="Rule Synergy Matrix",
             what_it_shows="Heatmap showing ML-detected synergies between top fraud detection rules, where higher values indicate rules that work better together.",
             why_it_matters="Identifies powerful rule combinations for multi-factor authentication. High synergy rules should be maintained together for maximum effectiveness.",
-            what_to_do="Keep high-synergy rule pairs active together. Use synergy insights for alert prioritization. Avoid disabling one rule in a high-synergy pair.",
-            use_container_width=True
+            what_to_do="Keep high-synergy rule pairs active together. Use synergy insights for alert prioritization. Avoid disabling one rule in a high-synergy pair."
         )
 
     # ==================== FOOTER ====================

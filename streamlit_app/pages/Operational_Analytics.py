@@ -153,8 +153,7 @@ def render():
         title="Transaction Flow Heatmap",
         what_it_shows="Weekly heatmap of flagged transactions by hour and day, with darker colors indicating higher volumes of suspicious activity.",
         why_it_matters="Reveals temporal fraud patterns critical for staffing decisions. Fraudsters often target off-hours when monitoring is reduced.",
-        what_to_do="Increase analyst coverage during peak fraud hours (2-4 AM). Schedule system maintenance during low-activity periods. Adjust automated blocking thresholds for high-risk times.",
-        use_container_width=True
+        what_to_do="Increase analyst coverage during peak fraud hours (2-4 AM). Schedule system maintenance during low-activity periods. Adjust automated blocking thresholds for high-risk times."
     )
 
     # Insights
@@ -239,8 +238,7 @@ def render():
             title="Investigation Velocity Metrics",
             what_it_shows="Box plots showing distribution of case resolution times by risk level, from Low to Critical priority cases.",
             why_it_matters="Tracks SLA compliance and operational efficiency. Fast resolution of high-risk cases prevents fraud losses and improves customer experience.",
-            what_to_do="Address bottlenecks causing SLA violations. Allocate more resources to critical cases. Implement auto-escalation for aging high-risk cases.",
-            use_container_width=True
+            what_to_do="Address bottlenecks causing SLA violations. Allocate more resources to critical cases. Implement auto-escalation for aging high-risk cases."
         )
 
         # Resolution time metrics
@@ -337,8 +335,7 @@ def render():
             title="Case Resolution Analytics",
             what_it_shows="Histogram of all case resolution times showing the distribution and identifying bottlenecks in the review process.",
             why_it_matters="Identifies systemic delays in case processing. Long tails indicate cases getting stuck in review, increasing fraud exposure.",
-            what_to_do="Investigate causes of long-tail cases. Implement time-based escalation rules. Consider automation for straightforward low-risk cases.",
-            use_container_width=True
+            what_to_do="Investigate causes of long-tail cases. Implement time-based escalation rules. Consider automation for straightforward low-risk cases."
         )
 
         # Calculate percentiles
@@ -446,8 +443,7 @@ def render():
             title="Merchant Risk Profile",
             what_it_shows="Radar chart displaying risk scores across different merchant categories, with further from center indicating higher risk.",
             why_it_matters="Different merchant categories have vastly different fraud profiles. Cryptocurrency and gaming require stricter controls than retail or healthcare.",
-            what_to_do="Implement category-specific transaction limits. Apply enhanced due diligence for high-risk categories. Consider blocking certain categories for high-risk accounts.",
-            use_container_width=True
+            what_to_do="Implement category-specific transaction limits. Apply enhanced due diligence for high-risk categories. Consider blocking certain categories for high-risk accounts."
         )
 
     with col2:
@@ -549,8 +545,7 @@ def render():
             title="Fraud Rate by Merchant Category",
             what_it_shows="Horizontal bar chart ranking merchant categories by fraud rate percentage, with color indicating overall risk score.",
             why_it_matters="Quantifies fraud exposure by category for targeted controls. High fraud rate categories require enhanced monitoring and stricter limits.",
-            what_to_do="Deploy additional verification for high fraud rate categories. Set lower transaction limits for cryptocurrency and gaming. Review merchant onboarding criteria.",
-            use_container_width=True
+            what_to_do="Deploy additional verification for high fraud rate categories. Set lower transaction limits for cryptocurrency and gaming. Review merchant onboarding criteria."
         )
 
     # Merchant details table

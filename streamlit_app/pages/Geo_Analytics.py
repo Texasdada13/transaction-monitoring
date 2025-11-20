@@ -475,8 +475,7 @@ def render():
         title="Cross-Vector Threat Analysis",
         what_it_shows="Anomaly scores across multiple detection parameters including device fingerprint, geo-location, VPN usage, typing speed, transaction time, amount, and frequency.",
         why_it_matters="Multi-vector analysis provides comprehensive fraud detection. High scores across multiple parameters strongly indicate account takeover or sophisticated fraud attempts.",
-        what_to_do="Prioritize investigations where 3+ parameters show high anomaly scores. Block accounts with critical device fingerprint changes. Implement step-up authentication for VPN users.",
-        use_container_width=True
+        what_to_do="Prioritize investigations where 3+ parameters show high anomaly scores. Block accounts with critical device fingerprint changes. Implement step-up authentication for VPN users."
     )
 
     # AI Geographic Pattern Analysis

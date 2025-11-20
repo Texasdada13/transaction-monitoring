@@ -1043,8 +1043,7 @@ def render():
         title="Rule Weight Contribution",
         what_it_shows="Horizontal bar chart showing how each triggered rule contributes to the total risk score, colored by severity level (critical=red, high=orange, medium=yellow).",
         why_it_matters="Explains exactly why a transaction was flagged and the relative importance of each rule. Essential for analyst decision-making and model transparency.",
-        what_to_do="Focus investigation on critical-severity rules first. Verify the underlying data for high-weight rules. Use this breakdown to explain decisions to customers.",
-        use_container_width=True
+        what_to_do="Focus investigation on critical-severity rules first. Verify the underlying data for high-weight rules. Use this breakdown to explain decisions to customers."
     )
 
     # Detailed rules table
@@ -1188,8 +1187,7 @@ def render():
                 title="Transaction Amount Over Time",
                 what_it_shows="Time series of transaction amounts leading up to the flagged transaction, with the suspicious transaction highlighted as a red star against the normal pattern.",
                 why_it_matters="Visualizes the deviation from normal behavior. Extreme spikes in amount are classic fraud indicators showing sudden draining attempts.",
-                what_to_do="Calculate the standard deviation of the spike. Verify if customer authorized the large transaction. Check for other accounts with similar patterns.",
-                use_container_width=True
+                what_to_do="Calculate the standard deviation of the spike. Verify if customer authorized the large transaction. Check for other accounts with similar patterns."
             )
         
         # Scenario 2: Testing Pattern

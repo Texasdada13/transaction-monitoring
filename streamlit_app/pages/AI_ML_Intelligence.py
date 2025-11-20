@@ -528,8 +528,7 @@ def render_ensemble_models(features, colors):
             title="Ensemble Model Comparison",
             what_it_shows="Horizontal bar chart comparing AUC scores across different ML models including Random Forest, Gradient Boosting, XGBoost, and ensemble combinations.",
             why_it_matters="Ensemble methods typically outperform individual models by combining their strengths. Comparing AUC helps select the best production model.",
-            what_to_do="Deploy the model with highest AUC (typically the ensemble). Set up A/B testing between top models. Monitor model performance post-deployment.",
-            use_container_width=True
+            what_to_do="Deploy the model with highest AUC (typically the ensemble). Set up A/B testing between top models. Monitor model performance post-deployment."
         )
 
     with col2:
@@ -622,8 +621,7 @@ def render_ensemble_models(features, colors):
             title="Feature Importance (Random Forest)",
             what_it_shows="Top 10 most important features for fraud detection ranked by their Random Forest importance scores, showing which variables drive predictions.",
             why_it_matters="Feature importance guides data quality efforts and rule creation. High-importance features should be monitored closely for accuracy and drift.",
-            what_to_do="Prioritize data quality for top features. Create rules based on important features. Investigate if importance aligns with fraud analyst expertise.",
-            use_container_width=True
+            what_to_do="Prioritize data quality for top features. Create rules based on important features. Investigate if importance aligns with fraud analyst expertise."
         )
 
     # Enhanced XGBoost training progress with explainability
@@ -839,8 +837,7 @@ def render_model_performance(features, colors):
             title="ROC Curves - Model Comparison",
             what_it_shows="Receiver Operating Characteristic curves comparing Random Forest and Gradient Boosting models, with AUC scores indicating overall classification performance.",
             why_it_matters="ROC curves show the tradeoff between true positive rate and false positive rate. Higher AUC (closer to 1.0) indicates better fraud detection capability.",
-            what_to_do="Select the model with highest AUC for production. Monitor for AUC degradation over time. Consider ensemble methods if individual models underperform.",
-            use_container_width=True
+            what_to_do="Select the model with highest AUC for production. Monitor for AUC degradation over time. Consider ensemble methods if individual models underperform."
         )
 
     with col2:
@@ -1209,8 +1206,7 @@ def render_explainable_ai(features, colors):
             title="SHAP Feature Importance",
             what_it_shows="Global SHAP values showing average impact of each feature on model predictions, providing model-agnostic interpretability.",
             why_it_matters="SHAP values explain how much each feature contributes to predictions. Essential for regulatory compliance and model transparency requirements.",
-            what_to_do="Use SHAP explanations in customer communications. Monitor for unexpected feature importance changes. Validate against domain expertise.",
-            use_container_width=True
+            what_to_do="Use SHAP explanations in customer communications. Monitor for unexpected feature importance changes. Validate against domain expertise."
         )
 
     with col2:
@@ -1398,8 +1394,7 @@ def render_explainable_ai(features, colors):
             title="LIME Explanation",
             what_it_shows="Local Interpretable Model-agnostic Explanations showing how each feature contributed to the fraud probability for a specific transaction.",
             why_it_matters="LIME provides transaction-level explainability, showing exactly why a specific case was flagged. Critical for analyst decision-making and customer queries.",
-            what_to_do="Use these explanations to train analysts. Include in case review interface. Reference when explaining decisions to customers or regulators.",
-            use_container_width=True
+            what_to_do="Use these explanations to train analysts. Include in case review interface. Reference when explaining decisions to customers or regulators."
         )
 
     # SHAP dependence plots
