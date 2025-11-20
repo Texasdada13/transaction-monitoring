@@ -743,22 +743,6 @@ def render():
     .block-container {
         padding-top: 0.5rem;
         padding-bottom: 1rem;
-        max-width: 1400px;
-    }
-
-    /* Professional Card Styling for Containers */
-    [data-testid="column"] > div > div > div {
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin-bottom: 12px;
-        transition: all 0.3s ease;
-    }
-
-    [data-testid="column"] > div > div > div:hover {
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-        transform: translateY(-2px);
     }
 
     /* Section Headers */

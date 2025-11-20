@@ -48,31 +48,8 @@ def render():
     apply_master_theme()
     init_tooltip_toggle()
 
-    # Professional CSS for card-based layout
-    st.markdown("""
-    <style>
-    .block-container { padding-top: 0.5rem; padding-bottom: 1rem; max-width: 1400px; }
-    [data-testid="column"] > div > div > div {
-        background: white; border-radius: 12px; padding: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); margin-bottom: 12px; transition: all 0.3s ease;
-    }
-    [data-testid="column"] > div > div > div:hover {
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); transform: translateY(-2px);
-    }
-    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
-        padding-bottom: 12px; border-bottom: 2px solid #f0f0f0; }
-    .section-header h2, .section-header h3 { margin: 0 !important; font-size: 1.5rem !important;
-        font-weight: 600; color: #1a202c; }
-    .section-badge { display: inline-block; padding: 4px 12px;
-        background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px;
-        font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    h2, h3 { margin-top: 0.8rem !important; margin-bottom: 0.4rem !important; }
-    [data-testid="stMetricValue"] {
-        font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # Get standardized chart colors
+    colors = get_chart_colors()
 
     # Professional gradient header
     st.markdown("""
@@ -113,9 +90,6 @@ def render():
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    # Get standardized chart colors
-    colors = get_chart_colors()
 
     # VPN/Proxy Fraud Locations (USA)
     st.markdown("""

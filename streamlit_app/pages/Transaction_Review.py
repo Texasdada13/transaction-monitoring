@@ -973,8 +973,6 @@ def render():
     apply_master_theme()
     init_tooltip_toggle()
 
-    st.set_page_config(page_title="Transaction Review Detail", page_icon="🔍", layout="wide")
-
     # Get standardized chart colors
     colors = get_chart_colors()
 
@@ -985,23 +983,6 @@ def render():
     .block-container {
         padding-top: 0.5rem;
         padding-bottom: 1rem;
-        max-width: 1400px;
-    }
-
-    /* Professional Card Styling for Containers */
-    [data-testid="column"] > div > div > div {
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin-bottom: 12px;
-        transition: all 0.3s ease;
-    }
-
-    /* Hover effect for card containers */
-    [data-testid="column"] > div > div > div:hover {
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-        transform: translateY(-2px);
     }
 
     /* Professional Card Styling */
@@ -1566,7 +1547,7 @@ def render():
         perf_col1, perf_col2, perf_col3 = st.columns(3)
 
         with perf_col1:
-            st.markdown("####Precision & Recall")
+            st.markdown("#### Precision & Recall")
 
             precision_data = [0.945, 0.932, 0.928, 0.941, 0.938, 0.943, 0.949]
             recall_data = [0.912, 0.905, 0.898, 0.915, 0.908, 0.918, 0.923]
