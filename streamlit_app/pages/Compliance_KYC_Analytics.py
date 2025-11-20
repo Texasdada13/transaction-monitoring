@@ -23,12 +23,15 @@ from pathlib import Path
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 from streamlit_app.explainability import get_explainability_engine
+from streamlit_app.components import init_tooltip_toggle, chart_with_explanation
 
 
 def load_compliance_data():
     """Load all compliance datasets"""
     try:
-        data_dir = Path("compliance_dataset")
+        # Get the project root directory (two levels up from this file)
+        project_root = Path(__file__).parent.parent.parent
+        data_dir = project_root / "compliance_dataset"
 
         customers_df = pd.read_csv(data_dir / "customer_profiles.csv")
         transactions_df = pd.read_csv(data_dir / "transactions.csv")
@@ -247,7 +250,13 @@ def render_customer_lifecycle_timeline(data, colors):
             yaxis_title="Event Type"
         )
 
-        st.plotly_chart(fig, use_container_width=True, key="lifecycle_timeline")
+        chart_with_explanation(
+            fig,
+            title="Customer Compliance Timeline",
+            what_it_shows="Timeline of all KYC, CDD, and EDD events for this customer including document verifications, risk assessments, and investigations.",
+            why_it_matters="Helps identify patterns in customer behavior, compliance gaps, and potential risk escalation over time.",
+            what_to_do="Look for clusters of high-risk events or long gaps between CDD reviews that may indicate oversight issues."
+        )
 
         # Event details table
         st.markdown("### 📋 Event History")
@@ -1638,6 +1647,9 @@ def render():
 
     # Apply theme
     apply_master_theme()
+
+    # Initialize tooltip toggle in sidebar
+    init_tooltip_toggle()
 
     # Professional gradient header
     st.markdown("""

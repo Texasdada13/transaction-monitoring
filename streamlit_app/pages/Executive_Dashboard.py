@@ -15,6 +15,7 @@ from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 from streamlit_app.explainability import get_explainability_engine
+from streamlit_app.components import init_tooltip_toggle, chart_with_explanation
 
 
 # Generate synthetic dataset for visualization
@@ -58,6 +59,7 @@ def render():
 
     # Apply theme
     apply_master_theme()
+    init_tooltip_toggle()
 
     # Professional gradient header
     st.markdown("""
@@ -374,7 +376,13 @@ def render():
         ))
 
         fig_treemap.update_layout(height=400)
-        st.plotly_chart(fig_treemap, use_container_width=True, key="exec_treemap")
+        chart_with_explanation(
+            fig_treemap,
+            title="Detection Attribution Treemap",
+            what_it_shows="Visualizes which fraud detection rules catch the most confirmed fraud cases, with box size representing the number of catches.",
+            why_it_matters="Identifies your most effective detection rules and helps prioritize rule maintenance and optimization efforts.",
+            what_to_do="Focus resources on maintaining top-performing rules. Investigate why smaller boxes have low catches - they may need tuning or retirement."
+        )
 
     with col2:
         st.subheader("🧠 Rule Performance Matrix")
@@ -467,7 +475,13 @@ def render():
             hovermode='closest'
         )
 
-        st.plotly_chart(fig_bubble, use_container_width=True, key="exec_bubble")
+        chart_with_explanation(
+            fig_bubble,
+            title="Rule Performance Matrix",
+            what_it_shows="Plots each rule's precision (accuracy) against trigger frequency, with bubble size indicating rule weight in the detection model.",
+            why_it_matters="Reveals the efficiency trade-off between rule sensitivity and accuracy. High-precision, high-frequency rules are most valuable.",
+            what_to_do="Rules in upper-right quadrant are ideal. Review high-frequency, low-precision rules for threshold adjustments to reduce false positives."
+        )
 
     st.markdown("---") 
 
@@ -564,7 +578,13 @@ def render():
         yaxis=dict(autorange='reversed')
     )
 
-    st.plotly_chart(fig_heatmap, use_container_width=True, key="exec_heatmap")
+    chart_with_explanation(
+        fig_heatmap,
+        title="Strategic Detection Dashboard",
+        what_it_shows="Heat map comparing all rules across four key performance metrics: trigger frequency, precision, false positive rate, and contribution to fraud detection.",
+        why_it_matters="Provides at-a-glance identification of underperforming rules that may need optimization or high-performers to replicate.",
+        what_to_do="Green cells indicate strong performance. Red cells require attention - consider rule tuning, threshold adjustment, or retirement for consistently red rows."
+    )
 
     st.markdown("---")
 
@@ -1135,7 +1155,13 @@ def render():
                 showlegend=False
             )
 
-            st.plotly_chart(fig_roi, use_container_width=True, key="exec_ml_roi")
+            chart_with_explanation(
+                fig_roi,
+                title="AI/ML ROI Analysis",
+                what_it_shows="Annual financial impact breakdown of the ML fraud detection system, showing revenue benefits versus implementation and operating costs.",
+                why_it_matters="Quantifies the business value of AI investment and helps justify continued or expanded ML funding to stakeholders.",
+                what_to_do="Use these figures for budget discussions. If net benefit is strong, consider expanding ML to additional fraud scenarios."
+            )
 
             net_benefit = roi_data['Annual Value'].sum()
             roi_percentage = (net_benefit / 630000) * 100
@@ -1248,7 +1274,13 @@ def render():
                 hovermode='closest'
             )
 
-            st.plotly_chart(fig_comparison, use_container_width=True, key="exec_ml_comparison")
+            chart_with_explanation(
+                fig_comparison,
+                title="ML vs Manual Review Comparison",
+                what_it_shows="Compares AI/ML system performance against manual-only review across accuracy, speed, cost, and false positive metrics.",
+                why_it_matters="Demonstrates the operational advantages of ML automation and identifies areas where manual review still adds value.",
+                what_to_do="Use gaps between lines to identify improvement opportunities. Large gaps favor ML; small gaps may warrant hybrid approaches."
+            )
 
         # ML Strategic Insights
         st.markdown("#### 💡 Strategic ML Insights")

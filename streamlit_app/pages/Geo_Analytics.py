@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 from streamlit_app.explainability import get_explainability_engine
+from streamlit_app.components import init_tooltip_toggle, chart_with_explanation
 
 
 # Generate synthetic dataset for visualization
@@ -45,6 +46,7 @@ def render():
 
     # Apply theme
     apply_master_theme()
+    init_tooltip_toggle()
 
     # Professional CSS for card-based layout
     st.markdown("""
@@ -206,7 +208,14 @@ def render():
         margin=dict(l=0, r=0, t=30, b=0)
     )
 
-    st.plotly_chart(fig_usa_map, use_container_width=True, key="geo_usa_map")
+    chart_with_explanation(
+        fig_usa_map,
+        title="Geolocation Threat Map",
+        what_it_shows="Geographic distribution of VPN/proxy-enabled fraud attempts across US states, with bubble size indicating fraud volume and color intensity showing threat severity.",
+        why_it_matters="Geographic clustering reveals fraud hotspots and enables targeted regional monitoring. VPN/proxy usage is a key indicator of location masking by fraudsters.",
+        what_to_do="Deploy enhanced monitoring in high-risk states (CA, NY, TX). Implement stricter verification for transactions from VPN-detected locations. Consider regional transaction limits.",
+        use_container_width=True
+    )
 
     # Top states table
     col1, col2, col3 = st.columns(3, gap="medium")
@@ -309,7 +318,14 @@ def render():
             hovermode='x unified'
         )
 
-        st.plotly_chart(fig_behavior_freq, use_container_width=True, key="geo_behavior_freq")
+        chart_with_explanation(
+            fig_behavior_freq,
+            title="Transaction Frequency Analysis",
+            what_it_shows="Comparison of normal transaction frequency baseline (green) versus flagged suspicious activity patterns (red) over time, highlighting frequency spikes.",
+            why_it_matters="Sudden spikes in transaction frequency are strong indicators of account takeover or automated fraud attacks. Normal users show consistent patterns.",
+            what_to_do="Investigate accounts showing 100%+ frequency deviation. Set up real-time alerts for velocity anomalies. Consider temporary holds for extreme spikes.",
+            use_container_width=True
+        )
 
     with col2:
         st.markdown("**Transaction Amount Analysis**")
@@ -389,7 +405,14 @@ def render():
             hovermode='x unified'
         )
 
-        st.plotly_chart(fig_behavior_amount, use_container_width=True, key="geo_behavior_amount")
+        chart_with_explanation(
+            fig_behavior_amount,
+            title="Transaction Amount Analysis",
+            what_it_shows="Normal transaction amount baseline versus flagged high-value anomalies on a logarithmic scale, revealing extreme amount deviations from typical spending patterns.",
+            why_it_matters="Dramatic increases in transaction amounts (especially 500%+ above normal) are critical fraud signals indicating potential account compromise or money laundering.",
+            what_to_do="Block transactions exceeding 10x normal amounts pending verification. Contact customers for high-value transactions. Review accounts with sudden amount spikes.",
+            use_container_width=True
+        )
 
     # Anomaly detection insights
     st.markdown("**🚨 Anomaly Detection Summary:**")
@@ -447,7 +470,14 @@ def render():
         yaxis=dict(range=[0, 110], title_font_size=11)
     )
 
-    st.plotly_chart(fig_multi_anomaly, use_container_width=True, key="geo_multi_anomaly")
+    chart_with_explanation(
+        fig_multi_anomaly,
+        title="Cross-Vector Threat Analysis",
+        what_it_shows="Anomaly scores across multiple detection parameters including device fingerprint, geo-location, VPN usage, typing speed, transaction time, amount, and frequency.",
+        why_it_matters="Multi-vector analysis provides comprehensive fraud detection. High scores across multiple parameters strongly indicate account takeover or sophisticated fraud attempts.",
+        what_to_do="Prioritize investigations where 3+ parameters show high anomaly scores. Block accounts with critical device fingerprint changes. Implement step-up authentication for VPN users.",
+        use_container_width=True
+    )
 
     # AI Geographic Pattern Analysis
     st.markdown("""
