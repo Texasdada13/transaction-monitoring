@@ -32,6 +32,7 @@ warnings.filterwarnings('ignore')
 
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.explainability import get_explainability_engine
+from streamlit_app.components import init_tooltip_toggle, chart_with_explanation
 
 
 def load_ml_data():
@@ -3624,6 +3625,7 @@ def render_advanced_metrics(features, colors):
 def render():
     """Main render function for AI & ML Intelligence page"""
     apply_master_theme()
+    init_tooltip_toggle()
 
     st.title("🤖 AI & Machine Learning Intelligence")
     st.markdown("*Advanced machine learning analytics and model intelligence for fraud detection*")

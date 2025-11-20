@@ -14,6 +14,7 @@ from datetime import datetime
 from streamlit_app.theme import apply_master_theme, render_page_header, get_chart_colors
 from streamlit_app.ai_recommendations import get_ai_engine, render_ai_insight
 from streamlit_app.explainability import get_explainability_engine
+from streamlit_app.components import init_tooltip_toggle, chart_with_explanation
 
 
 # Generate synthetic dataset for visualization
@@ -51,6 +52,7 @@ def render():
 
     # Apply theme
     apply_master_theme()
+    init_tooltip_toggle()
 
     # Professional gradient header
     st.markdown("""

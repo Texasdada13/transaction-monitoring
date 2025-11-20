@@ -21,6 +21,7 @@ from streamlit_app.theme import apply_master_theme, render_page_header, get_char
 from streamlit_app.api_client import get_api_client
 from streamlit_app.theme import get_chart_colors
 from streamlit_app.explainability import get_explainability_engine
+from streamlit_app.components import init_tooltip_toggle, chart_with_explanation
 
 
 def render_workflow_diagram():
@@ -970,6 +971,7 @@ def render():
 
     # Apply theme
     apply_master_theme()
+    init_tooltip_toggle()
 
     st.set_page_config(page_title="Transaction Review Detail", page_icon="🔍", layout="wide")
 
