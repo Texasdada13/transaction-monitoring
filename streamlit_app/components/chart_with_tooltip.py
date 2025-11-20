@@ -18,16 +18,19 @@ def init_tooltip_toggle():
     if "tooltips_enabled" not in st.session_state:
         st.session_state.tooltips_enabled = True
 
+    # Add divider and toggle to sidebar for visibility
+    st.sidebar.divider()
+    st.sidebar.markdown("**Chart Options**")
+
     # Add toggle to sidebar
-    st.sidebar.toggle(
+    toggled = st.sidebar.toggle(
         "Show Chart Explanations",
         value=st.session_state.tooltips_enabled,
-        key="tooltip_toggle_key",
         help="Toggle explanatory tooltips for all charts on this page"
     )
 
     # Update session state from toggle
-    st.session_state.tooltips_enabled = st.session_state.tooltip_toggle_key
+    st.session_state.tooltips_enabled = toggled
 
 
 def get_tooltips_enabled() -> bool:
