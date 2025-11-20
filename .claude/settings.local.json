@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(./venv/Scripts/python.exe:*)",
+      "Bash(findstr:*)",
+      "Bash(heroku --version:*)",
+      "Bash(heroku auth:whoami:*)",
+      "Bash(heroku create:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git rm:*)",
+      "Bash(gh auth:*)",
+      "Bash(winget install:*)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" auth status)",
+      "Bash(\"C:\\Program Files\\GitHub CLI\\gh.exe\" issue create --title \"Add global tooltip toggle component\" --label \"enhancement,P0\" --body \"$(cat <<''EOF''\n## Summary\nCreate a reusable component that adds an enable/disable toggle for chart explanations across all Streamlit pages.\n\n## Acceptance Criteria\n- [ ] Toggle in sidebar that persists in session state\n- [ ] Wrapper function `chart_with_explanation()` for all charts\n- [ ] Includes \"What it shows\", \"Why it matters\", \"What to do\" sections\n- [ ] Consistent styling across all pages\n\n## Files to Create/Modify\n- `streamlit_app/components/chart_with_tooltip.py` (new)\n- All pages in `streamlit_app/pages/`\n\n## Implementation\n```python\ndef init_tooltip_toggle():\n    if \"tooltips_enabled\" not in st.session_state:\n        st.session_state.tooltips_enabled = True\n    st.sidebar.toggle(\"ℹ️ Show Chart Explanations\", \n                      value=st.session_state.tooltips_enabled,\n                      key=\"tooltips_enabled\")\n```\n\n## Effort\n~4 hours\n\n## Priority\nP0 - Foundation for all other tooltip enhancements\nEOF\n)\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
