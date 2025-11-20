@@ -28,7 +28,9 @@ from streamlit_app.explainability import get_explainability_engine
 def load_compliance_data():
     """Load all compliance datasets"""
     try:
-        data_dir = Path("compliance_dataset")
+        # Get the project root directory (two levels up from this file)
+        project_root = Path(__file__).parent.parent.parent
+        data_dir = project_root / "compliance_dataset"
 
         customers_df = pd.read_csv(data_dir / "customer_profiles.csv")
         transactions_df = pd.read_csv(data_dir / "transactions.csv")
