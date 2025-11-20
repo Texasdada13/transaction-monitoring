@@ -270,7 +270,13 @@ def render_transaction_search():
                     height=350,
                     bargap=0.05
                 )
-                st.plotly_chart(fig_dist, use_container_width=True, key="fraud_risk_dist")
+                chart_with_explanation(
+                    fig_dist,
+                    title="Risk Severity Distribution",
+                    what_it_shows="Histogram showing the distribution of risk scores across all searched transactions, revealing concentration at different risk levels.",
+                    why_it_matters="Helps identify whether your risk scoring is well-calibrated and if there are unusual concentrations of high-risk activity.",
+                    what_to_do="A healthy distribution shows most transactions at low risk with a tail toward high risk. Bimodal distributions may indicate distinct fraud patterns."
+                )
 
             # Amount vs Risk (Scatter)
             with viz_col2:
@@ -334,7 +340,13 @@ def render_transaction_search():
                     height=350,
                     hovermode='closest'
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True, key="fraud_scatter")
+                chart_with_explanation(
+                    fig_scatter,
+                    title="Risk-Value Correlation Analysis",
+                    what_it_shows="Scatter plot mapping transaction amounts against risk scores, with color intensity indicating risk severity for pattern identification.",
+                    why_it_matters="Reveals whether high-value transactions correlate with higher risk and helps identify transaction amount thresholds requiring additional scrutiny.",
+                    what_to_do="Investigate clusters of high-risk, high-value transactions immediately. Look for unusual patterns like low-value but high-risk concentrations."
+                )
 
             st.divider()
             st.markdown("#### Results")
@@ -1025,7 +1037,13 @@ def render():
             yaxis=dict(title_font_size=11)
         )
 
-        st.plotly_chart(fig_anomaly, use_container_width=True, key="ml_anomaly_dist")
+        chart_with_explanation(
+            fig_anomaly,
+            title="ML Anomaly Score Distribution",
+            what_it_shows="Distribution of ML-generated anomaly scores across all transactions, with threshold lines marking review and block cutoffs.",
+            why_it_matters="Shows how well your ML model separates normal from suspicious behavior and validates threshold settings for automated actions.",
+            what_to_do="Most scores should fall below the review threshold. If significant volume exceeds the block threshold, verify thresholds or investigate new attack patterns."
+        )
 
     # ML Model Performance Tracking
     st.markdown("""

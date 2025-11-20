@@ -448,7 +448,13 @@ def render():
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         )
-        st.plotly_chart(fig_funnel, use_container_width=True, key="analyst_funnel_chart")
+        chart_with_explanation(
+            fig_funnel,
+            title="Transaction Lifecycle Funnel",
+            what_it_shows="Visualizes how transactions flow through the detection pipeline from initial submission to final disposition (cleared, reviewed, rejected, or confirmed fraud).",
+            why_it_matters="Reveals bottlenecks in the review process and helps optimize resource allocation across different stages of transaction screening.",
+            what_to_do="Monitor the manual review stage for backlogs. If rejected or escalated percentages spike, investigate for new fraud patterns or rule issues."
+        )
 
         st.markdown("""
         <div style='background: linear-gradient(135deg, #10b981, #059669); padding: 12px; border-radius: 8px; margin-top: 12px;'>
@@ -504,7 +510,13 @@ def render():
             plot_bgcolor='rgba(0,0,0,0)'
         )
 
-        st.plotly_chart(fig_decisions, use_container_width=True, key="analyst_decisions_chart")
+        chart_with_explanation(
+            fig_decisions,
+            title="Decision Pattern Analytics",
+            what_it_shows="Stacked bar chart showing daily analyst decisions (cleared, rejected, escalated) with confidence trend overlay over the past 30 days.",
+            why_it_matters="Tracks decision patterns over time to identify shifts in fraud activity, analyst workload, and model confidence calibration.",
+            what_to_do="Rising rejection rates may indicate new fraud attacks. Falling confidence scores suggest model retraining may be needed."
+        )
 
     # ==================== SECTION 4: Live Transaction Pulse ====================
     st.markdown("""
@@ -552,7 +564,13 @@ def render():
             plot_bgcolor='rgba(0,0,0,0)'
         )
 
-        st.plotly_chart(fig, use_container_width=True, key="analyst_pulse_chart")
+        chart_with_explanation(
+            fig,
+            title="Real-Time Transaction Flow",
+            what_it_shows="24-hour view of total transaction volume (area) overlaid with detected fraud cases (line) showing temporal patterns in activity and threats.",
+            why_it_matters="Reveals peak activity periods and time-based fraud patterns, enabling proactive resource scheduling and targeted monitoring.",
+            what_to_do="Note fraud spikes relative to volume. Off-hours fraud increases may indicate international attacks or compromised automated systems."
+        )
 
     # ==================== SECTION 5: ML Intelligence ====================
     st.markdown("""
@@ -624,7 +642,13 @@ def render():
             plot_bgcolor='rgba(0,0,0,0)'
         )
 
-        st.plotly_chart(fig_ml_perf, use_container_width=True, key="ml_performance_trends")
+        chart_with_explanation(
+            fig_ml_perf,
+            title="Model Performance Trends",
+            what_it_shows="Seven-day trend lines for key ML metrics: accuracy, precision, and recall, showing how model performance evolves over time.",
+            why_it_matters="Early detection of model drift or degradation allows proactive retraining before detection rates suffer.",
+            what_to_do="All metrics should trend upward or stay stable. Declining recall indicates missed fraud; declining precision means more false positives."
+        )
 
     with ml_viz_col2:
         st.markdown("<div class='subsection-header'><h3>📊 Prediction Confidence</h3></div>", unsafe_allow_html=True)
@@ -700,7 +724,13 @@ def render():
             plot_bgcolor='rgba(0,0,0,0)'
         )
 
-        st.plotly_chart(fig_features, use_container_width=True, key="ml_feature_importance")
+        chart_with_explanation(
+            fig_features,
+            title="Feature Importance",
+            what_it_shows="Horizontal bar chart ranking the top features used by ML models to predict fraud, with importance scores indicating relative contribution.",
+            why_it_matters="Understanding which features drive predictions helps explain decisions to stakeholders and identifies areas for data quality focus.",
+            what_to_do="Ensure top features have high data quality. If unexpected features rank high, investigate for data leakage or spurious correlations."
+        )
 
     with ml_viz_col4:
         st.markdown("<div class='subsection-header'><h3>⚡ Model Health</h3></div>", unsafe_allow_html=True)
