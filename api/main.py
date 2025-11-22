@@ -18,6 +18,7 @@ from dashboard.main import DashboardData
 from run import TransactionMonitor
 from api.auth import authenticate_user, create_access_token, decode_token, Token, ACCESS_TOKEN_EXPIRE_MINUTES
 from api.fraud_modules_catalog import FRAUD_MODULES_CATALOG, get_module_by_category, get_module_count, get_module_by_severity
+from api.stakeholder_assessment_routes import router as stakeholder_router
 
 # Initialize FastAPI
 app = FastAPI(
@@ -34,6 +35,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(stakeholder_router)
 
 # Security
 security = HTTPBearer()

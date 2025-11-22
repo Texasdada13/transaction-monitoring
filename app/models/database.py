@@ -736,6 +736,78 @@ class AccountLimit(Base):
     notes = Column(Text, nullable=True)
     additional_data = Column(Text, nullable=True)  # JSON for extra fields
 
+
+# ============================================================================
+# STAKEHOLDER ASSESSMENT MODELS
+# ============================================================================
+
+class StakeholderDB(Base):
+    """Database model for stakeholders who provide assessment input."""
+    __tablename__ = "stakeholders"
+
+    stakeholder_id = Column(String(36), primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False, index=True)
+    phone = Column(String(50), nullable=True)
+    role = Column(String(255), nullable=True)
+    department = Column(String(255), nullable=True)
+    stakeholder_type = Column(String(50), nullable=False, index=True)
+    applications = Column(Text, nullable=True)  # JSON array of application IDs
+    availability = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Relationships
+    interview_sessions = relationship("InterviewSessionDB", back_populates="stakeholder")
+
+
+class InterviewSessionDB(Base):
+    """Database model for assessment interview sessions."""
+    __tablename__ = "interview_sessions"
+
+    session_id = Column(String(36), primary_key=True, index=True)
+    stakeholder_id = Column(String(36), ForeignKey("stakeholders.stakeholder_id"), nullable=False, index=True)
+    application_id = Column(String(36), nullable=False, index=True)
+    interviewer_id = Column(String(36), nullable=True)
+    scheduled_date = Column(DateTime, nullable=True)
+    conducted_date = Column(DateTime, nullable=True)
+    status = Column(String(50), nullable=False, default="scheduled", index=True)
+    duration_minutes = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    overall_score = Column(Float, nullable=True)
+    category_scores = Column(Text, nullable=True)  # JSON object
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Relationships
+    stakeholder = relationship("StakeholderDB", back_populates="interview_sessions")
+    responses = relationship("InterviewResponseDB", back_populates="session", cascade="all, delete-orphan")
+
+
+class InterviewResponseDB(Base):
+    """Database model for interview question responses."""
+    __tablename__ = "interview_responses"
+
+    response_id = Column(String(36), primary_key=True, index=True)
+    session_id = Column(String(36), ForeignKey("interview_sessions.session_id"), nullable=False, index=True)
+    question_id = Column(String(20), nullable=False, index=True)
+    numeric_value = Column(Integer, nullable=True)
+    text_value = Column(Text, nullable=True)
+    confidence_level = Column(Integer, default=3)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    # Relationships
+    session = relationship("InterviewSessionDB", back_populates="responses")
+
+    # Unique constraint on session_id and question_id
+    __table_args__ = (
+        {'sqlite_autoincrement': True},
+    )
+
+
 # Create all tables
 def init_db():
     Base.metadata.create_all(bind=engine)
