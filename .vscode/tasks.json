@@ -16,7 +16,16 @@
         "--reload"
       ],
       "isBackground": true,
-      "problemMatcher": [],
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*Starting.*$",
+          "endsPattern": "^.*Application startup complete.*$"
+        }
+      },
       "presentation": {
         "reveal": "always",
         "panel": "new",
@@ -43,9 +52,7 @@
         "panel": "new",
         "group": "dev"
       },
-      "runOptions": {
-        "runOn": "folderOpen"
-      }
+      "dependsOn": ["Start FastAPI Backend"]
     },
     {
       "label": "Open Browser",
@@ -66,9 +73,7 @@
       "presentation": {
         "reveal": "never"
       },
-      "runOptions": {
-        "runOn": "folderOpen"
-      }
+      "dependsOn": ["Start Streamlit Dashboard"]
     },
     {
       "label": "Start All Services",
@@ -77,7 +82,11 @@
         "Start Streamlit Dashboard",
         "Open Browser"
       ],
-      "problemMatcher": []
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
     }
   ]
 }

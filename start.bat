@@ -8,8 +8,38 @@ REM Start FastAPI backend in new window
 echo Starting FastAPI backend on port 8000...
 start "FastAPI Backend" cmd /k "venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000"
 
-REM Wait for backend to start
-timeout /t 3 /nobreak >nul
+REM Wait for backend to be ready (with health check)
+echo Waiting for FastAPI backend to be ready...
+set RETRIES=0
+set MAX_RETRIES=30
+
+:CHECK_BACKEND
+timeout /t 1 /nobreak >nul
+set /a RETRIES+=1
+
+REM Try to connect to the health endpoint
+curl -s -o nul -w "" http://localhost:8000/health >nul 2>&1
+if %errorlevel% equ 0 (
+    echo FastAPI backend is ready!
+    goto BACKEND_READY
+)
+
+REM Also try the root endpoint as fallback
+curl -s -o nul -w "" http://localhost:8000/ >nul 2>&1
+if %errorlevel% equ 0 (
+    echo FastAPI backend is ready!
+    goto BACKEND_READY
+)
+
+if %RETRIES% lss %MAX_RETRIES% (
+    echo    Waiting... attempt %RETRIES%/%MAX_RETRIES%
+    goto CHECK_BACKEND
+)
+
+echo WARNING: Backend may not be fully ready, proceeding anyway...
+
+:BACKEND_READY
+echo.
 
 REM Start Streamlit dashboard in new window
 echo Starting Streamlit dashboard on port 8501...
