@@ -16,7 +16,7 @@ class FraudAPIClient:
     Handles authentication, token management, and API requests.
     """
 
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "http://127.0.0.1:8347"):
         """
         Initialize API client.
 
@@ -465,7 +465,7 @@ def get_api_client() -> FraudAPIClient:
         # Get API URL from environment or use default
         import os
         # Check multiple environment variable names for flexibility
-        api_url = os.getenv("API_BASE_URL") or os.getenv("API_URL", "http://localhost:8000")
+        api_url = os.getenv("API_BASE_URL") or os.getenv("API_URL", "http://127.0.0.1:8347")
         st.session_state.api_client = FraudAPIClient(api_url)
 
     return st.session_state.api_client

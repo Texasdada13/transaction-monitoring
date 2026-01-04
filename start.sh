@@ -4,9 +4,12 @@
 echo "Starting Transaction Monitoring System..."
 echo ""
 
+# Set API URL for Streamlit
+export API_BASE_URL=http://127.0.0.1:8347
+
 # Start FastAPI backend in background
-echo "Starting FastAPI backend on port 8000..."
-./venv/Scripts/python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000 &
+echo "Starting FastAPI backend on port 8347..."
+./venv/Scripts/python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8347 &
 BACKEND_PID=$!
 
 # Wait for backend to be ready (with health check)
@@ -19,8 +22,8 @@ while [ $RETRIES -lt $MAX_RETRIES ]; do
     RETRIES=$((RETRIES + 1))
 
     # Try health endpoint first, then root endpoint
-    if curl -s -o /dev/null -w "" http://localhost:8000/health 2>/dev/null || \
-       curl -s -o /dev/null -w "" http://localhost:8000/ 2>/dev/null; then
+    if curl -s -o /dev/null -w "" http://127.0.0.1:8347/health 2>/dev/null || \
+       curl -s -o /dev/null -w "" http://127.0.0.1:8347/ 2>/dev/null; then
         echo "FastAPI backend is ready!"
         break
     fi
@@ -35,8 +38,8 @@ fi
 echo ""
 
 # Start Streamlit dashboard in background
-echo "Starting Streamlit dashboard on port 8501..."
-./venv/Scripts/python.exe -m streamlit run streamlit_app/app.py &
+echo "Starting Streamlit dashboard on port 8348..."
+./venv/Scripts/python.exe -m streamlit run streamlit_app/app.py --server.port 8348 &
 STREAMLIT_PID=$!
 
 # Wait for Streamlit to start
@@ -44,12 +47,12 @@ sleep 3
 
 # Open browser
 echo "Opening browser..."
-start http://localhost:8501
+start http://127.0.0.1:8348
 
 echo ""
 echo "Transaction Monitoring System is running!"
-echo "   - FastAPI Backend: http://localhost:8000"
-echo "   - Streamlit Dashboard: http://localhost:8501"
+echo "   - FastAPI Backend: http://127.0.0.1:8347"
+echo "   - Streamlit Dashboard: http://127.0.0.1:8348"
 echo ""
 echo "Press Ctrl+C to stop all services"
 

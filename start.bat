@@ -4,9 +4,12 @@ REM Auto-start script for Transaction Monitoring Dashboard (Windows)
 echo Starting Transaction Monitoring System...
 echo.
 
+REM Set API URL for Streamlit
+set API_BASE_URL=http://127.0.0.1:8347
+
 REM Start FastAPI backend in new window
-echo Starting FastAPI backend on port 8000...
-start "FastAPI Backend" cmd /k "venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000"
+echo Starting FastAPI backend on port 8347...
+start "FastAPI Backend" cmd /k "venv\Scripts\python.exe -m uvicorn api.main:app --host 127.0.0.1 --port 8347"
 
 REM Wait for backend to be ready (with health check)
 echo Waiting for FastAPI backend to be ready...
@@ -18,14 +21,14 @@ timeout /t 1 /nobreak >nul
 set /a RETRIES+=1
 
 REM Try to connect to the health endpoint
-curl -s -o nul -w "" http://localhost:8000/health >nul 2>&1
+curl -s -o nul -w "" http://127.0.0.1:8347/health >nul 2>&1
 if %errorlevel% equ 0 (
     echo FastAPI backend is ready!
     goto BACKEND_READY
 )
 
 REM Also try the root endpoint as fallback
-curl -s -o nul -w "" http://localhost:8000/ >nul 2>&1
+curl -s -o nul -w "" http://127.0.0.1:8347/ >nul 2>&1
 if %errorlevel% equ 0 (
     echo FastAPI backend is ready!
     goto BACKEND_READY
@@ -42,19 +45,19 @@ echo WARNING: Backend may not be fully ready, proceeding anyway...
 echo.
 
 REM Start Streamlit dashboard in new window
-echo Starting Streamlit dashboard on port 8501...
-start "Streamlit Dashboard" cmd /k "venv\Scripts\python.exe -m streamlit run streamlit_app\app.py"
+echo Starting Streamlit dashboard on port 8348...
+start "Streamlit Dashboard" cmd /k "set API_BASE_URL=http://127.0.0.1:8347 && venv\Scripts\python.exe -m streamlit run streamlit_app\app.py --server.port 8348"
 
 REM Wait for Streamlit to start
 timeout /t 3 /nobreak >nul
 
 REM Open browser
 echo Opening browser...
-start http://localhost:8501
+start http://127.0.0.1:8348
 
 echo.
 echo Transaction Monitoring System is running!
-echo   - FastAPI Backend: http://localhost:8000
-echo   - Streamlit Dashboard: http://localhost:8501
+echo   - FastAPI Backend: http://127.0.0.1:8347
+echo   - Streamlit Dashboard: http://127.0.0.1:8348
 echo.
 echo Close the terminal windows to stop the services.
